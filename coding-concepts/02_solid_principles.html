@@ -35,9 +35,11 @@
       top: 0; left: 0;
       height: 3px;
       background: var(--accent);
-      width: 0%;
+      width: 100%;
       z-index: 9999;
-      transition: width 0.1s linear;
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform 0.1s linear;
     }
     #navbar {
       position: fixed; top: 3px; left: 0; right: 0;
@@ -524,9 +526,9 @@
     </div>
     <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">&#215;</button>
   </div>
-  <a class="drawer-index-link" href="01_clean_code_fundamentals.html">
+  <a class="drawer-index-link" href="00_index.html">
     <strong>Coding Concepts Suite</strong>
-    <span>Return to Clean Code Fundamentals</span>
+    <span>Return to Index</span>
   </a>
   <nav class="drawer-nav" aria-label="Coding concepts outline">
     <div class="drawer-group collapsed">
@@ -587,7 +589,7 @@
 
 <nav id="navbar">
   <span class="nav-brand">02 &#8212; SOLID Principles</span>
-  <a class="back-link" href="01_clean_code_fundamentals.html">&#8592; Clean Code</a>
+  <a class="back-link" href="00_index.html">&#8592; Index</a>
   <div class="chapter-pager" aria-label="Chapter navigation">
     <a class="chapter-nav-chip" href="01_clean_code_fundamentals.html" aria-label="Previous Chapter: Clean Code Fundamentals">
       <span class="nav-kicker">Previous</span>
@@ -755,7 +757,7 @@
           <span class="section-desc">Subtypes must be substitutable for their base types</span>
         </div>
         <div class="header-controls">
-          <label style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Pass to makeBirdFly():</label>
+          <label for="lsp-select" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Pass to makeBirdFly():</label>
           <select class="ctrl-select" id="lsp-select" onchange="lspSelectChanged()">
             <option value="">-- choose --</option>
             <option value="eagle">Eagle (passes)</option>
@@ -886,7 +888,7 @@
         </div>
         <div class="header-controls">
           <button class="btn" onclick="applyDIP()">Apply DIP</button>
-          <label style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Repository:</label>
+          <label for="dip-select" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Repository:</label>
           <select class="ctrl-select" id="dip-select" onchange="swapRepository()">
             <option value="mysql">MySQLRepository</option>
             <option value="postgres">PostgreSQLRepository</option>
@@ -997,7 +999,9 @@ function clearContainerStatus(containerId) {
 window.addEventListener('scroll', () => {
   const scrolled = window.scrollY;
   const total = document.documentElement.scrollHeight - window.innerHeight;
-  document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  if (total <= 0) return;
+  const percent = scrolled / total * 100;
+  document.getElementById('progress-bar').style.transform = 'scaleX(' + (percent / 100) + ')';
 });
 
 /* Sidebar */
@@ -1209,12 +1213,12 @@ function showChangeImpact(isGood) {
   if (!isGood) {
     setStatus(msg, 'err', 'Entire UserManager affected - must re-test all 4 concerns');
     if (srpState === 'before') {
-      anime({ targets: '#srp-center', scale: [1, 1.12, 1], duration: 600, easing: 'easeInOutQuad' });
+      anime({ targets: '#srp-center', opacity: [1, 0.4, 1], duration: 600, easing: 'easeInOutQuad' });
     }
   } else {
     setStatus(msg, 'ok', 'Only EmailService changed - Auth and Reports untouched');
     if (srpState === 'after') {
-      anime({ targets: '#srp-n1', scale: [1, 1.1, 1], duration: 600, easing: 'easeInOutQuad' });
+      anime({ targets: '#srp-n1', opacity: [1, 0.4, 1], duration: 600, easing: 'easeInOutQuad' });
     }
   }
 }
@@ -1431,11 +1435,11 @@ function lspSelectChanged() {
   if (val === 'eagle') {
     span.className = 'status-msg ok';
     span.textContent = 'Eagle passes. makeBirdFly(eagle) works - fly() succeeds.';
-    anime({ targets: '#lsp-eagle', scale: [1, 1.12, 1], duration: 500, easing: 'easeInOutQuad' });
+    anime({ targets: '#lsp-eagle', opacity: [1, 0.4, 1], duration: 500, easing: 'easeInOutQuad' });
   } else if (val === 'penguin') {
     span.className = 'status-msg err';
     span.textContent = 'LSP violation! Penguin.fly() throws UnsupportedOperationException at runtime';
-    anime({ targets: '#lsp-penguin', scale: [1, 1.15, 1], opacity: [1, 0.4, 1], duration: 700, easing: 'easeInOutQuad' });
+    anime({ targets: '#lsp-penguin', opacity: [1, 0.4, 1], duration: 700, easing: 'easeInOutQuad' });
   }
   container.appendChild(span);
 }
@@ -1578,7 +1582,7 @@ function drawISPAfter() {
 
 function robotEat() {
   if (ispState !== 'before') return;
-  anime({ targets: '#isp-robot', scale: [1, 1.15, 1], opacity: [1, 0.3, 1], duration: 700, easing: 'easeInOutQuad' });
+  anime({ targets: '#isp-robot', opacity: [1, 0.3, 1], duration: 700, easing: 'easeInOutQuad' });
   setContainerStatus('isp-status', 'err', 'Robot.eat() throws UnsupportedOperationException - forced method!');
 }
 

@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Smells — Coding Concepts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #f472b6;
+      --accent-dim: rgba(244,114,182,0.15);
+      --good: #4ade80;
+      --bad: #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: var(--accent); width: 100%; z-index: 9999;
+      transform: scaleX(0); transform-origin: left center;
+      transition: transform 0.1s linear;
+    }
+
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand { font-weight: 700; color: var(--accent); font-size: 13px; white-space: nowrap; margin-right: 1.5rem; }
+    #navbar a { color: var(--text-muted); text-decoration: none; font-size: 12px; padding: 0 10px; height: 48px; display: flex; align-items: center; white-space: nowrap; transition: color 0.2s; }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link { color: var(--accent); font-weight: 600; border-right: 1px solid var(--border); margin-right: 10px; padding-right: 16px; }
+    #navbar a.back-link:hover { color: var(--text); background: var(--accent-dim); }
+    #navbar .chapter-pager { display: flex; align-items: stretch; gap: 8px; margin-right: 12px; padding-right: 14px; border-right: 1px solid var(--border); flex: 0 0 auto; }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px; padding: 5px 10px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip { display: flex; flex-direction: column; justify-content: center; gap: 1px; color: var(--text); text-decoration: none; transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
+    #navbar .chapter-nav-chip:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    #navbar .chapter-nav-chip.current { justify-content: center; text-align: center; background: rgba(255,255,255,0.06); }
+    #navbar .chapter-nav-chip .nav-kicker { color: var(--text-muted); font-size: 9px; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; }
+    #navbar .chapter-nav-chip .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+    .concept-section { margin-bottom: 3rem; scroll-margin-top: 72px; opacity: 0; transform: translateY(20px); transition: opacity 0.5s, transform 0.5s; }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .card-header { background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .btn {
+      background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent);
+      border-radius: 4px; padding: 4px 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(244,114,182,0.3); }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn.bad-btn { background: rgba(248,113,113,0.15); border-color: var(--bad); color: var(--bad); }
+    .btn.bad-btn:hover { background: rgba(248,113,113,0.3); }
+    .btn.good-btn { background: rgba(74,222,128,0.15); border-color: var(--good); color: var(--good); }
+    .btn.good-btn:hover { background: rgba(74,222,128,0.3); }
+
+    .diagram-area { padding: 20px; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+
+    .insight-panel { border-top: 1px solid var(--border); padding: 10px 16px; font-size: 12px; color: var(--text-muted); border-left: 3px solid var(--accent); background: var(--accent-dim); }
+
+    .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--border); }
+    .code-pane { padding: 14px 16px; }
+    .code-pane:first-child { border-right: 1px solid var(--border); }
+    .code-pane-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+    .code-pane-label.bad { color: var(--bad); }
+    .code-pane-label.good { color: var(--good); }
+    pre { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num { color: #f2cc60; }
+    .tp  { color: #ffa657; }
+    .hl-bad { background: rgba(248,113,113,0.2); border-radius: 2px; padding: 0 2px; }
+    .hl-good { background: rgba(74,222,128,0.2); border-radius: 2px; padding: 0 2px; }
+
+    .expandable { border-top: 1px solid var(--border); }
+    .expandable-trigger { width: 100%; background: none; border: none; color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 12px; padding: 10px 16px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s, background 0.2s; }
+    .expandable-trigger:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .expandable-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .expandable-trigger .exp-icon { font-size: 14px; transition: transform 0.2s; display: inline-block; }
+    .expandable-trigger.open .exp-icon { transform: rotate(90deg); }
+    .expandable-body { display: none; padding: 10px 16px 14px; font-size: 12px; color: var(--text-muted); line-height: 1.7; border-top: 1px solid rgba(48,54,61,0.5); }
+    .expandable-body.open { display: block; }
+    .badge-green { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: rgba(74,222,128,0.2); color: var(--good); border: 1px solid var(--good); margin-right: 4px; }
+    .badge-blue { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid #38bdf8; margin-right: 4px; }
+    .badge-rx { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+
+    /* Complexity meter */
+    .meter-row { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+    .meter-label { color: var(--text-muted); white-space: nowrap; min-width: 140px; }
+    .meter-track { flex: 1; height: 8px; background: rgba(255,255,255,0.07); border-radius: 4px; overflow: hidden; }
+    .meter-fill { height: 100%; border-radius: 4px; transform: scaleX(0); transform-origin: left center; transition: transform 0.8s cubic-bezier(0.16,1,0.3,1), background 0.4s; }
+    .meter-value { min-width: 40px; text-align: right; color: var(--text-muted); }
+
+    /* Cascade */
+    .cascade-row { display: flex; align-items: center; gap: 12px; padding: 8px 16px; font-size: 12px; opacity: 0; transform: translateY(8px); transition: opacity 0.4s, transform 0.4s; }
+    .cascade-row.show { opacity: 1; transform: translateY(0); }
+    .cascade-icon { font-size: 16px; width: 24px; text-align: center; }
+    .cascade-text { color: var(--text-muted); }
+    .cascade-text strong { color: var(--text); }
+    .cascade-fix { color: var(--good); }
+
+    /* Page nav */
+    .chapter-page-nav { margin: 2.5rem 0 1.5rem; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; align-items: stretch; }
+    .chapter-nav-link, .chapter-nav-current { border: 1px solid var(--border); border-radius: 14px; min-height: 62px; padding: 12px 14px; background: rgba(255,255,255,0.03); }
+    .chapter-nav-link { display: flex; flex-direction: column; justify-content: center; gap: 3px; color: var(--text); text-decoration: none; transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
+    .chapter-nav-link:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-link.next { text-align: right; align-items: flex-end; }
+    .chapter-nav-link .nav-kicker, .chapter-nav-current .nav-kicker { color: var(--text-muted); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+    .chapter-nav-link .nav-title, .chapter-nav-current .nav-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+    .chapter-nav-link .nav-arrow { color: var(--accent); font-size: 16px; line-height: 1; }
+    .chapter-nav-current { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(255,255,255,0.05); }
+
+    @media (max-width: 760px) {
+      .chapter-page-nav { grid-template-columns: 1fr; }
+      .chapter-nav-link.next { text-align: left; align-items: flex-start; }
+      .code-compare { grid-template-columns: 1fr; }
+      .code-pane:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 2rem; }
+
+    /* Code Doctor hero */
+    #hero-scan-line { opacity: 0; }
+    .hero-area { padding: 24px; display: flex; align-items: center; justify-content: center; gap: 40px; flex-wrap: wrap; }
+    .hero-desc { max-width: 320px; }
+    .hero-desc h2 { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+    .hero-desc p { font-size: 13px; color: var(--text-muted); line-height: 1.7; }
+
+    /* God Class D3 */
+    #god-class-svg { display: block; }
+    .method-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+
+    /* Feature Envy */
+    .envy-counters { display: flex; gap: 24px; padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .envy-counter-box { border: 1px solid var(--border); border-radius: 6px; padding: 10px 16px; min-width: 140px; font-family: 'JetBrains Mono', monospace; }
+    .envy-counter-num { font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+    .envy-counter-label { font-size: 10px; color: var(--text-muted); }
+
+    /* Primitive Obsession */
+    .param-row { display: flex; gap: 6px; align-items: center; padding: 12px 20px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .param-chip { padding: 4px 10px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; border: 1px solid var(--border); transition: background 0.3s, border-color 0.3s; }
+    .param-chip.wrong { background: rgba(248,113,113,0.2); border-color: var(--bad); color: var(--bad); }
+    .param-chip.correct { background: rgba(74,222,128,0.2); border-color: var(--good); color: var(--good); }
+
+    /* Shotgun surgery */
+    #shotgun-svg text { font-family: 'JetBrains Mono', monospace; }
+
+    /* Nesting pyramid */
+    .pyramid-wrap { padding: 20px; display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+    .pyramid-code { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.8; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; min-width: 240px; }
+    .nest-level { display: block; white-space: pre; transition: opacity 0.3s; }
+    .nest-level.inactive { opacity: 0.2; }
+
+    /* Magic number confusion */
+    .confusion-area { padding: 20px; display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+    .confusion-box { border: 1px solid var(--border); border-radius: 8px; padding: 16px; min-width: 200px; }
+    .confusion-box h4 { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+    .qmark { display: inline-block; opacity: 0; font-size: 18px; color: var(--bad); }
+    .slider-row { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; font-size: 12px; font-family: 'JetBrains Mono', monospace; flex-wrap: wrap; }
+    .slider-row label { color: var(--text-muted); white-space: nowrap; }
+    .slider-row input[type=range] { flex: 1; min-width: 100px; accent-color: var(--accent); }
+    .slider-row .slider-val { color: var(--accent); min-width: 24px; text-align: right; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <span class="nav-brand">05 — Code Smells</span>
+  <a class="back-link" href="00_index.html">← Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <a class="chapter-nav-chip" href="04_oo_design_principles.html" aria-label="Previous Chapter: OO Design Principles">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">← OO Design Principles</span>
+    </a>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">05</span>
+    </span>
+    <a class="chapter-nav-chip" href="06_refactoring_patterns.html" aria-label="Next Chapter: Refactoring Patterns">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Refactoring Patterns →</span>
+    </a>
+  </div>
+  <a href="#s-51">God Class</a>
+  <a href="#s-52">Feature Envy</a>
+  <a href="#s-53">Primitive Obsession</a>
+  <a href="#s-54">Shotgun Surgery</a>
+  <a href="#s-55">Divergent Change</a>
+  <a href="#s-56">Deep Nesting</a>
+  <a href="#s-57">Magic Numbers</a>
+</nav>
+
+<main>
+
+  <!-- HERO -->
+  <div id="hero" class="concept-section" data-section="hero" style="margin-bottom:2rem;">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap;">
+      <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">Code Smells</h1>
+      <span style="color:var(--text-muted);font-size:14px;">Chapter 5 — Recognising problems before they metastasize</span>
+    </div>
+    <div class="section-card" style="overflow:visible;">
+      <div class="hero-area">
+        <!-- Code Doctor SVG -->
+        <svg id="hero-svg" width="160" height="200" viewBox="0 0 160 200" aria-label="Code Doctor character" role="img">
+          <!-- head -->
+          <circle cx="80" cy="38" r="26" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <!-- eyes -->
+          <circle cx="72" cy="34" r="3" fill="var(--accent)"/>
+          <circle cx="88" cy="34" r="3" fill="var(--accent)"/>
+          <!-- smile -->
+          <path d="M71 44 Q80 50 89 44" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+          <!-- body -->
+          <line x1="80" y1="64" x2="80" y2="120" stroke="var(--accent)" stroke-width="2"/>
+          <!-- arms -->
+          <line x1="80" y1="78" x2="46" y2="104" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="80" y1="78" x2="114" y2="104" stroke="var(--accent)" stroke-width="2"/>
+          <!-- stethoscope -->
+          <path d="M100 104 Q118 108 122 120 Q126 132 118 136" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="116" cy="137" r="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          <!-- legs -->
+          <line x1="80" y1="120" x2="60" y2="162" stroke="var(--accent)" stroke-width="2"/>
+          <line x1="80" y1="120" x2="100" y2="162" stroke="var(--accent)" stroke-width="2"/>
+          <!-- lab coat collar indicator -->
+          <path d="M62 70 L80 84 L98 70" fill="none" stroke="rgba(244,114,182,0.5)" stroke-width="1.5"/>
+          <!-- scanning line -->
+          <rect id="hero-scan-line" x="0" y="0" width="160" height="2" fill="var(--accent)" opacity="0.7" rx="1"/>
+        </svg>
+
+        <!-- Code block being scanned -->
+        <div style="position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border);background:rgba(0,0,0,0.4);padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;min-width:280px;">
+          <div id="scan-overlay" style="position:absolute;left:0;right:0;height:2px;background:var(--accent);opacity:0;top:0;"></div>
+          <div><span class="kw">class</span> <span class="tp">OrderProcessor</span> {</div>
+          <div style="padding-left:16px;"><span class="cm">// 847 lines...</span></div>
+          <div style="padding-left:16px;"><span class="fn">processOrder</span>() {}</div>
+          <div style="padding-left:16px;"><span class="fn">sendEmail</span>() {}</div>
+          <div style="padding-left:16px;"><span class="fn">generatePDF</span>() {}</div>
+          <div style="padding-left:16px;"><span class="fn">updateInventory</span>() {}</div>
+          <div style="padding-left:16px;"><span class="fn">calculateTax</span>() {}</div>
+          <div style="padding-left:16px;"><span class="fn">formatAddress</span>() {}</div>
+          <div style="padding-left:16px;"><span class="cm">// 37 more methods...</span></div>
+          <div>}</div>
+          <div id="scan-verdict" style="margin-top:8px;padding:4px 8px;border-radius:4px;background:rgba(248,113,113,0.2);color:var(--bad);font-size:10px;opacity:0;">⚠ 7 code smells detected</div>
+        </div>
+
+        <div class="hero-desc">
+          <h2>Code Doctor</h2>
+          <p>Code smells are <strong style="color:var(--text);">surface indicators</strong> of deeper design problems. They don't stop compilation — but they slow every engineer who touches the code.</p>
+          <p style="margin-top:8px;">This chapter covers 7 classic smells, their consequences, and prescriptions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 5.1 GOD CLASS / LONG METHOD ==================== -->
+  <section id="s-51" class="concept-section" data-section="s51">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.1 —</span>
+          <span class="section-title">God Class / Long Method</span>
+          <span class="section-desc">One class that knows and does everything</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn bad-btn" id="btn-add-method" aria-label="Add a method to the God Class">+ Add Method</button>
+          <button class="btn good-btn" id="btn-extract-class" aria-label="Extract Class to split responsibilities">Extract Class</button>
+          <span class="badge-rx">→ Extract Class / Method (File 06)</span>
+        </div>
+      </div>
+
+      <!-- D3 God Class diagram -->
+      <div class="diagram-area" style="min-height:260px;">
+        <svg id="god-class-svg" width="680" height="240"></svg>
+      </div>
+
+      <!-- Cyclomatic complexity meter -->
+      <div class="meter-row">
+        <span class="meter-label">Cyclomatic Complexity</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="complexity-fill" style="background:var(--good);"></div>
+        </div>
+        <span class="meter-value" id="complexity-val">2</span>
+      </div>
+
+      <!-- Violation → consequence → fix cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-51-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> Class accumulates unrelated methods over time</span></div>
+        <div class="cascade-row" id="casc-51-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> Merge conflicts every sprint, no one dares refactor</span></div>
+        <div class="cascade-row" id="casc-51-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Extract Class per responsibility — OrderProcessor, EmailSender, PDFGenerator</span></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ God Class (12 unrelated methods)</div>
+          <pre><span class="kw">class</span> <span class="tp">OrderManager</span> {
+  <span class="fn">placeOrder</span>() {}
+  <span class="fn">cancelOrder</span>() {}
+  <span class="fn">sendConfirmationEmail</span>() {}
+  <span class="fn">sendShippingAlert</span>() {}
+  <span class="fn">generateInvoicePDF</span>() {}
+  <span class="fn">exportToExcel</span>() {}
+  <span class="fn">calculateTax</span>() {}
+  <span class="fn">applyDiscount</span>() {}
+  <span class="fn">updateInventory</span>() {}
+  <span class="fn">syncWarehouse</span>() {}
+  <span class="fn">formatAddress</span>() {}
+  <span class="fn">validateCreditCard</span>() {}
+  <span class="cm">// 847 lines total</span>
+}</pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Three focused classes</div>
+          <pre><span class="kw">class</span> <span class="tp">OrderService</span> {
+  <span class="fn">placeOrder</span>() {}
+  <span class="fn">cancelOrder</span>() {}
+}
+
+<span class="kw">class</span> <span class="tp">OrderNotifier</span> {
+  <span class="fn">sendConfirmation</span>() {}
+  <span class="fn">sendShippingAlert</span>() {}
+}
+
+<span class="kw">class</span> <span class="tp">OrderDocuments</span> {
+  <span class="fn">generateInvoice</span>() {}
+  <span class="fn">exportToExcel</span>() {}
+}
+<span class="cm">// Each &lt; 80 lines</span></pre>
+        </div>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          Rule of thumb for spotting God Classes
+        </button>
+        <div class="expandable-body">
+          If you need to <strong style="color:var(--text);">scroll to see the whole class</strong>, it's probably too big. A class should fit comfortably on one screen. If you find yourself writing a comment like <code style="color:var(--accent);">// === EMAIL SECTION ===</code> inside a class, that's a signal it deserves its own file.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Size alone isn't the smell
+        </button>
+        <div class="expandable-body">
+          A class with 400 lines that has a single, cohesive responsibility (e.g., a rich domain model) is fine. The smell is <strong style="color:var(--text);">multiple responsibilities</strong>, not line count. Ask: "how many reasons does this class have to change?" If the answer is more than one, split it. Cyclomatic complexity above ~10 per method is a reliable quantitative trigger.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5.2 FEATURE ENVY ==================== -->
+  <section id="s-52" class="concept-section" data-section="s52">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.2 —</span>
+          <span class="section-title">Feature Envy</span>
+          <span class="section-desc">A method more interested in another class's data than its own</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-show-envy" aria-label="Show envy arrows accumulating">Show Envy</button>
+          <button class="btn good-btn" id="btn-move-method" aria-label="Move method to its proper home">Move Method</button>
+          <span class="badge-rx">→ Move Method (File 06)</span>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="min-height:220px;">
+        <svg id="envy-svg" width="660" height="200"></svg>
+      </div>
+
+      <!-- Counters -->
+      <div class="envy-counters">
+        <div class="envy-counter-box" style="border-color:var(--bad);">
+          <div class="envy-counter-num" id="envy-bad-count" style="color:var(--bad);">0</div>
+          <div class="envy-counter-label">Lines referencing Customer</div>
+        </div>
+        <div class="envy-counter-box" style="border-color:var(--good);">
+          <div class="envy-counter-num" id="envy-good-count" style="color:var(--good);">2</div>
+          <div class="envy-counter-label">Lines referencing own class</div>
+        </div>
+        <div class="envy-counter-box" id="envy-verdict-box" style="border-color:var(--border);display:flex;align-items:center;">
+          <div id="envy-verdict" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Click "Show Envy"</div>
+        </div>
+      </div>
+
+      <!-- Cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-52-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> Method accesses 6 fields from a foreign class</span></div>
+        <div class="cascade-row" id="casc-52-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> Customer changes break OrderService; logic duplicated across callers</span></div>
+        <div class="cascade-row" id="casc-52-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Move calculateDiscount() into Customer — it belongs with the data it uses</span></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Feature Envy</div>
+          <pre><span class="kw">class</span> <span class="tp">OrderService</span> {
+  <span class="fn">calculateDiscount</span>(<span class="tp">Customer</span> c) {
+    <span class="cm">// accessing 6 Customer fields</span>
+    <span class="kw">if</span> (c.<span class="fn">getMemberYears</span>() > <span class="num">5</span>)
+      <span class="kw">return</span> c.<span class="fn">getBaseRate</span>()
+           * c.<span class="fn">getLoyaltyMultiplier</span>()
+           * c.<span class="fn">getTierBonus</span>()
+           + c.<span class="fn">getReferralCredit</span>();
+    <span class="kw">return</span> c.<span class="fn">getBaseRate</span>();
+  }
+}</pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Method moved to its home</div>
+          <pre><span class="kw">class</span> <span class="tp">Customer</span> {
+  <span class="fn">calculateDiscount</span>() {
+    <span class="cm">// uses own fields — natural</span>
+    <span class="kw">if</span> (<span class="kw">this</span>.memberYears > <span class="num">5</span>)
+      <span class="kw">return</span> <span class="kw">this</span>.baseRate
+           * <span class="kw">this</span>.loyaltyMultiplier
+           * <span class="kw">this</span>.tierBonus
+           + <span class="kw">this</span>.referralCredit;
+    <span class="kw">return</span> <span class="kw">this</span>.baseRate;
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="meter-row">
+        <span class="meter-label">Coupling to Customer</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="envy-meter" style="background:var(--bad);"></div>
+        </div>
+        <span class="meter-value" id="envy-meter-val">0%</span>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          Quick rule
+        </button>
+        <div class="expandable-body">
+          If a method uses <strong style="color:var(--text);">more data from another class than from its own</strong>, it probably wants to live in that other class. Count the dot-accesses: <code style="color:var(--accent);">customer.getX()</code> vs. <code style="color:var(--accent);">this.getX()</code>. Whichever class has more calls "wins" ownership.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Data classes (DTOs) are exempt
+        </button>
+        <div class="expandable-body">
+          Don't apply this rule blindly to <strong style="color:var(--text);">data transfer objects</strong> or anemic domain models used at API boundaries. Moving logic into a DTO that crosses service boundaries creates coupling at the wrong layer. The exception: if your DTOs are growing methods, consider making them proper domain objects.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5.3 PRIMITIVE OBSESSION ==================== -->
+  <section id="s-53" class="concept-section" data-section="s53">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.3 —</span>
+          <span class="section-title">Primitive Obsession</span>
+          <span class="section-desc">Using primitives where a domain object belongs</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn bad-btn" id="btn-wrong-order" aria-label="Simulate wrong parameter order call">Wrong-Order Call</button>
+          <button class="btn good-btn" id="btn-fix-params" aria-label="Show the fixed version with value objects">Fix: Value Objects</button>
+          <span class="badge-rx">→ Introduce Parameter Object (File 06)</span>
+        </div>
+      </div>
+
+      <!-- Animated param chips -->
+      <div class="param-row" id="param-row">
+        <span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-right:6px;">createUser(</span>
+        <span class="param-chip" id="p1">String email</span>
+        <span style="color:var(--text-muted);font-size:11px;">,</span>
+        <span class="param-chip" id="p2">String name</span>
+        <span style="color:var(--text-muted);font-size:11px;">,</span>
+        <span class="param-chip" id="p3">String phone</span>
+        <span style="color:var(--text-muted);font-size:11px;">,</span>
+        <span class="param-chip" id="p4">String country</span>
+        <span style="color:var(--text-muted);font-size:11px;">,</span>
+        <span class="param-chip" id="p5">int age</span>
+        <span style="color:var(--text-muted);font-size:11px;">,</span>
+        <span class="param-chip" id="p6">boolean isAdmin</span>
+        <span style="color:var(--text-muted);font-size:11px;">)</span>
+        <div id="param-verdict" style="margin-left:8px;font-size:11px;font-family:'JetBrains Mono',monospace;opacity:0;color:var(--bad);">⚠ Compiles fine — crashes at runtime!</div>
+      </div>
+
+      <!-- Cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-53-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> 6 primitives — caller can swap email &amp; name silently</span></div>
+        <div class="cascade-row" id="casc-53-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> No compile-time safety; invalid values (negative age, bad email) possible anywhere</span></div>
+        <div class="cascade-row" id="casc-53-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Introduce UserCreationRequest — one parameter, validated at construction</span></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Primitive Obsession</div>
+          <pre><span class="kw">void</span> <span class="fn">createUser</span>(
+  <span class="tp">String</span> name,
+  <span class="tp">String</span> email,
+  <span class="tp">String</span> phone,
+  <span class="tp">String</span> country,
+  <span class="tp">int</span>    age,
+  <span class="tp">boolean</span> isAdmin
+) { ... }
+
+<span class="cm">// Caller — spot the bug:</span>
+<span class="fn">createUser</span>(
+  <span class="hl-bad"><span class="str">"alice@example.com"</span></span>, <span class="cm">// ← email</span>
+  <span class="hl-bad"><span class="str">"Alice"</span></span>,            <span class="cm">// ← name</span>
+  <span class="str">"555-0100"</span>, <span class="str">"US"</span>, <span class="num">28</span>, <span class="kw">false</span>
+);</pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Parameter Object + Value Objects</div>
+          <pre><span class="kw">void</span> <span class="fn">createUser</span>(
+  <span class="tp">UserCreationRequest</span> req
+) { ... }
+
+<span class="cm">// Named construction — self-documenting</span>
+<span class="fn">createUser</span>(<span class="kw">new</span> <span class="tp">UserCreationRequest</span>()
+  .<span class="fn">name</span>(<span class="str">"Alice"</span>)
+  .<span class="fn">email</span>(<span class="str">"alice@example.com"</span>)
+  .<span class="fn">phone</span>(<span class="str">"555-0100"</span>)
+  .<span class="fn">country</span>(<span class="str">"US"</span>)
+  .<span class="fn">age</span>(<span class="num">28</span>)
+  .<span class="fn">isAdmin</span>(<span class="kw">false</span>));</pre>
+        </div>
+      </div>
+
+      <div class="meter-row">
+        <span class="meter-label">Parameter Risk</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="prim-meter" style="background:var(--bad); transform:scaleX(0.85);"></div>
+        </div>
+        <span class="meter-value" id="prim-meter-val">High</span>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          The "giant junk room" analogy
+        </button>
+        <div class="expandable-body">
+          Imagine moving to a new house and putting everything — furniture, food, clothes, documents — into <strong style="color:var(--text);">one giant room labeled "stuff"</strong>. Finding your passport later is a nightmare. Primitive Obsession is that: using <code style="color:var(--accent);">String</code> for everything instead of <code style="color:var(--accent);">Email</code>, <code style="color:var(--accent);">PhoneNumber</code>, <code style="color:var(--accent);">Money</code>. Each type is its own room — things go where they belong, and the compiler guards the door.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Value objects eliminate invalid states by construction
+        </button>
+        <div class="expandable-body">
+          A <strong style="color:var(--text);">value object</strong> (e.g., <code style="color:var(--accent);">Email</code>, <code style="color:var(--accent);">Money</code>) validates at construction time — you can never hold an invalid <code style="color:var(--accent);">Email</code> object. This shifts validation from scattered <code style="color:var(--accent);">if</code>-checks across the codebase to a single authoritative place. Bonus: renaming/searching for <code style="color:var(--accent);">Email</code> in your IDE is trivial; hunting for every <code style="color:var(--accent);">String</code> that might be an email is not.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5.4 SHOTGUN SURGERY ==================== -->
+  <section id="s-54" class="concept-section" data-section="s54">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.4 —</span>
+          <span class="section-title">Shotgun Surgery</span>
+          <span class="section-desc">One change requires edits in many unrelated places</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn bad-btn" id="btn-trigger-change" aria-label="Trigger change cascade animation">Trigger Change</button>
+          <button class="btn good-btn" id="btn-show-srp" aria-label="Show SRP-compliant version">Show SRP Version</button>
+          <span class="badge-rx">→ Move Method, Extract Class (File 06)</span>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="min-height:260px;">
+        <svg id="shotgun-svg" width="700" height="240"></svg>
+      </div>
+
+      <!-- Change radius counter -->
+      <div style="display:flex;gap:24px;padding:10px 20px;border-top:1px solid var(--border);flex-wrap:wrap;align-items:center;">
+        <div style="font-family:'JetBrains Mono',monospace;">
+          <span style="font-size:10px;color:var(--text-muted);">Files to edit:</span>
+          <span id="change-radius" style="font-size:28px;font-weight:700;color:var(--bad);margin-left:8px;">7</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;">
+          <span style="font-size:10px;color:var(--text-muted);">SRP version:</span>
+          <span id="srp-radius" style="font-size:28px;font-weight:700;color:var(--good);margin-left:8px;">1</span>
+        </div>
+      </div>
+
+      <!-- Cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-54-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> Discount logic scattered across 7 files</span></div>
+        <div class="cascade-row" id="casc-54-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> Forgot to update OrderHistoryService — production bug in reporting</span></div>
+        <div class="cascade-row" id="casc-54-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Consolidate discount logic into DiscountPolicy — one place to change</span></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Logic scattered (7 files)</div>
+          <pre><span class="cm">// OrderService.java</span>
+<span class="kw">if</span> (tier == <span class="str">"GOLD"</span>) rate = <span class="num">0.15</span>;
+
+<span class="cm">// CartService.java</span>
+<span class="kw">if</span> (tier == <span class="str">"GOLD"</span>) rate = <span class="num">0.15</span>;
+
+<span class="cm">// InvoiceService.java</span>
+<span class="kw">if</span> (tier == <span class="str">"GOLD"</span>) rate = <span class="num">0.15</span>;
+
+<span class="cm">// ... 4 more files</span>
+<span class="cm">// Change GOLD → 0.20?</span>
+<span class="cm">// Must edit all 7 — easy to miss one</span></pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Consolidated DiscountPolicy</div>
+          <pre><span class="kw">class</span> <span class="tp">DiscountPolicy</span> {
+  <span class="fn">rateFor</span>(<span class="tp">CustomerTier</span> tier) {
+    <span class="kw">return switch</span> (tier) {
+      <span class="kw">case</span> GOLD    -> <span class="num">0.20</span>;
+      <span class="kw">case</span> SILVER  -> <span class="num">0.10</span>;
+      <span class="kw">default</span>      -> <span class="num">0.00</span>;
+    };
+  }
+}
+<span class="cm">// Change rate? One file. Done.</span></pre>
+        </div>
+      </div>
+
+      <div class="meter-row">
+        <span class="meter-label">Change Blast Radius</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="shotgun-meter" style="background:var(--bad); transform:scaleX(0.88);"></div>
+        </div>
+        <span class="meter-value" id="shotgun-meter-val">7 files</span>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          The symptom you'll feel
+        </button>
+        <div class="expandable-body">
+          You know a change is small — "just update the GOLD discount rate" — but you still have to open <strong style="color:var(--text);">6 files</strong> to make it. That nagging feeling? That's Shotgun Surgery. The code <em>works</em>, but every change is risky because you might forget a file.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Inverse of Divergent Change
+        </button>
+        <div class="expandable-body">
+          Shotgun Surgery and Divergent Change are mirrors of each other:<br><br>
+          <strong style="color:var(--text);">Shotgun Surgery</strong> — one logical change, many classes to edit.<br>
+          <strong style="color:var(--text);">Divergent Change</strong> — one class, many unrelated reasons to edit it.<br><br>
+          Both violate SRP but from opposite angles. Section 5.5 covers the other side.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5.5 DIVERGENT CHANGE ==================== -->
+  <section id="s-55" class="concept-section" data-section="s55">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.5 —</span>
+          <span class="section-title">Divergent Change</span>
+          <span class="section-desc">One class changed for many unrelated reasons</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-show-axes" aria-label="Animate axes of change arriving">Show Axes</button>
+          <button class="btn good-btn" id="btn-split-axes" aria-label="Split class by axis of change">Split by Axis</button>
+          <span class="badge-rx">→ SRP — split by axis of change (File 02)</span>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="min-height:240px;">
+        <svg id="divergent-svg" width="660" height="220"></svg>
+      </div>
+
+      <!-- Cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-55-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> ReportGenerator touched by Marketing, Finance, AND IT in the same sprint</span></div>
+        <div class="cascade-row" id="casc-55-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> Unrelated changes collide, features fight over the same file, merge hell</span></div>
+        <div class="cascade-row" id="casc-55-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Split into ReportFormatter, ReportEmailer, ReportExporter — one axis each</span></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ ReportGenerator — 3 change axes</div>
+          <pre><span class="kw">class</span> <span class="tp">ReportGenerator</span> {
+  <span class="cm">// Axis 1: Marketing changes format</span>
+  <span class="fn">formatAsHTML</span>() {}
+  <span class="fn">applyBranding</span>() {}
+
+  <span class="cm">// Axis 2: Finance changes delivery</span>
+  <span class="fn">sendByEmail</span>() {}
+  <span class="fn">scheduleMonthly</span>() {}
+
+  <span class="cm">// Axis 3: IT changes export</span>
+  <span class="fn">exportToPDF</span>() {}
+  <span class="fn">exportToS3</span>() {}
+}</pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ One class per axis</div>
+          <pre><span class="kw">class</span> <span class="tp">ReportFormatter</span> {
+  <span class="fn">formatAsHTML</span>() {}
+  <span class="fn">applyBranding</span>() {}
+}
+
+<span class="kw">class</span> <span class="tp">ReportEmailer</span> {
+  <span class="fn">sendByEmail</span>() {}
+  <span class="fn">scheduleMonthly</span>() {}
+}
+
+<span class="kw">class</span> <span class="tp">ReportExporter</span> {
+  <span class="fn">exportToPDF</span>() {}
+  <span class="fn">exportToS3</span>() {}
+}</pre>
+        </div>
+      </div>
+
+      <div class="meter-row">
+        <span class="meter-label">Change Axis Count</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="divergent-meter" style="background:var(--bad);"></div>
+        </div>
+        <span class="meter-value" id="divergent-meter-val">0</span>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          The symptom you'll feel
+        </button>
+        <div class="expandable-body">
+          You open the same file for <strong style="color:var(--text);">3 completely unrelated reasons</strong> in a single sprint. A designer wants to change report formatting, finance wants to add a new delivery channel, and IT wants a new export format — and they all land in the same class. That's Divergent Change.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Mirror of Shotgun Surgery
+        </button>
+        <div class="expandable-body">
+          Divergent Change is <strong style="color:var(--text);">Shotgun Surgery's mirror</strong>:<br><br>
+          <strong style="color:var(--text);">Divergent Change</strong> — many changes, one class.<br>
+          <strong style="color:var(--text);">Shotgun Surgery</strong> — one change, many classes.<br><br>
+          Divergent Change is resolved by SRP: each class should have one reason to change (one actor who drives its changes). When you identify the "axes of change," you've identified the boundaries.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5.6 DEEP NESTING ==================== -->
+  <section id="s-56" class="concept-section" data-section="s56">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.6 —</span>
+          <span class="section-title">Deep Nesting</span>
+          <span class="section-desc">The Pyramid of Doom — cognitive load stacks like indentation</span>
+        </div>
+        <div class="header-controls">
+          <span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Nesting depth:</span>
+          <input type="range" id="nesting-slider" min="1" max="5" value="1" aria-label="Nesting depth level" style="width:80px;accent-color:var(--accent);">
+          <span id="nesting-val" style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--accent);min-width:14px;">1</span>
+          <span class="badge-rx">→ Guard Clauses (File 06)</span>
+        </div>
+      </div>
+
+      <!-- Pyramid -->
+      <div class="pyramid-wrap">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">❌ Nested ifs</div>
+          <div class="pyramid-code" id="pyramid-bad">
+            <span class="nest-level" id="nl-1"><span class="kw">if</span> (user != <span class="kw">null</span>) {</span>
+            <span class="nest-level inactive" id="nl-2">  <span class="kw">if</span> (user.<span class="fn">isActive</span>()) {</span>
+            <span class="nest-level inactive" id="nl-3">    <span class="kw">if</span> (user.<span class="fn">hasPermission</span>()) {</span>
+            <span class="nest-level inactive" id="nl-4">      <span class="kw">if</span> (!order.<span class="fn">isEmpty</span>()) {</span>
+            <span class="nest-level inactive" id="nl-5">        <span class="kw">if</span> (payment.<span class="fn">isValid</span>()) {</span>
+            <span class="nest-level inactive" id="nl-5x">          <span class="fn">doWork</span>(); <span class="cm">// ← buried!</span></span>
+            <span class="nest-level inactive" id="nl-5c">        }</span>
+            <span class="nest-level inactive" id="nl-4c">      }</span>
+            <span class="nest-level inactive" id="nl-3c">    }</span>
+            <span class="nest-level inactive" id="nl-2c">  }</span>
+            <span class="nest-level" id="nl-1c">}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px 0;">
+          <div style="font-size:24px;color:var(--accent);">→</div>
+          <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Guard Clauses</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--good);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">✅ Early returns</div>
+          <div class="pyramid-code">
+<span class="kw">if</span> (user == <span class="kw">null</span>) <span class="kw">return</span>;
+<span class="kw">if</span> (!user.<span class="fn">isActive</span>()) <span class="kw">return</span>;
+<span class="kw">if</span> (!user.<span class="fn">hasPermission</span>()) <span class="kw">return</span>;
+<span class="kw">if</span> (order.<span class="fn">isEmpty</span>()) <span class="kw">return</span>;
+<span class="kw">if</span> (!payment.<span class="fn">isValid</span>()) <span class="kw">return</span>;
+
+<span class="fn">doWork</span>(); <span class="cm">// ← immediately visible</span></div>
+        </div>
+      </div>
+
+      <!-- Cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-56-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> 5 levels of nesting before the happy-path logic</span></div>
+        <div class="cascade-row" id="casc-56-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> Reviewers miss branches; adding error handling nests it deeper</span></div>
+        <div class="cascade-row" id="casc-56-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Guard Clauses — invert conditions and return early; happy path reads top-to-bottom</span></div>
+      </div>
+
+      <div class="meter-row">
+        <span class="meter-label">Cognitive Complexity</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="nesting-meter" style="background:var(--good);"></div>
+        </div>
+        <span class="meter-value" id="nesting-meter-val">1</span>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          The golden rule
+        </button>
+        <div class="expandable-body">
+          The <strong style="color:var(--text);">happy path should read straight down the left margin</strong>. Guards handle the exceptional cases up top, so the reader reaches the "real" logic without wading through nested braces. Nesting depth &gt; 2 is a consistent warning sign.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Team convention matters
+        </button>
+        <div class="expandable-body">
+          Early returns need a consistent style. Some teams prefer a <strong style="color:var(--text);">"single exit point"</strong> convention (one <code style="color:var(--accent);">return</code> per method), others embrace guard clauses. Neither is universally right — but the team must agree. Mixed styles in the same codebase cause more confusion than either alone. Cognitive complexity (SonarQube's metric) is a better measure than cyclomatic complexity for nesting smell.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5.7 MAGIC NUMBERS & STRINGS ==================== -->
+  <section id="s-57" class="concept-section" data-section="s57">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.7 —</span>
+          <span class="section-title">Magic Numbers &amp; Strings</span>
+          <span class="section-desc">Unexplained literals that require a decoder ring to understand</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn bad-btn" id="btn-confuse-dev" aria-label="Show new engineer confusion animation">New Engineer Reads Code</button>
+          <button class="btn good-btn" id="btn-reveal-enum" aria-label="Show the self-documenting enum version">Reveal Enum</button>
+          <span class="badge-rx">→ Replace Magic Literal (File 06)</span>
+        </div>
+      </div>
+
+      <div class="confusion-area">
+        <!-- Magic code block -->
+        <div class="confusion-box">
+          <h4>❌ What does 3 mean?</h4>
+          <pre><span class="kw">if</span> (status == <span class="hl-bad"><span class="num">3</span></span>) {
+  <span class="fn">shipOrder</span>();
+}
+<span class="kw">if</span> (retries > <span class="hl-bad"><span class="num">7</span></span>) {
+  <span class="fn">escalate</span>();
+}
+<span class="kw">if</span> (role == <span class="hl-bad"><span class="num">99</span></span>) {
+  <span class="fn">grantAccess</span>();
+}</pre>
+          <!-- Confusion question marks -->
+          <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+            <span class="qmark" id="qm1">❓</span>
+            <span class="qmark" id="qm2">❓</span>
+            <span class="qmark" id="qm3">❓</span>
+            <span id="confusion-label" style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;opacity:0;">…what team wiki did I miss?</span>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div style="display:flex;align-items:center;font-size:24px;color:var(--accent);padding:20px 0;">→</div>
+
+        <!-- Self-documenting version -->
+        <div class="confusion-box" id="enum-box" style="opacity:0.3;transition:opacity 0.6s;">
+          <h4 style="color:var(--good);">✅ Self-documenting constants</h4>
+          <pre><span class="kw">if</span> (status == <span class="hl-good"><span class="tp">OrderStatus</span>.SHIPPED</span>) {
+  <span class="fn">shipOrder</span>();
+}
+<span class="kw">if</span> (retries > <span class="hl-good"><span class="tp">RetryPolicy</span>.MAX_ATTEMPTS</span>) {
+  <span class="fn">escalate</span>();
+}
+<span class="kw">if</span> (role == <span class="hl-good"><span class="tp">Role</span>.SUPER_ADMIN</span>) {
+  <span class="fn">grantAccess</span>();
+}</pre>
+          <div style="margin-top:10px;font-size:10px;color:var(--good);font-family:'JetBrains Mono',monospace;">IDE auto-complete works. Refactoring is safe.</div>
+        </div>
+      </div>
+
+      <!-- Chain: 3 → constant → enum -->
+      <div style="padding:10px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:11px;">
+        <div style="padding:4px 10px;border:1px solid var(--bad);border-radius:4px;color:var(--bad);background:rgba(248,113,113,0.1);">3</div>
+        <div style="color:var(--text-muted);">→</div>
+        <div style="padding:4px 10px;border:1px solid #fbbf24;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.1);">static final int SHIPPED = 3</div>
+        <div style="color:var(--text-muted);">→</div>
+        <div style="padding:4px 10px;border:1px solid var(--good);border-radius:4px;color:var(--good);background:rgba(74,222,128,0.1);">enum OrderStatus { SHIPPED }</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-left:4px;">← IDE-safe, exhaustive, refactorable</div>
+      </div>
+
+      <!-- Cascade -->
+      <div style="padding:10px 0 6px;border-top:1px solid var(--border);">
+        <div class="cascade-row" id="casc-57-1"><span class="cascade-icon">⚡</span><span class="cascade-text"><strong>Violation:</strong> Literal <code style="color:var(--accent);">3</code> appears 14 times across 6 files</span></div>
+        <div class="cascade-row" id="casc-57-2"><span class="cascade-icon">💥</span><span class="cascade-text"><strong>Consequence:</strong> New engineer changes one instance; misses 5 others — subtle data corruption</span></div>
+        <div class="cascade-row" id="casc-57-3"><span class="cascade-icon">✅</span><span class="cascade-text cascade-fix"><strong>Fix:</strong> Named constant or enum — change the value once, everywhere updates automatically</span></div>
+      </div>
+
+      <div class="meter-row">
+        <span class="meter-label">Confusion Meter</span>
+        <div class="meter-track">
+          <div class="meter-fill" id="magic-meter" style="background:var(--bad);"></div>
+        </div>
+        <span class="meter-value" id="magic-meter-val">0%</span>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-green">🟢 New to this?</span>
+          Not all literals are magic
+        </button>
+        <div class="expandable-body">
+          <code style="color:var(--accent);">array.length - 1</code>, <code style="color:var(--accent);">0</code> and <code style="color:var(--accent);">1</code> in obvious arithmetic, <code style="color:var(--accent);">Math.PI</code> — these are <strong style="color:var(--text);">not</strong> magic numbers. A magic number is one whose <em>meaning</em> isn't clear from context. Ask: "if a new engineer reads this, will they know what this number represents without looking it up?" If not, name it.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExp(this)" aria-expanded="false">
+          <span class="exp-icon">▶</span>
+          <span class="badge-blue">🔵 Go deeper</span>
+          Enums over static constants
+        </button>
+        <div class="expandable-body">
+          A <code style="color:var(--accent);">static final int SHIPPED = 3</code> is better than a bare <code style="color:var(--accent);">3</code>, but an <strong style="color:var(--text);">enum</strong> is even better: the compiler enforces exhaustive <code style="color:var(--accent);">switch</code> coverage, IDEs autocomplete the members, and you can't accidentally pass an invalid value. In strongly-typed languages, prefer enums or sealed types for any domain concept with a finite set of states.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM CHAPTER PAGER -->
+  <div class="chapter-page-nav" aria-label="Chapter navigation">
+    <a class="chapter-nav-link" href="04_oo_design_principles.html">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-arrow">←</span>
+      <span class="nav-title">OO Design Principles</span>
+    </a>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">Chapter 5</span>
+      <span class="nav-title">Code Smells</span>
+    </div>
+    <a class="chapter-nav-link next" href="06_refactoring_patterns.html">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-arrow">→</span>
+      <span class="nav-title">Refactoring Patterns</span>
+    </a>
+  </div>
+
+</main>
+
+<footer>
+  Based on <em>Clean Code</em> — Robert C. Martin · <em>The Pragmatic Programmer</em> — Hunt &amp; Thomas · <em>Refactoring</em> — Martin Fowler · <em>Working Effectively with Legacy Code</em> — Michael Feathers
+</footer>
+
+<script>
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function toggleExp(btn) {
+  var body = btn.nextElementSibling;
+  var isOpen = btn.classList.contains('open');
+  btn.classList.toggle('open', !isOpen);
+  body.classList.toggle('open', !isOpen);
+  btn.setAttribute('aria-expanded', String(!isOpen));
+}
+
+/* Progress bar */
+window.addEventListener('scroll', function() {
+  var scrolled = window.scrollY;
+  var total = document.documentElement.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  document.getElementById('progress-bar').style.transform = 'scaleX(' + (scrolled / total) + ')';
+});
+
+/* ============================================================
+   IntersectionObserver — section reveal + animation trigger
+   ============================================================ */
+var animatedSections = {};
+
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (!entry.isIntersecting) return;
+    var el = entry.target;
+    el.classList.add('visible');
+    var key = el.dataset.section;
+    if (!animatedSections[key]) {
+      animatedSections[key] = true;
+      triggerSectionAnim(key);
+    }
+  });
+}, { threshold: 0.25 });
+
+document.querySelectorAll('.concept-section').forEach(function(s) {
+  observer.observe(s);
+});
+
+function triggerSectionAnim(key) {
+  if (key === 'hero')       animHero();
+  if (key === 's51')        animGodClass();
+  if (key === 's52')        animEnvy();
+  if (key === 's53')        animPrimitive();
+  if (key === 's54')        animShotgun();
+  if (key === 's55')        animDivergent();
+  if (key === 's56')        animNesting(1);
+  if (key === 's57')        animMagic();
+}
+
+/* ============================================================
+   HERO — Code Doctor scan
+   ============================================================ */
+function animHero() {
+  var scanEl = document.getElementById('scan-overlay');
+  var verdict = document.getElementById('scan-verdict');
+
+  anime({
+    targets: scanEl,
+    opacity: [0, 0.85],
+    translateY: [0, 200],
+    easing: 'linear',
+    duration: 1600,
+    complete: function() {
+      anime({ targets: verdict, opacity: [0,1], translateY: [8,0], duration: 400, easing: 'easeOutQuad' });
+      anime({ targets: scanEl, opacity: 0, duration: 300, easing: 'easeOutQuad' });
+    }
+  });
+}
+
+/* ============================================================
+   5.1 — GOD CLASS D3
+   ============================================================ */
+var godMethods = [
+  'placeOrder','cancelOrder','sendEmail','sendAlert',
+  'generatePDF','exportExcel','calculateTax','applyDiscount',
+  'updateInventory','syncWarehouse','formatAddress','validateCard'
+];
+var godState = { count: 2, split: false };
+var godColors = ['#f472b6','#4ade80','#38bdf8'];
+
+function animGodClass() {
+  renderGodClass();
+  showCascade(['casc-51-1','casc-51-2','casc-51-3'], 0);
+}
+
+function renderGodClass() {
+  var svg = d3.select('#god-class-svg');
+  svg.selectAll('*').remove();
+  var W = 680, H = 240;
+
+  if (godState.split) {
+    /* Three focused classes */
+    var groups = [
+      { label: 'OrderService', methods: ['placeOrder','cancelOrder'], color: godColors[0] },
+      { label: 'OrderNotifier', methods: ['sendEmail','sendAlert'], color: godColors[1] },
+      { label: 'OrderDocuments', methods: ['generatePDF','exportExcel'], color: godColors[2] }
+    ];
+    groups.forEach(function(g, i) {
+      var gx = 80 + i * 200;
+      var boxH = 30 + g.methods.length * 20 + 14;
+      var box = svg.append('g').attr('transform','translate(' + gx + ',30)');
+      box.append('rect')
+        .attr('width', 160).attr('height', boxH)
+        .attr('rx', 6)
+        .attr('fill', 'rgba(0,0,0,0.3)')
+        .attr('stroke', g.color)
+        .attr('stroke-width', 1.5)
+        .attr('opacity', 0)
+        .transition().duration(500).delay(i * 150).attr('opacity', 1);
+      box.append('text')
+        .attr('x', 80).attr('y', 20)
+        .attr('text-anchor','middle')
+        .attr('fill', g.color)
+        .attr('font-family','JetBrains Mono,monospace')
+        .attr('font-size', 11)
+        .attr('font-weight', 600)
+        .attr('opacity', 0)
+        .text(g.label)
+        .transition().duration(500).delay(i * 150).attr('opacity', 1);
+      g.methods.forEach(function(m, mi) {
+        box.append('text')
+          .attr('x', 12).attr('y', 38 + mi * 20)
+          .attr('fill', '#e6edf3')
+          .attr('font-family','JetBrains Mono,monospace')
+          .attr('font-size', 9)
+          .attr('opacity', 0)
+          .text('+ ' + m + '()')
+          .transition().duration(400).delay(i * 150 + mi * 60).attr('opacity', 1);
+      });
+    });
+    updateComplexityMeter(2);
+  } else {
+    /* God class */
+    var boxH = 40 + godState.count * 20;
+    var overflow = godState.count > 8;
+    var boxColor = overflow ? '#f87171' : (godState.count > 5 ? '#fbbf24' : '#4ade80');
+
+    svg.append('rect')
+      .attr('x', 160).attr('y', 20)
+      .attr('width', 360).attr('height', Math.min(boxH, H - 30))
+      .attr('rx', 8)
+      .attr('fill', 'rgba(0,0,0,0.3)')
+      .attr('stroke', boxColor)
+      .attr('stroke-width', 2);
+
+    svg.append('text')
+      .attr('x', 340).attr('y', 42)
+      .attr('text-anchor','middle')
+      .attr('fill', boxColor)
+      .attr('font-family','JetBrains Mono,monospace')
+      .attr('font-size', 13).attr('font-weight', 700)
+      .text('OrderManager');
+
+    var visible = Math.min(godState.count, 9);
+    for (var i = 0; i < visible; i++) {
+      svg.append('text')
+        .attr('x', 176).attr('y', 62 + i * 18)
+        .attr('fill', '#e6edf3')
+        .attr('font-family','JetBrains Mono,monospace')
+        .attr('font-size', 9)
+        .attr('opacity', i === godState.count - 1 ? 0 : 1)
+        .text('+ ' + (godMethods[i] || 'method' + i) + '()')
+        .transition().duration(300).attr('opacity', 1);
+    }
+    if (godState.count > 9) {
+      svg.append('text')
+        .attr('x', 176).attr('y', 62 + 9 * 18)
+        .attr('fill','#8b949e')
+        .attr('font-family','JetBrains Mono,monospace')
+        .attr('font-size', 9)
+        .text('... ' + (godState.count - 9) + ' more methods');
+    }
+    if (overflow) {
+      svg.append('text')
+        .attr('x', 340).attr('y', H - 8)
+        .attr('text-anchor','middle')
+        .attr('fill','#f87171')
+        .attr('font-family','JetBrains Mono,monospace')
+        .attr('font-size', 10)
+        .text('⚠ God Class — ' + godState.count + ' methods, too many responsibilities');
+    }
+    updateComplexityMeter(godState.count);
+  }
+}
+
+function updateComplexityMeter(count) {
+  var ratio = Math.min(count / 12, 1);
+  var fill = document.getElementById('complexity-fill');
+  var val = document.getElementById('complexity-val');
+  var color = ratio < 0.4 ? '#4ade80' : (ratio < 0.7 ? '#fbbf24' : '#f87171');
+  fill.style.background = color;
+  fill.style.transform = 'scaleX(' + ratio + ')';
+  val.textContent = count;
+  val.style.color = color;
+}
+
+document.getElementById('btn-add-method').addEventListener('click', function() {
+  if (godState.split) { godState.split = false; godState.count = 2; }
+  if (godState.count < 12) { godState.count++; renderGodClass(); }
+});
+document.getElementById('btn-extract-class').addEventListener('click', function() {
+  godState.split = true;
+  renderGodClass();
+  updateComplexityMeter(2);
+});
+
+/* ============================================================
+   5.2 — FEATURE ENVY D3
+   ============================================================ */
+var envyState = { showing: false, moved: false };
+
+function animEnvy() {
+  renderEnvySvg(false);
+  showCascade(['casc-52-1','casc-52-2','casc-52-3'], 0);
+}
+
+function renderEnvySvg(showArrows) {
+  var svg = d3.select('#envy-svg');
+  svg.selectAll('*').remove();
+  var W = 660, H = 200;
+
+  var orderColor = '#f472b6';
+  var custColor = '#38bdf8';
+
+  /* OrderService box */
+  svg.append('rect').attr('x',40).attr('y',40).attr('width',180).attr('height',120)
+    .attr('rx',8).attr('fill','rgba(0,0,0,0.3)').attr('stroke',orderColor).attr('stroke-width',1.5);
+  svg.append('text').attr('x',130).attr('y',60).attr('text-anchor','middle')
+    .attr('fill',orderColor).attr('font-family','JetBrains Mono,monospace').attr('font-size',11).attr('font-weight',700)
+    .text('OrderService');
+  svg.append('text').attr('x',60).attr('y',84).attr('fill','#e6edf3').attr('font-family','JetBrains Mono,monospace').attr('font-size',9)
+    .text('+ calculateDiscount()');
+  svg.append('text').attr('x',60).attr('y',100).attr('fill','#8b949e').attr('font-family','JetBrains Mono,monospace').attr('font-size',9)
+    .text('+ processOrder()');
+
+  /* Customer box */
+  svg.append('rect').attr('x',440).attr('y',40).attr('width',180).attr('height',120)
+    .attr('rx',8).attr('fill','rgba(0,0,0,0.3)').attr('stroke',custColor).attr('stroke-width',1.5);
+  svg.append('text').attr('x',530).attr('y',60).attr('text-anchor','middle')
+    .attr('fill',custColor).attr('font-family','JetBrains Mono,monospace').attr('font-size',11).attr('font-weight',700)
+    .text('Customer');
+
+  var fields = ['memberYears','baseRate','loyaltyMultiplier','tierBonus','referralCredit','tier'];
+  fields.forEach(function(f, i) {
+    svg.append('text').attr('x',456).attr('y',78 + i*13).attr('fill',showArrows ? custColor : '#8b949e')
+      .attr('font-family','JetBrains Mono,monospace').attr('font-size',8).text('+ ' + f);
+  });
+
+  /* Arrows */
+  if (showArrows) {
+    fields.forEach(function(f, i) {
+      var arrow = svg.append('line')
+        .attr('x1', 220).attr('y1', 100)
+        .attr('x2', 440).attr('y2', 78 + i * 13)
+        .attr('stroke','#f472b6').attr('stroke-width',1).attr('stroke-dasharray','4,3')
+        .attr('opacity', 0);
+      arrow.transition().duration(300).delay(i * 120).attr('opacity', 0.8);
+    });
+    svg.append('text').attr('x',330).attr('y',28).attr('text-anchor','middle')
+      .attr('fill','#f472b6').attr('font-family','JetBrains Mono,monospace').attr('font-size',10)
+      .attr('opacity',0).text('Feature Envy: 6 foreign field accesses')
+      .transition().duration(400).delay(700).attr('opacity',1);
+    updateEnvyMeter(8, 2);
+  }
+}
+
+function updateEnvyMeter(bad, good) {
+  var ratio = bad / (bad + good);
+  var fill = document.getElementById('envy-meter');
+  fill.style.transform = 'scaleX(' + ratio + ')';
+  document.getElementById('envy-meter-val').textContent = Math.round(ratio * 100) + '%';
+  document.getElementById('envy-bad-count').textContent = bad;
+  document.getElementById('envy-good-count').textContent = good;
+  var v = document.getElementById('envy-verdict');
+  if (bad > 4) {
+    v.textContent = '⚠ Feature Envy!';
+    v.style.color = 'var(--bad)';
+  } else {
+    v.textContent = '✓ Balanced';
+    v.style.color = 'var(--good)';
+  }
+}
+
+document.getElementById('btn-show-envy').addEventListener('click', function() {
+  envyState.showing = true;
+  renderEnvySvg(true);
+  showCascade(['casc-52-1','casc-52-2','casc-52-3'], 0);
+});
+document.getElementById('btn-move-method').addEventListener('click', function() {
+  renderEnvySvg(false);
+  updateEnvyMeter(0, 6);
+  var v = document.getElementById('envy-verdict');
+  v.textContent = '✓ Method moved to Customer';
+  v.style.color = 'var(--good)';
+  var fill = document.getElementById('envy-meter');
+  fill.style.background = 'var(--good)';
+  fill.style.transform = 'scaleX(0.05)';
+  document.getElementById('envy-meter-val').textContent = '0%';
+});
+
+/* ============================================================
+   5.3 — PRIMITIVE OBSESSION
+   ============================================================ */
+function animPrimitive() {
+  var fill = document.getElementById('prim-meter');
+  fill.style.transform = 'scaleX(0.85)';
+  showCascade(['casc-53-1','casc-53-2','casc-53-3'], 0);
+}
+
+document.getElementById('btn-wrong-order').addEventListener('click', function() {
+  /* Highlight chips red in wrong order */
+  var chips = ['p1','p2','p3','p4','p5','p6'];
+  chips.forEach(function(id) {
+    var el = document.getElementById(id);
+    el.classList.remove('correct','wrong');
+  });
+  /* p1 = email, p2 = name — show them swapped */
+  document.getElementById('p1').classList.add('wrong');
+  document.getElementById('p1').textContent = 'String name ← should be email';
+  document.getElementById('p2').classList.add('wrong');
+  document.getElementById('p2').textContent = 'String email ← swapped!';
+  var v = document.getElementById('param-verdict');
+  v.style.opacity = '1';
+  v.style.color = 'var(--bad)';
+  v.textContent = '⚠ Compiles fine — runtime crash or silent data corruption!';
+});
+
+document.getElementById('btn-fix-params').addEventListener('click', function() {
+  var labels = ['String name','String email','String phone','String country','int age','boolean isAdmin'];
+  ['p1','p2','p3','p4','p5','p6'].forEach(function(id, i) {
+    var el = document.getElementById(id);
+    el.classList.remove('wrong');
+    el.classList.add('correct');
+    el.textContent = labels[i];
+  });
+  var v = document.getElementById('param-verdict');
+  v.style.opacity = '1';
+  v.style.color = 'var(--good)';
+  v.textContent = '✓ UserCreationRequest: type-safe, readable, extensible';
+  var fill = document.getElementById('prim-meter');
+  fill.style.background = 'var(--good)';
+  fill.style.transform = 'scaleX(0.1)';
+  document.getElementById('prim-meter-val').textContent = 'Low';
+});
+
+/* ============================================================
+   5.4 — SHOTGUN SURGERY D3
+   ============================================================ */
+var shotgunState = { srpMode: false };
+
+var shotgunFiles = [
+  { id:'OrderService', x:350, y:30 },
+  { id:'CartService', x:560, y:60 },
+  { id:'InvoiceService', x:580, y:160 },
+  { id:'EmailService', x:380, y:200 },
+  { id:'AnalyticsService', x:170, y:200 },
+  { id:'ReportService', x:120, y:100 },
+  { id:'OrderHistoryService', x:200, y:30 }
+];
+
+function animShotgun() {
+  renderShotgunSvg(false);
+  showCascade(['casc-54-1','casc-54-2','casc-54-3'], 0);
+}
+
+function renderShotgunSvg(cascade) {
+  var svg = d3.select('#shotgun-svg');
+  svg.selectAll('*').remove();
+  var W = 700, H = 240;
+
+  if (shotgunState.srpMode) {
+    /* SRP version — central DiscountPolicy with 1 connection */
+    svg.append('rect').attr('x',260).attr('y',90).attr('width',180).attr('height',50)
+      .attr('rx',8).attr('fill','rgba(74,222,128,0.15)').attr('stroke','var(--good)').attr('stroke-width',2);
+    svg.append('text').attr('x',350).attr('y',120).attr('text-anchor','middle')
+      .attr('fill','var(--good)').attr('font-family','JetBrains Mono,monospace').attr('font-size',11).attr('font-weight',700)
+      .text('DiscountPolicy');
+
+    svg.append('rect').attr('x',80).attr('y',100).attr('width',140).attr('height',34)
+      .attr('rx',6).attr('fill','rgba(0,0,0,0.3)').attr('stroke','#30363d').attr('stroke-width',1);
+    svg.append('text').attr('x',150).attr('y',120).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-family','JetBrains Mono,monospace').attr('font-size',9)
+      .text('OrderService');
+
+    svg.append('line').attr('x1',220).attr('y1',117).attr('x2',260).attr('y2',117)
+      .attr('stroke','var(--good)').attr('stroke-width',2);
+    svg.append('text').attr('x',350).attr('y',210).attr('text-anchor','middle')
+      .attr('fill','var(--good)').attr('font-family','JetBrains Mono,monospace').attr('font-size',10)
+      .text('Change discount rate? 1 file. Done.');
+    return;
+  }
+
+  /* Bad: scattered */
+  var center = { x: 350, y: 120 };
+
+  /* Change event circle */
+  svg.append('circle').attr('cx',center.x).attr('cy',center.y).attr('r',32)
+    .attr('fill','rgba(244,114,182,0.12)').attr('stroke','var(--accent)').attr('stroke-width',2);
+  svg.append('text').attr('x',center.x).attr('y',center.y - 6).attr('text-anchor','middle')
+    .attr('fill','var(--accent)').attr('font-family','JetBrains Mono,monospace').attr('font-size',9).attr('font-weight',700)
+    .text('Change:');
+  svg.append('text').attr('x',center.x).attr('y',center.y + 8).attr('text-anchor','middle')
+    .attr('fill','var(--accent)').attr('font-family','JetBrains Mono,monospace').attr('font-size',9)
+    .text('discount');
+  svg.append('text').attr('x',center.x).attr('y',center.y + 20).attr('text-anchor','middle')
+    .attr('fill','var(--accent)').attr('font-family','JetBrains Mono,monospace').attr('font-size',8)
+    .text('logic');
+
+  shotgunFiles.forEach(function(f, i) {
+    /* Line */
+    var line = svg.append('line')
+      .attr('x1',center.x).attr('y1',center.y)
+      .attr('x2',f.x).attr('y2',f.y)
+      .attr('stroke','#30363d').attr('stroke-width',1).attr('id','sg-line-' + i);
+
+    /* Box */
+    svg.append('rect')
+      .attr('x', f.x - 68).attr('y', f.y - 14)
+      .attr('width', 136).attr('height', 28).attr('rx', 5)
+      .attr('fill','rgba(0,0,0,0.3)').attr('stroke','#30363d').attr('stroke-width',1)
+      .attr('id','sg-box-' + i);
+
+    svg.append('text')
+      .attr('x', f.x).attr('y', f.y + 4)
+      .attr('text-anchor','middle')
+      .attr('fill','#e6edf3')
+      .attr('font-family','JetBrains Mono,monospace').attr('font-size',9)
+      .text(f.id).attr('id','sg-lbl-' + i);
+  });
+
+  if (cascade) {
+    shotgunFiles.forEach(function(f, i) {
+      var delay = i * 180;
+      setTimeout(function() {
+        d3.select('#sg-box-' + i).transition().duration(350)
+          .attr('stroke','var(--accent)').attr('fill','rgba(244,114,182,0.15)');
+        d3.select('#sg-line-' + i).transition().duration(350)
+          .attr('stroke','var(--accent)').attr('stroke-width',2);
+        d3.select('#sg-lbl-' + i).transition().duration(350).attr('fill','var(--accent)');
+      }, delay);
+    });
+    setTimeout(function() {
+      var m = document.getElementById('shotgun-meter');
+      m.style.transform = 'scaleX(0.88)';
+      m.style.background = 'var(--bad)';
+      document.getElementById('shotgun-meter-val').textContent = '7 files';
+    }, 400);
+  }
+}
+
+document.getElementById('btn-trigger-change').addEventListener('click', function() {
+  shotgunState.srpMode = false;
+  renderShotgunSvg(true);
+  var m = document.getElementById('shotgun-meter');
+  m.style.transform = 'scaleX(0.88)';
+  m.style.background = 'var(--bad)';
+  document.getElementById('shotgun-meter-val').textContent = '7 files';
+});
+document.getElementById('btn-show-srp').addEventListener('click', function() {
+  shotgunState.srpMode = true;
+  renderShotgunSvg(false);
+  var m = document.getElementById('shotgun-meter');
+  m.style.transform = 'scaleX(0.08)';
+  m.style.background = 'var(--good)';
+  document.getElementById('shotgun-meter-val').textContent = '1 file';
+});
+
+/* ============================================================
+   5.5 — DIVERGENT CHANGE D3
+   ============================================================ */
+var divergentAxes = [
+  { label:'Marketing: format', color:'#f472b6', angle: -150 },
+  { label:'Finance: delivery', color:'#fbbf24', angle: 90 },
+  { label:'IT: export', color:'#38bdf8', angle: -30 }
+];
+var divergentShown = 0;
+
+function animDivergent() {
+  renderDivergentSvg(0);
+  showCascade(['casc-55-1','casc-55-2','casc-55-3'], 0);
+  /* Animate axes one by one */
+  var t = 500;
+  divergentAxes.forEach(function(a, i) {
+    setTimeout(function() {
+      divergentShown = i + 1;
+      renderDivergentSvg(divergentShown);
+      animeMeter('divergent-meter', (i+1)/3, i===2 ? 'var(--bad)' : '#fbbf24');
+      var v = document.getElementById('divergent-meter-val');
+      v.textContent = (i+1) + ' axes';
+      v.style.color = i===2 ? 'var(--bad)' : '#fbbf24';
+    }, t);
+    t += 700;
+  });
+}
+
+function renderDivergentSvg(axisCount) {
+  var svg = d3.select('#divergent-svg');
+  svg.selectAll('*').remove();
+  var cx = 330, cy = 110, r = 70;
+
+  svg.append('rect').attr('x', cx - 80).attr('y', cy - 30)
+    .attr('width', 160).attr('height', 60).attr('rx', 8)
+    .attr('fill','rgba(0,0,0,0.3)').attr('stroke','var(--accent)').attr('stroke-width',2);
+  svg.append('text').attr('x',cx).attr('y',cy + 5).attr('text-anchor','middle')
+    .attr('fill','var(--accent)').attr('font-family','JetBrains Mono,monospace').attr('font-size',12).attr('font-weight',700)
+    .text('ReportGenerator');
+
+  for (var i = 0; i < axisCount; i++) {
+    var ax = divergentAxes[i];
+    var rad = ax.angle * Math.PI / 180;
+    var tx = cx + Math.cos(rad) * (r + 60);
+    var ty = cy + Math.sin(rad) * (r + 40);
+    var mx = cx + Math.cos(rad) * r;
+    var my = cy + Math.sin(rad) * r;
+
+    svg.append('line')
+      .attr('x1',tx).attr('y1',ty).attr('x2',mx).attr('y2',my)
+      .attr('stroke',ax.color).attr('stroke-width',2).attr('marker-end','url(#arrow-' + i + ')')
+      .attr('opacity',0)
+      .transition().duration(400).attr('opacity',1);
+
+    svg.append('text')
+      .attr('x',tx).attr('y',ty - 8)
+      .attr('text-anchor','middle')
+      .attr('fill',ax.color)
+      .attr('font-family','JetBrains Mono,monospace').attr('font-size',10)
+      .attr('opacity',0)
+      .text(ax.label)
+      .transition().duration(400).attr('opacity',1);
+  }
+
+  if (axisCount >= 3) {
+    svg.append('text').attr('x',cx).attr('y',220).attr('text-anchor','middle')
+      .attr('fill','var(--bad)').attr('font-family','JetBrains Mono,monospace').attr('font-size',10)
+      .attr('opacity',0).text('3 reasons to change → Divergent Change!')
+      .transition().duration(500).attr('opacity',1);
+  }
+}
+
+function animeMeter(id, ratio, color) {
+  var fill = document.getElementById(id);
+  fill.style.background = color;
+  fill.style.transform = 'scaleX(' + ratio + ')';
+}
+
+document.getElementById('btn-show-axes').addEventListener('click', function() {
+  divergentShown = 0;
+  animDivergent();
+});
+document.getElementById('btn-split-axes').addEventListener('click', function() {
+  var svg = d3.select('#divergent-svg');
+  svg.selectAll('*').remove();
+  var names = ['ReportFormatter','ReportEmailer','ReportExporter'];
+  var colors = ['#f472b6','#fbbf24','#38bdf8'];
+  names.forEach(function(n, i) {
+    var gx = 40 + i * 210;
+    svg.append('rect').attr('x',gx).attr('y',80).attr('width',150).attr('height',40)
+      .attr('rx',6).attr('fill','rgba(0,0,0,0.3)').attr('stroke',colors[i]).attr('stroke-width',1.5)
+      .attr('opacity',0).transition().duration(400).delay(i*150).attr('opacity',1);
+    svg.append('text').attr('x',gx+75).attr('y',105).attr('text-anchor','middle')
+      .attr('fill',colors[i]).attr('font-family','JetBrains Mono,monospace').attr('font-size',10).attr('font-weight',600)
+      .attr('opacity',0).text(n)
+      .transition().duration(400).delay(i*150).attr('opacity',1);
+  });
+  animeMeter('divergent-meter', 0.08, 'var(--good)');
+  document.getElementById('divergent-meter-val').textContent = '1 each';
+});
+
+/* ============================================================
+   5.6 — DEEP NESTING
+   ============================================================ */
+function animNesting(depth) {
+  updatePyramid(depth);
+  updateNestingMeter(depth);
+  showCascade(['casc-56-1','casc-56-2','casc-56-3'], 0);
+}
+
+function updatePyramid(depth) {
+  var levels = [
+    ['nl-2','nl-2c'],
+    ['nl-3','nl-3c'],
+    ['nl-4','nl-4c'],
+    ['nl-5','nl-5c','nl-5x']
+  ];
+  levels.forEach(function(ids, i) {
+    var active = (i + 1) < depth;
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('inactive', !active);
+    });
+  });
+}
+
+function updateNestingMeter(depth) {
+  var ratio = (depth - 1) / 4;
+  var color = ratio < 0.3 ? 'var(--good)' : (ratio < 0.6 ? '#fbbf24' : 'var(--bad)');
+  var fill = document.getElementById('nesting-meter');
+  fill.style.background = color;
+  fill.style.transform = 'scaleX(' + Math.max(ratio, 0.05) + ')';
+  var val = document.getElementById('nesting-meter-val');
+  val.textContent = depth;
+  val.style.color = color;
+}
+
+document.getElementById('nesting-slider').addEventListener('input', function() {
+  var depth = parseInt(this.value, 10);
+  document.getElementById('nesting-val').textContent = depth;
+  updatePyramid(depth);
+  updateNestingMeter(depth);
+});
+
+/* ============================================================
+   5.7 — MAGIC NUMBERS
+   ============================================================ */
+function animMagic() {
+  showCascade(['casc-57-1','casc-57-2','casc-57-3'], 0);
+  /* Animate confusion meter slowly rising */
+  var fill = document.getElementById('magic-meter');
+  fill.style.transform = 'scaleX(0)';
+  fill.style.background = 'var(--bad)';
+  anime({
+    targets: fill,
+    duration: 1400,
+    delay: 400,
+    easing: 'easeOutCubic',
+    update: function(anim) {
+      var p = anim.progress / 100;
+      fill.style.transform = 'scaleX(' + (p * 0.78) + ')';
+      document.getElementById('magic-meter-val').textContent = Math.round(p * 78) + '%';
+    }
+  });
+}
+
+document.getElementById('btn-confuse-dev').addEventListener('click', function() {
+  var qmarks = ['qm1','qm2','qm3'];
+  qmarks.forEach(function(id, i) {
+    anime({ targets: document.getElementById(id), opacity: [0,1], translateY: [-10,0], delay: i * 200, duration: 400, easing: 'easeOutBack' });
+  });
+  var lbl = document.getElementById('confusion-label');
+  anime({ targets: lbl, opacity: [0,1], delay: 800, duration: 400, easing: 'easeOutQuad' });
+  var fill = document.getElementById('magic-meter');
+  fill.style.transform = 'scaleX(0.88)';
+  fill.style.background = 'var(--bad)';
+  document.getElementById('magic-meter-val').textContent = '88%';
+});
+
+document.getElementById('btn-reveal-enum').addEventListener('click', function() {
+  var box = document.getElementById('enum-box');
+  anime({ targets: box, opacity: [box.style.opacity || 0.3, 1], duration: 600, easing: 'easeOutQuad' });
+  var fill = document.getElementById('magic-meter');
+  fill.style.transform = 'scaleX(0.05)';
+  fill.style.background = 'var(--good)';
+  document.getElementById('magic-meter-val').textContent = '5%';
+  ['qm1','qm2','qm3'].forEach(function(id) {
+    anime({ targets: document.getElementById(id), opacity: 0, duration: 300 });
+  });
+  anime({ targets: document.getElementById('confusion-label'), opacity: 0, duration: 300 });
+});
+
+/* ============================================================
+   CASCADE HELPER
+   ============================================================ */
+function showCascade(ids, startDelay) {
+  ids.forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('show');
+    setTimeout(function() { el.classList.add('show'); }, startDelay + i * 320);
+  });
+}
+
+</script>
+</body>
+</html>

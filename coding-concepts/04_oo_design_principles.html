@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OO Design Principles — Coding Concepts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56,189,248,0.15);
+      --good: #4ade80;
+      --bad: #f87171;
+      --neutral: #8b949e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: var(--accent); width: 0%; z-index: 9999;
+      transition: width 0.1s linear;
+    }
+
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand { font-weight: 700; color: var(--accent); font-size: 13px; white-space: nowrap; margin-right: 1.5rem; }
+    #navbar a { color: var(--text-muted); text-decoration: none; font-size: 12px; padding: 0 10px; height: 48px; display: flex; align-items: center; white-space: nowrap; transition: color 0.2s; }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link { color: var(--accent); font-weight: 600; border-right: 1px solid var(--border); margin-right: 10px; padding-right: 16px; }
+    #navbar a.back-link:hover { color: var(--text); background: var(--accent-dim); }
+    #navbar .chapter-pager { display: flex; align-items: stretch; gap: 8px; margin-right: 12px; padding-right: 14px; border-right: 1px solid var(--border); flex: 0 0 auto; }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px; padding: 5px 10px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip { display: flex; flex-direction: column; justify-content: center; gap: 1px; color: var(--text); text-decoration: none; transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
+    #navbar .chapter-nav-chip:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    #navbar .chapter-nav-chip.current { justify-content: center; text-align: center; background: rgba(255,255,255,0.06); }
+    #navbar .chapter-nav-chip.disabled { opacity: 0.4; pointer-events: none; }
+    #navbar .chapter-nav-chip .nav-kicker { color: var(--text-muted); font-size: 9px; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; }
+    #navbar .chapter-nav-chip .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+    #navbar .chapter-nav-chip .nav-arrow { color: var(--accent); font-size: 11px; margin-left: 4px; }
+
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+    .concept-section { margin-bottom: 3rem; scroll-margin-top: 72px; opacity: 0; transform: translateY(20px); transition: opacity 0.5s, transform 0.5s; }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .card-header { background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent);
+      border-radius: 4px; padding: 4px 12px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(56,189,248,0.25); }
+    .btn.active { background: rgba(56,189,248,0.3); }
+
+    .diagram-area { padding: 20px; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+    .diagram-area svg { width: 100%; overflow: visible; }
+
+    .insight-panel { border-top: 1px solid var(--border); padding: 10px 16px; font-size: 12px; color: var(--text-muted); border-left: 3px solid var(--accent); background: var(--accent-dim); }
+
+    .code-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--border); }
+    .code-pane { padding: 14px 16px; }
+    .code-pane:first-child { border-right: 1px solid var(--border); }
+    .code-pane-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+    .code-pane-label.bad { color: var(--bad); }
+    .code-pane-label.good { color: var(--good); }
+    pre { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.6; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num { color: #f2cc60; }
+    .tp  { color: #ffa657; }
+
+    .expandable { border-top: 1px solid var(--border); }
+    .expandable-trigger { width: 100%; background: none; border: none; color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 12px; padding: 10px 16px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: color 0.2s, background 0.2s; }
+    .expandable-trigger:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .expandable-trigger .exp-icon { font-size: 14px; transition: transform 0.2s; display: inline-block; }
+    .expandable-trigger.open .exp-icon { transform: rotate(90deg); }
+    .expandable-body { display: none; padding: 10px 16px 14px; font-size: 12px; color: var(--text-muted); line-height: 1.7; border-top: 1px solid rgba(48,54,61,0.5); }
+    .expandable-body.open { display: block; }
+
+    .chapter-page-nav { margin: 2.5rem 0 1.5rem; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; align-items: stretch; }
+    .chapter-nav-link, .chapter-nav-disabled, .chapter-nav-current { border: 1px solid var(--border); border-radius: 14px; min-height: 62px; padding: 12px 14px; background: rgba(255,255,255,0.03); }
+    .chapter-nav-link { display: flex; flex-direction: column; justify-content: center; gap: 3px; color: var(--text); text-decoration: none; transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
+    .chapter-nav-link:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-link.next { text-align: right; align-items: flex-end; }
+    .chapter-nav-link .nav-kicker, .chapter-nav-disabled .nav-kicker, .chapter-nav-current .nav-kicker { color: var(--text-muted); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+    .chapter-nav-link .nav-title, .chapter-nav-disabled .nav-title, .chapter-nav-current .nav-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+    .chapter-nav-link .nav-arrow, .chapter-nav-disabled .nav-arrow { color: var(--accent); font-size: 16px; line-height: 1; }
+    .chapter-nav-disabled { opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+    .chapter-nav-current { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(255,255,255,0.05); }
+
+    @media (max-width: 760px) {
+      .chapter-page-nav { grid-template-columns: 1fr; }
+      .chapter-nav-link.next, .chapter-nav-disabled.next { text-align: left; align-items: flex-start; }
+      .code-compare { grid-template-columns: 1fr; }
+      .code-pane:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+
+    footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 2rem; }
+
+    /* Lego / composition */
+    .lego-container { display: flex; gap: 40px; align-items: flex-start; justify-content: center; flex-wrap: wrap; padding: 20px; }
+    .lego-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .lego-label { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 4px; }
+    .brick { min-width: 100px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-family: 'JetBrains Mono', monospace; opacity: 0; transform: translateY(-10px); padding: 0 8px; }
+    .behaviour-zone { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .drag-area { padding: 16px; border-top: 1px solid var(--border); }
+    .behaviour-cards { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .b-card { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent-dim); color: var(--accent); font-size: 11px; font-family: 'JetBrains Mono', monospace; cursor: grab; user-select: none; transition: transform 0.15s, opacity 0.15s; }
+    .b-card:hover { transform: translateY(-2px); }
+    .b-card.used { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+    .entity-drop { width: 120px; height: 120px; border: 2px dashed var(--border); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: border-color 0.2s; font-size: 28px; }
+    .entity-drop.dragover { border-color: var(--accent); background: var(--accent-dim); }
+    .capability-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; max-width: 240px; }
+    .cap-tag { padding: 2px 8px; border-radius: 10px; font-size: 10px; background: rgba(56,189,248,0.2); color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+    /* Law of Demeter */
+    .chain-viz { padding: 16px 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; overflow-x: auto; }
+    .chain-obj { display: inline-block; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-card); white-space: nowrap; transition: background 0.3s, border-color 0.3s; }
+    .chain-dot { display: inline-block; color: var(--accent); font-weight: 700; padding: 0 2px; }
+    .dot-counter { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+    .dot-counter.green { background: rgba(74,222,128,0.2); color: var(--good); border: 1px solid var(--good); }
+    .dot-counter.yellow { background: rgba(251,191,36,0.2); color: #fbbf24; border: 1px solid #fbbf24; }
+    .dot-counter.red { background: rgba(248,113,113,0.2); color: var(--bad); border: 1px solid var(--bad); }
+
+    /* CQS vending machine */
+    .vending-area { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; justify-content: center; padding: 20px; }
+    .vending-machine { width: 180px; border: 2px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-card); }
+    .vm-screen { background: rgba(0,0,0,0.4); padding: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; min-height: 40px; text-align: center; }
+    .vm-slots { padding: 8px; display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; }
+    .vm-slot { border: 1px solid var(--border); border-radius: 4px; padding: 4px; text-align: center; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
+    .vm-slot.selected { border-color: var(--accent); background: var(--accent-dim); }
+    .vm-btns { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .vm-btn { padding: 5px; border-radius: 4px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); font-size: 10px; font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+    .vm-btn.query-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .vm-btn.cmd-btn:hover { border-color: var(--good); background: rgba(74,222,128,0.15); }
+    .vm-tray { min-height: 30px; border-top: 1px solid var(--border); padding: 6px; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); text-align: center; }
+    .vm-log { width: 260px; }
+    .vm-log-title { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+    .vm-log-entries { font-size: 10px; font-family: 'JetBrains Mono', monospace; display: flex; flex-direction: column; gap: 3px; max-height: 160px; overflow-y: auto; }
+    .vm-log-entry { padding: 3px 8px; border-radius: 3px; }
+    .vm-log-entry.q { background: var(--accent-dim); color: var(--accent); }
+    .vm-log-entry.c { background: rgba(74,222,128,0.15); color: var(--good); }
+    .cqs-demo { padding: 16px; border-top: 1px solid var(--border); }
+    .cqs-toggle-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .cqs-state-box { padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border); background: rgba(0,0,0,0.2); font-size: 11px; font-family: 'JetBrains Mono', monospace; min-height: 60px; }
+    .side-effect-flash { animation: flashRed 0.5s ease 3; }
+    @keyframes flashRed { 0%,100% { background: rgba(0,0,0,0.2); } 50% { background: rgba(248,113,113,0.25); border-color: var(--bad); } }
+
+    /* POLA */
+    .switch-scene { display: flex; gap: 30px; align-items: center; justify-content: center; padding: 20px; flex-wrap: wrap; }
+    .switch-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .switch-label { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .switch-body { width: 60px; height: 110px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg-card); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 8px; }
+    .light-switch { width: 20px; height: 36px; border: 2px solid var(--border); border-radius: 4px; background: rgba(255,255,255,0.05); cursor: pointer; transition: background 0.2s; }
+    .light-switch.on { background: var(--accent); border-color: var(--accent); }
+    .switch-result { font-size: 18px; }
+    .reaction { font-size: 20px; margin-top: 4px; }
+    .pola-save { display: flex; gap: 20px; align-items: flex-start; justify-content: center; padding: 20px; flex-wrap: wrap; border-top: 1px solid var(--border); }
+    .call-box { padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border); font-size: 11px; font-family: 'JetBrains Mono', monospace; text-align: center; min-width: 120px; }
+    .arrow-animated { font-size: 20px; color: var(--accent); align-self: center; }
+    .surprise-bubble { background: rgba(248,113,113,0.15); border: 1px solid var(--bad); border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--bad); display: none; }
+    .surprise-bubble.show { display: block; animation: popIn 0.3s ease; }
+    @keyframes popIn { from { opacity:0; transform: scale(0.8); } to { opacity:1; transform: scale(1); } }
+    .quiz-item { padding: 12px 16px; border-top: 1px solid var(--border); }
+    .quiz-sig { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; margin-bottom: 6px; }
+    .quiz-impl { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin-bottom: 8px; }
+    .quiz-btns { display: flex; gap: 8px; }
+    .quiz-result { margin-top: 8px; font-size: 11px; padding: 6px 10px; border-radius: 4px; display: none; }
+    .quiz-result.show { display: block; }
+    .quiz-result.correct { background: rgba(74,222,128,0.15); color: var(--good); border: 1px solid var(--good); }
+    .quiz-result.wrong { background: rgba(248,113,113,0.15); color: var(--bad); border: 1px solid var(--bad); }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <span class="nav-brand">04 — OO Design Principles</span>
+  <a class="back-link" href="00_index.html">← Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <a class="chapter-nav-chip" href="03_dry_kiss_yagni.html" aria-label="Previous Chapter: DRY KISS YAGNI">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title"><span class="nav-arrow">←</span> DRY · KISS · YAGNI</span>
+    </a>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">04</span>
+    </span>
+    <a class="chapter-nav-chip" href="05_code_smells.html" aria-label="Next Chapter: Code Smells">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Code Smells <span class="nav-arrow">→</span></span>
+    </a>
+  </div>
+  <a href="#s-41">Composition</a>
+  <a href="#s-42">Law of Demeter</a>
+  <a href="#s-43">Tell Don't Ask</a>
+  <a href="#s-44">CQS</a>
+  <a href="#s-45">POLA</a>
+</nav>
+
+<main>
+  <div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">OO Design Principles</h1>
+    <p style="color:var(--text-muted);margin-top:4px;">Chapter 4 — Composition · LoD · Tell Don't Ask · CQS · POLA</p>
+  </div>
+
+  <!-- 4.1 Composition over Inheritance -->
+  <section id="s-41" class="concept-section" data-section="s41">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">4.1 —</span>
+          <span class="section-title">Composition over Inheritance</span>
+          <span class="section-desc">Prefer HAS-A over IS-A for behaviour sharing</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-toggle-tree">Show Composition Tree</button>
+          <button class="btn" onclick="anim_s41_bricks()">Replay Bricks</button>
+        </div>
+      </div>
+
+      <div class="lego-container">
+        <div class="lego-col">
+          <div class="lego-label">❌ Inheritance — rigid hierarchy</div>
+          <div id="inheritance-stack" style="display:flex;flex-direction:column;gap:2px;">
+            <div class="brick" style="background:rgba(248,113,113,0.25);border:1px solid var(--bad);color:var(--bad);">Animal</div>
+            <div class="brick" style="background:rgba(248,113,113,0.2);border:1px solid var(--bad);color:var(--bad);">Mammal</div>
+            <div class="brick" style="background:rgba(248,113,113,0.15);border:1px solid var(--bad);color:var(--bad);">Pet</div>
+            <div class="brick" style="background:rgba(248,113,113,0.1);border:1px solid var(--bad);color:var(--bad);">Dog</div>
+            <div class="brick" style="background:rgba(248,113,113,0.08);border:1px solid var(--bad);color:var(--bad);">GuideDog</div>
+          </div>
+          <div style="font-size:10px;color:var(--bad);font-family:'JetBrains Mono',monospace;margin-top:6px;">RoboticGuideDog? ✗ won't fit</div>
+        </div>
+        <div class="lego-col">
+          <div class="lego-label">✅ Composition — snap together freely</div>
+          <div id="composition-zone" class="behaviour-zone">
+            <div class="brick" style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);">GuideAbility</div>
+            <div class="brick" style="background:rgba(74,222,128,0.15);border:1px solid var(--good);color:var(--good);">SwimAbility</div>
+            <div class="brick" style="background:rgba(251,191,36,0.15);border:1px solid #fbbf24;color:#fbbf24;">SensorAbility</div>
+          </div>
+          <div style="font-size:10px;color:var(--good);font-family:'JetBrains Mono',monospace;margin-top:6px;">Mix freely ✓ no hierarchy needed</div>
+        </div>
+      </div>
+
+      <div style="padding:0 20px 12px;">
+        <svg id="svg-tree" width="100%" height="260"></svg>
+      </div>
+
+      <!-- Drag and drop -->
+      <div class="drag-area">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace;">Drag behaviour cards onto the entity to compose it:</div>
+        <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <div class="behaviour-cards" id="behaviour-cards">
+              <div class="b-card" draggable="true" data-beh="Swimming">SwimmingBehaviour</div>
+              <div class="b-card" draggable="true" data-beh="Flying">FlyingBehaviour</div>
+              <div class="b-card" draggable="true" data-beh="Guide">GuideBehaviour</div>
+              <div class="b-card" draggable="true" data-beh="Fetch">FetchBehaviour</div>
+            </div>
+            <button class="btn" onclick="resetDrag()">Reset</button>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <div class="entity-drop" id="entity-drop">
+              <span>🐾</span>
+              <span style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Entity</span>
+            </div>
+            <div class="capability-tags" id="cap-tags"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Inheritance</div>
+          <pre><span class="kw">class</span> <span class="tp">GuideDog</span> <span class="kw">extends</span> <span class="tp">Dog</span> {
+    <span class="cm">// Must inherit ALL of Dog</span>
+    <span class="cm">// RoboticGuideDog cannot extend</span>
+    <span class="cm">// Dog — hierarchy breaks</span>
+}</pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Composition</div>
+          <pre><span class="kw">class</span> <span class="tp">GuideDog</span> {
+  <span class="kw">private final</span> <span class="tp">GuideAbility</span> guide
+    = <span class="kw">new</span> <span class="fn">GuideAbility</span>();
+  <span class="kw">void</span> <span class="fn">guide</span>(<span class="tp">Person</span> p) {
+    guide.<span class="fn">execute</span>(p);
+  }
+}
+<span class="kw">class</span> <span class="tp">RoboticGuideDog</span> {
+  <span class="kw">private final</span> <span class="tp">GuideAbility</span> guide
+    = <span class="kw">new</span> <span class="fn">GuideAbility</span>();
+  <span class="cm">// same behaviour, no hierarchy</span>
+}</pre>
+        </div>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🟢 New to this?
+        </button>
+        <div class="expandable-body">
+          Inheritance means a subclass is a specialisation of its parent — it inherits everything. This causes problems when you need to share behaviour across unrelated classes. A RoboticGuideDog and a GuideDog both guide, but one is not a mammal. Composition solves this: each class holds behaviour objects and delegates to them.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🔵 Go deeper
+        </button>
+        <div class="expandable-body">
+          Use inheritance for true IS-A relationships with stable shared contracts (a Square IS-A Shape). Use composition for behaviour sharing (a Dog HAS-A SwimAbility). Inheritance is a strong compile-time coupling. Prefer it sparingly; favour interfaces and composition for flexibility.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.2 Law of Demeter -->
+  <section id="s-42" class="concept-section" data-section="s42">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">4.2 —</span>
+          <span class="section-title">Law of Demeter</span>
+          <span class="section-desc">Only talk to your immediate friends — count the dots</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="anim_chain()">Build Chain</button>
+          <button class="btn" onclick="anim_cascade_break()">Cascade Break</button>
+          <button class="btn" onclick="reset_lod()">Reset</button>
+        </div>
+      </div>
+
+      <div class="chain-viz">
+        <div id="chain-intro" style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Press "Build Chain" to watch the violation grow step by step...</div>
+        <div id="chain-steps" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-height:36px;"></div>
+        <div id="chain-warning" style="margin-top:10px;font-size:11px;color:var(--bad);display:none;background:rgba(248,113,113,0.1);padding:8px;border-radius:4px;border:1px solid var(--bad);">
+          ⚠ You now depend on the internal structure of Customer, Address, City, AND PostalCode
+        </div>
+      </div>
+
+      <!-- Dot counter -->
+      <div style="padding:12px 20px;border-top:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace;">Dot counter — add dots to see LoD risk:</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <code id="dot-chain-display" style="font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 12px;background:rgba(0,0,0,0.3);border-radius:6px;border:1px solid var(--border);">order</code>
+          <button class="btn" onclick="addDot()">+ Add Dot</button>
+          <button class="btn" onclick="removeDot()">- Remove</button>
+          <span id="dot-badge" class="dot-counter green">0 dots — Direct</span>
+        </div>
+      </div>
+
+      <!-- Cascade break -->
+      <div id="cascade-area" style="padding:12px 20px;border-top:1px solid var(--border);display:none;">
+        <div style="font-size:11px;color:var(--bad);margin-bottom:8px;font-family:'JetBrains Mono',monospace;">Address renames its city field — every call site breaks:</div>
+        <div id="call-sites" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ LoD Violation</div>
+          <pre><span class="tp">String</span> zip = order
+  .<span class="fn">getCustomer</span>()
+  .<span class="fn">getAddress</span>()
+  .<span class="fn">getCity</span>()
+  .<span class="fn">getPostalCode</span>();
+<span class="cm">// 4 objects exposed internally</span></pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ LoD Compliant</div>
+          <pre><span class="tp">String</span> zip =
+  order.<span class="fn">getShippingPostalCode</span>();
+<span class="cm">// ONE arrow, one dependency.</span>
+<span class="cm">// Order encapsulates the path.</span></pre>
+        </div>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🟢 New to this?
+        </button>
+        <div class="expandable-body">
+          Count the dots in a method chain. More than one dot is usually a Law of Demeter violation — you are depending on the internal structure of objects you should not know about. Each extra dot is a coupling to a different class's internals.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🔵 Go deeper
+        </button>
+        <div class="expandable-body">
+          DTOs, records, and value objects are exempt — accessing point.x or address.city is fine because DTOs are transparent containers, not objects with behaviour. Fluent interfaces (builders, streams) are intentional LoD exceptions — stream.filter(...).map(...).collect(...) is fine because the chain is a designed API and each method returns the same type.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.3 Tell Don't Ask -->
+  <section id="s-43" class="concept-section" data-section="s43">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">4.3 —</span>
+          <span class="section-title">Tell Don't Ask</span>
+          <span class="section-desc">Delegate decisions to the object that owns the data</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-tda-toggle" onclick="toggleTDA()">Show: Micromanager ❌</button>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="min-height:150px;flex-direction:column;gap:8px;">
+        <svg id="svg-tda" viewBox="0 0 600 130" height="130"></svg>
+        <div id="tda-caption" style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;text-align:center;"></div>
+      </div>
+
+      <div style="padding:0 20px 12px;border-top:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-muted);padding:10px 0 6px;font-family:'JetBrains Mono',monospace;">Coupling comparison:</div>
+        <svg id="svg-tda-coupling" width="100%" height="180"></svg>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Asking externally</div>
+          <pre><span class="kw">if</span> (customer.<span class="fn">getMembershipLevel</span>()
+    .<span class="fn">equals</span>(<span class="str">"GOLD"</span>) &amp;&amp;
+    customer.<span class="fn">getTotalSpend</span>() &gt; <span class="num">1000</span> &amp;&amp;
+    !customer.<span class="fn">isBlacklisted</span>()) {
+  order.<span class="fn">applyDiscount</span>(<span class="num">0.15</span>);
+}
+<span class="cm">// OrderService knows internals</span></pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Telling the object</div>
+          <pre>customer
+  .<span class="fn">applyLoyaltyDiscountTo</span>(order);
+<span class="cm">// Customer decides for itself</span>
+<span class="cm">// OrderService has zero knowledge</span>
+<span class="cm">// of membership/spend/blacklist</span></pre>
+        </div>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🟢 New to this?
+        </button>
+        <div class="expandable-body">
+          Instead of asking an object for its data and making decisions about it yourself, tell the object what you want done and let it use its own data to decide. The object that owns the data is the right place for the logic that acts on it.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🔵 Go deeper
+        </button>
+        <div class="expandable-body">
+          TDA and CQS can appear to conflict. Reconcile them: TDA is about behaviour delegation (telling an object to act), CQS is about return-type discipline (commands vs queries). They operate at different levels and work together. TDA leads to richer domain models since logic naturally migrates to where the data lives.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.4 CQS -->
+  <section id="s-44" class="concept-section" data-section="s44">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">4.4 —</span>
+          <span class="section-title">Command Query Separation (CQS)</span>
+          <span class="section-desc">A method either changes state OR returns data — never both</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-cqs-mode" onclick="toggleCQS()">Switch to: getOrders() ✅</button>
+        </div>
+      </div>
+
+      <div class="vending-area">
+        <div>
+          <div class="vending-machine">
+            <div class="vm-screen" id="vm-screen">B3: Chips x3</div>
+            <div class="vm-slots">
+              <div class="vm-slot" id="slot-a1">A1<br>🍫 x2</div>
+              <div class="vm-slot vm-slot selected" id="slot-b3">B3<br>🍟 x3</div>
+              <div class="vm-slot" id="slot-c2">C2<br>🥤 x5</div>
+            </div>
+            <div class="vm-btns">
+              <button class="vm-btn query-btn" onclick="vmQuery()">🔍 Check B3 (Query)</button>
+              <button class="vm-btn cmd-btn" onclick="vmDispense()">🎯 Dispense B3 (Command)</button>
+            </div>
+            <div class="vm-tray" id="vm-tray">—</div>
+          </div>
+        </div>
+        <div class="vm-log">
+          <div class="vm-log-title">Action log:</div>
+          <div class="vm-log-entries" id="vm-log-entries"></div>
+        </div>
+      </div>
+
+      <div class="cqs-demo">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace;">Caller scenario — you only want to READ orders:</div>
+        <div class="cqs-toggle-row">
+          <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);">Method:</span>
+          <button class="btn active" id="cqs-btn-bad" onclick="setCQSMode('bad')">processAndReturnOrders()</button>
+          <button class="btn" id="cqs-btn-good" onclick="setCQSMode('good')">getOrders(status)</button>
+        </div>
+        <div class="cqs-state-box" id="cqs-state-box">
+          <span id="cqs-state-text" style="color:var(--text-muted);">Click a method above to see what happens...</span>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:6px;padding:10px;">
+          <div style="font-size:11px;font-weight:600;color:var(--good);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">QUERY — easy to test</div>
+          <div style="font-size:11px;color:var(--text-muted);">Pure function. Same input, same output. No setup, no teardown, no side-effect mocking.</div>
+        </div>
+        <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:10px;">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;font-family:'JetBrains Mono',monospace;">COMMAND — test side effects</div>
+          <div style="font-size:11px;color:var(--text-muted);">Verify state changed. No return value confusion. Each test checks one thing.</div>
+        </div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Mixed</div>
+          <pre><span class="tp">List</span>&lt;<span class="tp">Order</span>&gt; <span class="fn">processAndReturn</span>(
+    <span class="tp">List</span>&lt;<span class="tp">Order</span>&gt; pending) {
+  pending.<span class="fn">forEach</span>(o -&gt; {
+    o.<span class="fn">setStatus</span>(PROCESSED);
+    db.<span class="fn">save</span>(o); <span class="cm">// mutation!</span>
+  });
+  <span class="kw">return</span> pending; <span class="cm">// also returns</span>
+}
+<span class="cm">// Reader triggers side effects</span></pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Separated</div>
+          <pre><span class="cm">// COMMAND: mutates, void return</span>
+<span class="kw">void</span> <span class="fn">processOrders</span>(
+    <span class="tp">List</span>&lt;<span class="tp">Order</span>&gt; pending) {
+  pending.<span class="fn">forEach</span>(o -&gt; {
+    o.<span class="fn">setStatus</span>(PROCESSED);
+    db.<span class="fn">save</span>(o);
+  });
+}
+<span class="cm">// QUERY: returns, no mutation</span>
+<span class="tp">List</span>&lt;<span class="tp">Order</span>&gt; <span class="fn">getOrders</span>(
+    <span class="tp">OrderStatus</span> s) {
+  <span class="kw">return</span> db.<span class="fn">findByStatus</span>(s);
+}</pre>
+        </div>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🟢 New to this?
+        </button>
+        <div class="expandable-body">
+          Ask yourself: does this method change anything? If yes, return void. Does it return data? If yes, change nothing. Mixing both makes code hard to reason about — calling a getter can have hidden consequences.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🔵 Go deeper
+        </button>
+        <div class="expandable-body">
+          Some operations are legitimately both — pop() from a queue is atomic and intentionally combined. These are explicit documented exceptions, not rule breaks. CQRS (Command Query Responsibility Segregation) is the architectural scale-up: separate read and write models entirely, often with different databases.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4.5 POLA -->
+  <section id="s-45" class="concept-section" data-section="s45">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">4.5 —</span>
+          <span class="section-title">Principle of Least Astonishment (POLA)</span>
+          <span class="section-desc">Code should do exactly what its name suggests — nothing more</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="anim_save_surprise()">Animate save()</button>
+          <button class="btn" onclick="animToStringMutation()">Animate toString()</button>
+        </div>
+      </div>
+
+      <!-- Light switch metaphor -->
+      <div class="switch-scene">
+        <div class="switch-col">
+          <div class="switch-label">❌ Violates POLA</div>
+          <div class="switch-body">
+            <div class="light-switch" id="bad-switch" onclick="toggleBadSwitch()" title="Click"></div>
+            <div class="switch-result" id="bad-result">💨</div>
+          </div>
+          <div style="font-size:10px;color:var(--bad);font-family:'JetBrains Mono',monospace;max-width:80px;text-align:center;">Switch fires the fan!</div>
+          <div class="reaction" id="bad-reaction">😐</div>
+        </div>
+        <div class="switch-col" style="font-size:24px;color:var(--text-muted);">vs</div>
+        <div class="switch-col">
+          <div class="switch-label">✅ POLA compliant</div>
+          <div class="switch-body">
+            <div class="light-switch" id="good-switch" onclick="toggleGoodSwitch()" title="Click"></div>
+            <div class="switch-result" id="good-result">💡</div>
+          </div>
+          <div style="font-size:10px;color:var(--good);font-family:'JetBrains Mono',monospace;max-width:80px;text-align:center;">Switch turns on the light</div>
+          <div class="reaction" id="good-reaction">😊</div>
+        </div>
+      </div>
+
+      <!-- save() surprise animation -->
+      <div class="pola-save" id="pola-save-anim">
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
+          <div class="call-box" style="border-color:var(--bad);color:var(--bad);">order.save()</div>
+          <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">caller expects: data persisted</div>
+        </div>
+        <div class="arrow-animated" id="save-arrow">→</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="call-box" style="border-color:var(--accent);color:var(--accent);">db.insert(this) ✓</div>
+          <div class="surprise-bubble" id="email-surprise">📧 emailService.sendConfirmation() — WHO EXPECTED THIS?</div>
+        </div>
+      </div>
+
+      <!-- toString mutation -->
+      <div style="padding:12px 16px;border-top:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">toString() that mutates state — a debugging nightmare:</div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:6px;">System.out.println(account)</code>
+          <span style="font-size:18px;color:var(--accent);">→</span>
+          <code id="mutation-box" style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:6px;border:1px solid var(--border);">balance: $1000</code>
+        </div>
+        <div id="mutation-warning" style="margin-top:8px;font-size:11px;color:var(--bad);display:none;background:rgba(248,113,113,0.1);padding:6px 10px;border-radius:4px;border:1px solid var(--bad);">
+          ⚠ toString() silently changed balance to $999! Balance changes with no apparent cause.
+        </div>
+      </div>
+
+      <!-- Quiz -->
+      <div style="border-top:1px solid var(--border);padding:12px 16px 4px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">Would You Be Surprised? Quiz</div>
+        <div style="font-size:11px;color:var(--text-muted);">Read each method signature and implementation — click your reaction.</div>
+      </div>
+
+      <div class="quiz-item">
+        <div class="quiz-sig"><span class="kw">boolean</span> <span class="fn">isValid</span>()</div>
+        <div class="quiz-impl">// checks order total &gt; 0<br>// AND marks order as validated in the DB</div>
+        <div class="quiz-btns">
+          <button class="btn" onclick="quizAnswer(0,'surprised')">😮 Surprised</button>
+          <button class="btn" onclick="quizAnswer(0,'expected')">😐 Expected</button>
+        </div>
+        <div class="quiz-result" id="quiz-result-0"></div>
+      </div>
+
+      <div class="quiz-item">
+        <div class="quiz-sig"><span class="kw">void</span> <span class="fn">deleteUser</span>(<span class="tp">long</span> userId)</div>
+        <div class="quiz-impl">// deletes user record from the database</div>
+        <div class="quiz-btns">
+          <button class="btn" onclick="quizAnswer(1,'surprised')">😮 Surprised</button>
+          <button class="btn" onclick="quizAnswer(1,'expected')">😐 Expected</button>
+        </div>
+        <div class="quiz-result" id="quiz-result-1"></div>
+      </div>
+
+      <div class="quiz-item">
+        <div class="quiz-sig"><span class="tp">String</span> <span class="fn">getUserName</span>(<span class="tp">long</span> userId)</div>
+        <div class="quiz-impl">// returns the name AND increments a profile-view analytics counter</div>
+        <div class="quiz-btns">
+          <button class="btn" onclick="quizAnswer(2,'surprised')">😮 Surprised</button>
+          <button class="btn" onclick="quizAnswer(2,'expected')">😐 Expected</button>
+        </div>
+        <div class="quiz-result" id="quiz-result-2"></div>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-pane">
+          <div class="code-pane-label bad">❌ Astonishing</div>
+          <pre><span class="kw">class</span> <span class="tp">Order</span> {
+  <span class="tp">String</span> <span class="fn">toString</span>() {
+    <span class="kw">this</span>.viewCount++;
+    <span class="cm">// side effect in toString!</span>
+    <span class="kw">return</span> <span class="str">"Order#"</span> + id;
+  }
+  <span class="kw">void</span> <span class="fn">save</span>() {
+    db.<span class="fn">insert</span>(<span class="kw">this</span>);
+    emailService
+      .<span class="fn">sendConfirmation</span>(customer);
+    <span class="cm">// who expected this?</span>
+  }
+}</pre>
+        </div>
+        <div class="code-pane">
+          <div class="code-pane-label good">✅ Predictable</div>
+          <pre><span class="kw">class</span> <span class="tp">Order</span> {
+  <span class="tp">String</span> <span class="fn">toString</span>() {
+    <span class="kw">return</span> <span class="str">"Order#"</span> + id;
+    <span class="cm">// pure, no side effects</span>
+  }
+  <span class="kw">void</span> <span class="fn">save</span>() {
+    db.<span class="fn">insert</span>(<span class="kw">this</span>);
+    <span class="cm">// only saves</span>
+  }
+  <span class="kw">void</span> <span class="fn">saveAndNotify</span>() {
+    <span class="fn">save</span>();
+    emailService
+      .<span class="fn">sendConfirmation</span>(customer);
+    <span class="cm">// explicit name!</span>
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🟢 New to this?
+        </button>
+        <div class="expandable-body">
+          Ask: "Would a teammate who has not read this code be surprised by what it does?" If yes, either rename the method so the full behaviour is obvious, or split it into separately-named methods. Method names are contracts.
+        </div>
+      </div>
+      <div class="expandable">
+        <button class="expandable-trigger" onclick="toggleExpand(this)">
+          <span class="exp-icon">▶</span> 🔵 Go deeper
+        </button>
+        <div class="expandable-body">
+          POLA is context-sensitive. The += operator for string concatenation is surprising in most languages, perfectly normal in Python. The >> operator for stream output is idiomatic C++ but astonishing in Java. Know your language and team conventions — violations are relative to context and shared expectations.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom page nav -->
+  <div class="chapter-page-nav">
+    <a class="chapter-nav-link" href="03_dry_kiss_yagni.html">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-arrow">←</span>
+      <span class="nav-title">DRY · KISS · YAGNI</span>
+    </a>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">04 — OO Design Principles</span>
+    </div>
+    <a class="chapter-nav-link next" href="05_code_smells.html">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-arrow">→</span>
+      <span class="nav-title">Code Smells</span>
+    </a>
+  </div>
+</main>
+
+<footer>Coding Concepts — OO Design · Clean Code · Clean Architecture · Refactoring</footer>
+
+<script>
+// ─── Progress bar ──────────────────────────────────────────────────────────────
+window.addEventListener('scroll', function() {
+  var scrolled = window.scrollY;
+  var total = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+});
+
+// ─── Expandable panels ─────────────────────────────────────────────────────────
+function toggleExpand(btn) {
+  btn.classList.toggle('open');
+  var body = btn.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ─── IntersectionObserver ──────────────────────────────────────────────────────
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      animateSection(entry.target.dataset.section);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.25 });
+document.querySelectorAll('.concept-section').forEach(function(el) { observer.observe(el); });
+
+function animateSection(section) {
+  if (section === 's41') { anim_s41_bricks(); drawTree(); }
+  if (section === 's42') anim_chain();
+  if (section === 's43') anim_tda(false);
+  if (section === 's44') drawVendingInit();
+  if (section === 's45') anim_switch_demo();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4.1 Composition over Inheritance
+// ═══════════════════════════════════════════════════════════════════════════════
+function anim_s41_bricks() {
+  var inh = document.querySelectorAll('#inheritance-stack .brick');
+  var comp = document.querySelectorAll('#composition-zone .brick');
+  inh.forEach(function(b) { b.style.opacity = '0'; b.style.transform = 'translateY(-10px)'; });
+  comp.forEach(function(b) { b.style.opacity = '0'; b.style.transform = 'translateY(-10px)'; });
+  inh.forEach(function(b, i) {
+    anime({ targets: b, opacity: [0,1], translateY: [-10,0], delay: i * 200, duration: 400, easing: 'easeOutBack' });
+  });
+  comp.forEach(function(b, i) {
+    anime({ targets: b, opacity: [0,1], translateY: [-10,0], scale: [0.8,1], delay: 900 + i * 200, duration: 400, easing: 'easeOutBack' });
+  });
+}
+
+var treeMode = 'inheritance';
+function drawTree() {
+  var svgEl = document.getElementById('svg-tree');
+  var W = svgEl.clientWidth || 720;
+  var H = 260;
+  var svg = d3.select('#svg-tree');
+  svg.selectAll('*').remove();
+  svg.attr('viewBox', '0 0 ' + W + ' ' + H);
+
+  if (treeMode === 'inheritance') {
+    var nodes = [
+      { id: 'Animal', x: W/2, y: 22 },
+      { id: 'Mammal', x: W/2, y: 62 },
+      { id: 'Pet',    x: W/2, y: 102 },
+      { id: 'Dog',    x: W/2, y: 142 },
+      { id: 'GuideDog', x: W/2, y: 182 },
+      { id: 'RoboticGuideDog', x: W/2 + 150, y: 222, bad: true }
+    ];
+    var edges = [['Animal','Mammal'],['Mammal','Pet'],['Pet','Dog'],['Dog','GuideDog']];
+    edges.forEach(function(e) {
+      var s = nodes.find(function(n){ return n.id === e[0]; });
+      var t = nodes.find(function(n){ return n.id === e[1]; });
+      svg.append('line').attr('x1',s.x).attr('y1',s.y+12).attr('x2',t.x).attr('y2',t.y-12)
+        .attr('stroke','#30363d').attr('stroke-width',1.5);
+    });
+    var gd = nodes[4], rg = nodes[5];
+    svg.append('line').attr('x1',gd.x+58).attr('y1',gd.y).attr('x2',rg.x-62).attr('y2',rg.y)
+      .attr('stroke','#f87171').attr('stroke-width',1.5).attr('stroke-dasharray','5 4').attr('opacity',0.7);
+    svg.append('text').attr('x',(gd.x+rg.x)/2+10).attr('y',(gd.y+rg.y)/2-6)
+      .attr('fill','#f87171').attr('font-size',10).attr('font-family','JetBrains Mono').text("doesn't fit \u2717");
+    nodes.forEach(function(n) {
+      var g = svg.append('g').attr('transform','translate('+n.x+','+n.y+')');
+      g.append('rect').attr('x',-58).attr('y',-13).attr('width',116).attr('height',26)
+        .attr('rx',5).attr('fill',n.bad?'rgba(248,113,113,0.12)':'rgba(22,27,34,1)')
+        .attr('stroke',n.bad?'#f87171':'#30363d').attr('stroke-width',1.5);
+      g.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+        .attr('fill',n.bad?'#f87171':'#e6edf3').attr('font-size',11).attr('font-family','JetBrains Mono').text(n.id);
+    });
+    svg.append('text').attr('x',W/2).attr('y',H-6).attr('text-anchor','middle')
+      .attr('fill','#8b949e').attr('font-size',10).attr('font-family','JetBrains Mono')
+      .text('Deep inheritance — RoboticGuideDog cannot fit without breaking the hierarchy');
+  } else {
+    var ents = [{ id:'GuideDog', x:W*0.25, y:70 },{ id:'RoboticGuideDog', x:W*0.75, y:70 }];
+    var behs = [
+      { id:'GuideBehaviour', x:W*0.5, y:180, shared:true },
+      { id:'SwimmingBehaviour', x:W*0.18, y:210, shared:false },
+      { id:'SensorBehaviour', x:W*0.82, y:210, shared:false }
+    ];
+    var conns = [['GuideDog','GuideBehaviour'],['GuideDog','SwimmingBehaviour'],['RoboticGuideDog','GuideBehaviour'],['RoboticGuideDog','SensorBehaviour']];
+    var all = ents.concat(behs);
+    conns.forEach(function(c) {
+      var s = all.find(function(n){ return n.id===c[0]; });
+      var t = all.find(function(n){ return n.id===c[1]; });
+      svg.append('line').attr('x1',s.x).attr('y1',s.y+13).attr('x2',t.x).attr('y2',t.y-13)
+        .attr('stroke',t.shared?'#38bdf8':'#4ade80').attr('stroke-width',1.5).attr('opacity',0.7);
+    });
+    ents.forEach(function(n) {
+      var g = svg.append('g').attr('transform','translate('+n.x+','+n.y+')');
+      g.append('rect').attr('x',-68).attr('y',-13).attr('width',136).attr('height',26)
+        .attr('rx',6).attr('fill','rgba(22,27,34,1)').attr('stroke','#38bdf8').attr('stroke-width',1.5);
+      g.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+        .attr('fill','#e6edf3').attr('font-size',11).attr('font-family','JetBrains Mono').text(n.id);
+    });
+    behs.forEach(function(n) {
+      var color = n.shared?'#38bdf8':'#4ade80';
+      var g = svg.append('g').attr('transform','translate('+n.x+','+n.y+')');
+      g.append('rect').attr('x',-70).attr('y',-12).attr('width',140).attr('height',24)
+        .attr('rx',4).attr('fill',n.shared?'rgba(56,189,248,0.1)':'rgba(74,222,128,0.1)')
+        .attr('stroke',color).attr('stroke-width',1).attr('stroke-dasharray',n.shared?'none':'4 3');
+      g.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+        .attr('fill',color).attr('font-size',10).attr('font-family','JetBrains Mono').text(n.id);
+    });
+    svg.append('text').attr('x',W/2).attr('y',H-6).attr('text-anchor','middle')
+      .attr('fill','#8b949e').attr('font-size',10).attr('font-family','JetBrains Mono')
+      .text('Flat composition — shared behaviours attach to any entity, no hierarchy needed');
+  }
+}
+
+document.getElementById('btn-toggle-tree').addEventListener('click', function() {
+  treeMode = (treeMode === 'inheritance') ? 'composition' : 'inheritance';
+  this.textContent = (treeMode === 'inheritance') ? 'Show Composition Tree' : 'Show Inheritance Tree';
+  drawTree();
+});
+
+// Drag and drop
+var droppedBehaviours = [];
+document.querySelectorAll('.b-card').forEach(function(card) {
+  card.addEventListener('dragstart', function(ev) {
+    ev.dataTransfer.setData('text/plain', card.dataset.beh);
+  });
+});
+var entityDrop = document.getElementById('entity-drop');
+entityDrop.addEventListener('dragover', function(ev) { ev.preventDefault(); entityDrop.classList.add('dragover'); });
+entityDrop.addEventListener('dragleave', function() { entityDrop.classList.remove('dragover'); });
+entityDrop.addEventListener('drop', function(ev) {
+  ev.preventDefault();
+  entityDrop.classList.remove('dragover');
+  var beh = ev.dataTransfer.getData('text/plain');
+  if (!beh || droppedBehaviours.includes(beh)) return;
+  droppedBehaviours.push(beh);
+  var card = document.querySelector('.b-card[data-beh="'+beh+'"]');
+  if (card) card.classList.add('used');
+  var tag = document.createElement('div');
+  tag.className = 'cap-tag';
+  tag.textContent = beh;
+  document.getElementById('cap-tags').appendChild(tag);
+  anime({ targets: tag, opacity: [0,1], translateY: [8,0], duration: 300, easing: 'easeOutBack' });
+});
+function resetDrag() {
+  droppedBehaviours = [];
+  document.getElementById('cap-tags').textContent = '';
+  document.querySelectorAll('.b-card').forEach(function(c) { c.classList.remove('used'); });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4.2 Law of Demeter
+// ═══════════════════════════════════════════════════════════════════════════════
+var chainParts = [
+  'order', '.getCustomer()', '.getAddress()', '.getCity()', '.getPostalCode()'
+];
+var chainBuilt = 0;
+
+function anim_chain() {
+  reset_lod();
+  chainBuilt = 0;
+  var intro = document.getElementById('chain-intro');
+  if (intro) intro.style.display = 'none';
+  buildNextChainStep();
+}
+
+function buildNextChainStep() {
+  if (chainBuilt >= chainParts.length) {
+    var w = document.getElementById('chain-warning');
+    w.style.display = 'block';
+    anime({ targets: w, opacity: [0,1], translateY: [6,0], duration: 400, easing: 'easeOutQuad' });
+    return;
+  }
+  var container = document.getElementById('chain-steps');
+  var part = chainParts[chainBuilt];
+  var el = document.createElement('span');
+  if (chainBuilt > 0) {
+    el.className = 'chain-dot';
+    el.textContent = part.charAt(0); // the dot
+    el.style.opacity = '0';
+    container.appendChild(el);
+    anime({ targets: el, opacity: [0,1], duration: 200 });
+    var obj = document.createElement('span');
+    obj.className = 'chain-obj';
+    obj.textContent = part.slice(1);
+    obj.style.opacity = '0';
+    obj.style.transform = 'translateY(-6px)';
+    container.appendChild(obj);
+    anime({ targets: obj, opacity: [0,1], translateY: [-6,0], duration: 300, easing: 'easeOutQuad' });
+  } else {
+    el.className = 'chain-obj';
+    el.textContent = part;
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-6px)';
+    container.appendChild(el);
+    anime({ targets: el, opacity: [0,1], translateY: [-6,0], duration: 300, easing: 'easeOutQuad' });
+  }
+  chainBuilt++;
+  if (chainBuilt < chainParts.length) {
+    setTimeout(buildNextChainStep, 600);
+  } else {
+    setTimeout(function() {
+      var w2 = document.getElementById('chain-warning');
+      w2.style.display = 'block';
+      anime({ targets: w2, opacity: [0,1], translateY: [6,0], duration: 400, easing: 'easeOutQuad' });
+    }, 400);
+  }
+}
+
+var dotCount = 0;
+var dotChains = [
+  'order',
+  'order.getCustomer()',
+  'order.getCustomer().getAddress()',
+  'order.getCustomer().getAddress().getCity()',
+  'order.getCustomer().getAddress().getCity().getPostalCode()'
+];
+function addDot() {
+  if (dotCount >= 4) return;
+  dotCount++;
+  document.getElementById('dot-chain-display').textContent = dotChains[dotCount];
+  updateDotBadge();
+}
+function removeDot() {
+  if (dotCount <= 0) return;
+  dotCount--;
+  document.getElementById('dot-chain-display').textContent = dotChains[dotCount];
+  updateDotBadge();
+}
+function updateDotBadge() {
+  var badge = document.getElementById('dot-badge');
+  if (dotCount === 0) { badge.className = 'dot-counter green'; badge.textContent = '0 dots — Direct'; }
+  else if (dotCount === 1) { badge.className = 'dot-counter yellow'; badge.textContent = '1 dot — Watch it'; }
+  else { badge.className = 'dot-counter red'; badge.textContent = dotCount + ' dots — LoD violation!'; }
+}
+
+function anim_cascade_break() {
+  var area = document.getElementById('cascade-area');
+  area.style.display = 'block';
+  var container = document.getElementById('call-sites');
+  while (container.firstChild) container.removeChild(container.firstChild);
+  var sites = [
+    'OrderService.java:45',
+    'InvoiceService.java:112',
+    'ShippingService.java:78',
+    'ReportService.java:203',
+    'NotificationService.java:34',
+    'AuditService.java:89'
+  ];
+  sites.forEach(function(s, i) {
+    var el = document.createElement('div');
+    el.style.fontFamily = "'JetBrains Mono',monospace";
+    el.style.fontSize = '11px';
+    el.style.padding = '4px 8px';
+    el.style.borderRadius = '4px';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-8px)';
+    el.style.border = '1px solid #30363d';
+    el.textContent = s + ' > .getCity().getPostalCode()';
+    container.appendChild(el);
+    anime({
+      targets: el, opacity: [0,1], translateX: [-8,0], delay: i * 150, duration: 300, easing: 'easeOutQuad',
+      complete: function() {
+        el.style.background = 'rgba(248,113,113,0.15)';
+        el.style.borderColor = '#f87171';
+        el.style.color = '#f87171';
+      }
+    });
+  });
+}
+
+function reset_lod() {
+  var steps = document.getElementById('chain-steps');
+  while (steps.firstChild) steps.removeChild(steps.firstChild);
+  document.getElementById('chain-warning').style.display = 'none';
+  document.getElementById('cascade-area').style.display = 'none';
+  var sites = document.getElementById('call-sites');
+  while (sites.firstChild) sites.removeChild(sites.firstChild);
+  chainBuilt = 0;
+  var intro = document.getElementById('chain-intro');
+  if (intro) intro.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4.3 Tell Don't Ask
+// ═══════════════════════════════════════════════════════════════════════════════
+var tdaMode = 'good';
+
+function anim_tda(showBad) {
+  var svgEl = document.getElementById('svg-tda');
+  var W = 600, H = 130;
+  // Clear SVG
+  while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+  svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+  function mkEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+  function addBox(x, y, w, h, fill, stroke, label, sub) {
+    var g = mkEl('g'); g.setAttribute('transform','translate('+x+','+y+')');
+    var r = mkEl('rect'); r.setAttribute('x',-w/2); r.setAttribute('y',-h/2);
+    r.setAttribute('width',w); r.setAttribute('height',h); r.setAttribute('rx','6');
+    r.setAttribute('fill',fill); r.setAttribute('stroke',stroke); r.setAttribute('stroke-width','1.5');
+    var t = mkEl('text'); t.setAttribute('text-anchor','middle'); t.setAttribute('dy', sub ? '-0.1em' : '0.35em');
+    t.setAttribute('fill','#e6edf3'); t.setAttribute('font-size','12'); t.setAttribute('font-family','JetBrains Mono');
+    t.textContent = label;
+    g.appendChild(r); g.appendChild(t);
+    if (sub) {
+      var t2 = mkEl('text'); t2.setAttribute('text-anchor','middle'); t2.setAttribute('dy','1.1em');
+      t2.setAttribute('fill','#8b949e'); t2.setAttribute('font-size','10'); t2.setAttribute('font-family','JetBrains Mono');
+      t2.textContent = sub; g.appendChild(t2);
+    }
+    svgEl.appendChild(g);
+  }
+  function addLine(x1,y1,x2,y2,color,dashed,lbl) {
+    var l = mkEl('line');
+    l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2);
+    l.setAttribute('stroke',color); l.setAttribute('stroke-width','1.8');
+    if (dashed) l.setAttribute('stroke-dasharray','4 3');
+    svgEl.appendChild(l);
+    if (lbl) {
+      var t = mkEl('text');
+      t.setAttribute('x',(x1+x2)/2); t.setAttribute('y',(y1+y2)/2-6);
+      t.setAttribute('text-anchor','middle'); t.setAttribute('fill',color);
+      t.setAttribute('font-size','10'); t.setAttribute('font-family','JetBrains Mono');
+      t.textContent = lbl; svgEl.appendChild(t);
+    }
+  }
+
+  if (!showBad) {
+    addBox(120, 65, 140, 46, 'rgba(22,27,34,1)', '#38bdf8', 'OrderService', 'manager');
+    addBox(460, 65, 140, 46, 'rgba(22,27,34,1)', '#4ade80', 'Customer', 'employee');
+    addLine(192, 65, 388, 65, '#38bdf8', false, '"applyLoyaltyDiscountTo"');
+    document.getElementById('tda-caption').textContent = 'Tell: OrderService sends one message. Customer uses its own data to decide.';
+  } else {
+    addBox(90, 65, 120, 46, 'rgba(22,27,34,1)', '#f87171', 'OrderService', 'micromanager');
+    addBox(460, 65, 120, 46, 'rgba(22,27,34,1)', '#f87171', 'Customer', '');
+    ['membershipLevel','totalSpend','isBlacklisted'].forEach(function(f, i) {
+      var y = 30 + i * 32;
+      addLine(152, y, 398, y, '#f87171', false, f);
+    });
+    document.getElementById('tda-caption').textContent = 'Ask: OrderService interrogates Customer internals — 3 coupling arrows!';
+  }
+
+  drawTDACoupling(showBad);
+}
+
+function drawTDACoupling(showBad) {
+  var svg = d3.select('#svg-tda-coupling');
+  svg.selectAll('*').remove();
+  var W = document.getElementById('svg-tda-coupling').clientWidth || 720;
+  var H = 180;
+  svg.attr('viewBox','0 0 ' + W + ' ' + H);
+
+  if (showBad) {
+    var osX = W*0.25, custX = W*0.68;
+    var fields = ['membershipLevel','totalSpend','isBlacklisted'];
+    svg.append('rect').attr('x',osX-65).attr('y',70).attr('width',130).attr('height',40)
+      .attr('rx',6).attr('fill','rgba(22,27,34,1)').attr('stroke','#f87171').attr('stroke-width',1.5);
+    svg.append('text').attr('x',osX).attr('y',88).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-size',12).attr('font-family','JetBrains Mono').text('OrderService');
+    svg.append('text').attr('x',osX).attr('y',102).attr('text-anchor','middle')
+      .attr('fill','#8b949e').attr('font-size',10).attr('font-family','JetBrains Mono').text('knows Customer internals');
+    fields.forEach(function(f, i) {
+      var fy = 30 + i * 40;
+      svg.append('rect').attr('x',custX-62).attr('y',fy-12).attr('width',130).attr('height',24)
+        .attr('rx',4).attr('fill','rgba(248,113,113,0.1)').attr('stroke','#f87171').attr('stroke-width',1);
+      svg.append('text').attr('x',custX+3).attr('y',fy+4).attr('text-anchor','middle')
+        .attr('fill','#f87171').attr('font-size',10).attr('font-family','JetBrains Mono').text(f);
+      svg.append('line').attr('x1',osX+65).attr('y1',90).attr('x2',custX-62).attr('y2',fy)
+        .attr('stroke','#f87171').attr('stroke-width',1.2).attr('opacity',0.6);
+    });
+    svg.append('text').attr('x',W/2).attr('y',H-8).attr('text-anchor','middle')
+      .attr('fill','#f87171').attr('font-size',10).attr('font-family','JetBrains Mono')
+      .text("OrderService depends on Customer's internal fields — 3 coupling arrows");
+  } else {
+    var osX2 = W*0.22, custX2 = W*0.7;
+    svg.append('rect').attr('x',osX2-65).attr('y',60).attr('width',130).attr('height',40)
+      .attr('rx',6).attr('fill','rgba(22,27,34,1)').attr('stroke','#38bdf8').attr('stroke-width',1.5);
+    svg.append('text').attr('x',osX2).attr('y',78).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-size',12).attr('font-family','JetBrains Mono').text('OrderService');
+    svg.append('text').attr('x',osX2).attr('y',91).attr('text-anchor','middle')
+      .attr('fill','#8b949e').attr('font-size',10).attr('font-family','JetBrains Mono').text('only knows behaviour');
+    svg.append('rect').attr('x',custX2-65).attr('y',28).attr('width',130).attr('height',100)
+      .attr('rx',6).attr('fill','rgba(74,222,128,0.08)').attr('stroke','#4ade80').attr('stroke-width',1.5);
+    svg.append('text').attr('x',custX2).attr('y',48).attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',12).attr('font-family','JetBrains Mono').text('Customer');
+    ['membershipLevel','totalSpend','isBlacklisted'].forEach(function(f, i) {
+      svg.append('text').attr('x',custX2).attr('y',65+i*18).attr('text-anchor','middle')
+        .attr('fill','rgba(139,148,158,0.35)').attr('font-size',9).attr('font-family','JetBrains Mono').text(f+' (hidden)');
+    });
+    svg.append('line').attr('x1',osX2+65).attr('y1',80).attr('x2',custX2-65).attr('y2',80)
+      .attr('stroke','#38bdf8').attr('stroke-width',2);
+    svg.append('text').attr('x',(osX2+custX2)/2).attr('y',72).attr('text-anchor','middle')
+      .attr('fill','#38bdf8').attr('font-size',10).attr('font-family','JetBrains Mono').text('applyLoyaltyDiscountTo(order)');
+    svg.append('text').attr('x',W/2).attr('y',H-8).attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',10).attr('font-family','JetBrains Mono')
+      .text("OrderService depends on Customer's behaviour only — 1 coupling arrow");
+  }
+}
+
+function toggleTDA() {
+  tdaMode = (tdaMode === 'good') ? 'bad' : 'good';
+  var btn = document.getElementById('btn-tda-toggle');
+  btn.textContent = (tdaMode === 'bad') ? 'Show: Delegating Manager \u2705' : 'Show: Micromanager \u274c';
+  anim_tda(tdaMode === 'bad');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4.4 CQS
+// ═══════════════════════════════════════════════════════════════════════════════
+var vmStock = 3;
+
+function drawVendingInit() {
+  document.getElementById('vm-screen').textContent = 'B3: Chips x' + vmStock;
+  document.getElementById('slot-b3').textContent = 'B3 \uD83C\uDF5F x' + vmStock;
+}
+
+function vmLog(msg, type) {
+  var c = document.getElementById('vm-log-entries');
+  var el = document.createElement('div');
+  el.className = 'vm-log-entry ' + type;
+  el.textContent = msg;
+  c.appendChild(el);
+  c.scrollTop = c.scrollHeight;
+  anime({ targets: el, opacity: [0,1], translateX: [-6,0], duration: 250 });
+}
+
+function vmQuery() {
+  document.getElementById('vm-screen').textContent = 'Checking B3: ' + vmStock + ' left';
+  anime({ targets: '#vm-screen', opacity: [0.5,1], duration: 600 });
+  vmLog('[QUERY] Check B3 -> ' + vmStock + ' items. No state change.', 'q');
+  document.getElementById('vm-tray').textContent = '(query only — nothing dispensed)';
+}
+
+function vmDispense() {
+  if (vmStock <= 0) {
+    vmLog('[COMMAND] Dispense B3 -> SOLD OUT!', 'c');
+    document.getElementById('vm-screen').textContent = 'B3: SOLD OUT';
+    return;
+  }
+  vmStock--;
+  document.getElementById('slot-b3').textContent = 'B3 \uD83C\uDF5F x' + vmStock;
+  document.getElementById('vm-screen').textContent = 'Dispensing B3...';
+  document.getElementById('vm-tray').textContent = '\uD83C\uDF5F Item dispensed!';
+  anime({ targets: '#vm-tray', opacity: [0.4,1], duration: 700 });
+  vmLog('[COMMAND] Dispense B3 -> stock now ' + vmStock + '. State changed.', 'c');
+}
+
+var cqsMode = 'bad';
+function setCQSMode(mode) {
+  cqsMode = mode;
+  document.getElementById('cqs-btn-bad').classList.toggle('active', mode === 'bad');
+  document.getElementById('cqs-btn-good').classList.toggle('active', mode === 'good');
+  var box = document.getElementById('cqs-state-box');
+  var txt = document.getElementById('cqs-state-text');
+  if (mode === 'bad') {
+    box.classList.add('side-effect-flash');
+    txt.textContent = 'Side effect triggered! Orders are being marked PROCESSED even though you only wanted to read them. The caller who just wanted a list accidentally processed everything.';
+    txt.style.color = 'var(--bad)';
+    setTimeout(function() { box.classList.remove('side-effect-flash'); }, 2000);
+  } else {
+    txt.textContent = 'Clean read. getOrders(PENDING) returns the list. Zero side effects. Database state is unchanged. You can call this 100 times safely.';
+    txt.style.color = 'var(--good)';
+  }
+}
+
+function toggleCQS() {
+  var next = (cqsMode === 'bad') ? 'good' : 'bad';
+  setCQSMode(next);
+  document.getElementById('btn-cqs-mode').textContent =
+    (cqsMode === 'bad') ? 'Switch to: getOrders() \u2705' : 'Switch to: processAndReturn() \u274c';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4.5 POLA
+// ═══════════════════════════════════════════════════════════════════════════════
+var badSwitchOn = false, goodSwitchOn = false;
+
+function toggleBadSwitch() {
+  badSwitchOn = !badSwitchOn;
+  document.getElementById('bad-switch').classList.toggle('on', badSwitchOn);
+  // fan, not light — always shows fan emoji to violate expectation
+  document.getElementById('bad-result').textContent = badSwitchOn ? '\uD83D\uDCA8' : '\uD83D\uDCA8';
+  document.getElementById('bad-reaction').textContent = badSwitchOn ? '\uD83D\uDE31' : '\uD83D\uDE10';
+  anime({ targets: '#bad-result', scale: [1.5,1], duration: 400, easing: 'easeOutBack' });
+}
+
+function toggleGoodSwitch() {
+  goodSwitchOn = !goodSwitchOn;
+  document.getElementById('good-switch').classList.toggle('on', goodSwitchOn);
+  document.getElementById('good-result').textContent = goodSwitchOn ? '\uD83D\uDCA1' : '\u2B1B';
+  document.getElementById('good-reaction').textContent = '\uD83D\uDE0A';
+  anime({ targets: '#good-result', scale: [1.5,1], duration: 400, easing: 'easeOutBack' });
+}
+
+function anim_switch_demo() {
+  setTimeout(function() { toggleBadSwitch(); }, 300);
+  setTimeout(function() { toggleGoodSwitch(); }, 700);
+}
+
+function anim_save_surprise() {
+  var bubble = document.getElementById('email-surprise');
+  bubble.style.display = 'none';
+  bubble.classList.remove('show');
+  var arrow = document.getElementById('save-arrow');
+  arrow.style.color = 'var(--accent)';
+  anime({
+    targets: arrow, color: { value: '#f87171' }, duration: 600,
+    complete: function() {
+      bubble.style.display = 'block';
+      bubble.classList.add('show');
+    }
+  });
+}
+
+function animToStringMutation() {
+  var box = document.getElementById('mutation-box');
+  var warning = document.getElementById('mutation-warning');
+  warning.style.display = 'none';
+  box.textContent = 'balance: $1000';
+  anime({
+    targets: box, delay: 500, duration: 700,
+    backgroundColor: ['rgba(0,0,0,0.3)', 'rgba(248,113,113,0.3)', 'rgba(0,0,0,0.3)'],
+    complete: function() {
+      box.textContent = 'balance: $999';
+      warning.style.display = 'block';
+      anime({ targets: warning, opacity: [0,1], translateY: [4,0], duration: 400 });
+    }
+  });
+}
+
+// Quiz
+var quizCorrect = { 0: 'surprised', 1: 'expected', 2: 'surprised' };
+var quizExplanations = {
+  0: 'Correct! isValid() sounds like a pure boolean check. Writing to the DB is astonishing and violates POLA.',
+  1: 'Correct! deleteUser(userId) does exactly what it says. No surprises.',
+  2: 'Correct! getUserName() sounds like a read — the name gives no hint it increments an analytics counter. POLA violation.'
+};
+var quizWrong = {
+  0: 'Nope. isValid() writes to the DB silently — that is astonishing. This is a POLA violation.',
+  1: 'Nope. deleteUser(userId) does exactly what its name says. No surprise here.',
+  2: 'Nope. getUserName() silently increments analytics — that is not what callers expect. POLA violation.'
+};
+function quizAnswer(idx, answer) {
+  var result = document.getElementById('quiz-result-' + idx);
+  var correct = (answer === quizCorrect[idx]);
+  result.className = 'quiz-result show ' + (correct ? 'correct' : 'wrong');
+  result.textContent = correct ? quizExplanations[idx] : quizWrong[idx];
+}
+</script>
+</body>
+</html>

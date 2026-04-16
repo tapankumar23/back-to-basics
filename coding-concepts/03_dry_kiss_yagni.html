@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DRY · KISS · YAGNI — Coding Concepts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #a78bfa;
+      --accent-dim: rgba(167,139,250,0.15);
+      --good: #4ade80;
+      --bad: #f87171;
+      --neutral: #8b949e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+
+    /* Progress Bar */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px;
+      width: 0%;
+      background: var(--accent);
+      z-index: 9999;
+      transition: width 0.1s linear;
+    }
+
+    /* Navbar */
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      margin-right: 1.5rem;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px;
+      padding-right: 16px;
+    }
+    #navbar a.back-link:hover {
+      color: var(--text);
+      background: rgba(167,139,250,0.08);
+    }
+    #navbar .chapter-pager {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-right: 12px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted);
+      font-size: 9px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title {
+      font-size: 11px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    #navbar .chapter-nav-chip .nav-arrow {
+      color: var(--accent);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
+    /* Main layout */
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+
+    /* Concept sections */
+    .concept-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(167,139,250,0.3); }
+    .btn.active { background: rgba(167,139,250,0.35); }
+
+    .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    input[type=range] { accent-color: var(--accent); width: 110px; }
+
+    /* Diagram area */
+    .diagram-area {
+      padding: 20px;
+      min-height: 200px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .diagram-area svg { width: 100%; overflow: visible; }
+
+    /* Insight panel */
+    .insight-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* Code comparison */
+    .code-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      border-top: 1px solid var(--border);
+      background: var(--border);
+    }
+    @media (max-width: 760px) {
+      .code-compare { grid-template-columns: 1fr; }
+    }
+    .code-panel {
+      background: var(--bg-card);
+      padding: 14px 16px;
+    }
+    .code-panel-label {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .code-panel-label.bad { color: var(--bad); }
+    .code-panel-label.good { color: var(--good); }
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num { color: #f2cc60; }
+    .tp  { color: #ffa657; }
+
+    /* Expandable panels */
+    .expand-panels {
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .expand-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      background: none;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      text-align: left;
+      width: 100%;
+      transition: background 0.2s, color 0.2s;
+    }
+    .expand-trigger:last-child { border-bottom: none; }
+    .expand-trigger:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+    .expand-trigger .expand-icon {
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+    .expand-trigger[aria-expanded="true"] .expand-arrow {
+      transform: rotate(90deg);
+    }
+    .expand-arrow {
+      display: inline-block;
+      font-size: 10px;
+      transition: transform 0.2s;
+      color: var(--text-muted);
+    }
+    .expand-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.2s;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      padding: 0 16px;
+      background: rgba(255,255,255,0.01);
+    }
+    .expand-body.open {
+      max-height: 600px;
+      padding: 12px 16px;
+    }
+    .expand-body p { margin-bottom: 8px; }
+    .expand-body p:last-child { margin-bottom: 0; }
+
+    /* Chapter page nav (bottom) */
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .chapter-nav-link,
+    .chapter-nav-disabled,
+    .chapter-nav-current {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 62px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .chapter-nav-link:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-nav-link.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-link .nav-kicker,
+    .chapter-nav-disabled .nav-kicker,
+    .chapter-nav-current .nav-kicker {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title,
+    .chapter-nav-disabled .nav-title,
+    .chapter-nav-current .nav-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .chapter-nav-link .nav-arrow,
+    .chapter-nav-disabled .nav-arrow {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .chapter-nav-disabled {
+      opacity: 0.38;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .chapter-nav-disabled.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-current {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav { grid-template-columns: 1fr; }
+      .chapter-nav-link.next,
+      .chapter-nav-disabled.next { text-align: left; align-items: flex-start; }
+    }
+
+    /* Sidebar */
+    body.sidebar-open { overflow: hidden; }
+    #sidebar-toggle {
+      position: fixed;
+      top: 60px; left: 16px;
+      z-index: 1001;
+      border: 1px solid var(--border);
+      background: rgba(22,27,34,0.92);
+      color: var(--accent);
+      border-radius: 14px;
+      width: 46px; height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+    }
+    #sidebar-toggle:hover { transform: translateY(-1px); background: rgba(28,35,48,0.98); color: var(--text); }
+    #sidebar-toggle .hamburger-line {
+      width: 18px; height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) { opacity: 0; }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    #sidebar-overlay {
+      position: fixed; inset: 0;
+      background: rgba(6,10,16,0.55);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s ease; z-index: 1001;
+    }
+    #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+    #sidebar-drawer {
+      position: fixed; top: 0; left: 0;
+      width: min(340px, 86vw); height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 18%), #0f141b;
+      border-right: 1px solid var(--border);
+      box-shadow: 24px 0 50px rgba(0,0,0,0.35);
+      padding: 22px 18px 24px;
+      transform: translateX(-102%);
+      transition: transform 0.24s ease;
+      z-index: 1002; overflow-y: auto;
+    }
+    #sidebar-drawer.open { transform: translateX(0); }
+    .drawer-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .drawer-title { display: flex; flex-direction: column; gap: 3px; }
+    .drawer-kicker { color: var(--accent); font-size: 11px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+    .drawer-heading { color: var(--text); font-size: 16px; font-weight: 700; }
+    .drawer-close {
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-muted); border-radius: 999px;
+      width: 34px; height: 34px; cursor: pointer; font-size: 18px; line-height: 1;
+    }
+    .drawer-close:hover { color: var(--text); border-color: var(--accent); }
+    .drawer-index-link {
+      display: block; text-decoration: none;
+      color: var(--accent); background: var(--accent-dim);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 18px;
+    }
+    .drawer-index-link strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .drawer-index-link span { color: var(--text-muted); font-size: 12px; }
+    .drawer-nav { display: flex; flex-direction: column; gap: 16px; }
+    .drawer-group {
+      border: 1px solid rgba(48,54,61,0.9);
+      border-radius: 14px; background: rgba(22,27,34,0.75); overflow: hidden;
+    }
+    .drawer-group.current { border-color: rgba(255,255,255,0.24); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+    .drawer-group-header {
+      display: flex; align-items: stretch; gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(48,54,61,0.8);
+      background: rgba(255,255,255,0.02);
+    }
+    .drawer-group-title { flex: 1; min-width: 0; }
+    .drawer-group-header .eyebrow {
+      display: block; color: var(--text-muted); font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 4px; font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-group-header .name { color: var(--text); font-size: 14px; font-weight: 600; }
+    .drawer-group-header .name a { color: inherit; text-decoration: none; }
+    .drawer-group-header .name a:hover { color: var(--accent); }
+    .drawer-group-toggle {
+      flex: 0 0 auto; align-self: center;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04); color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .drawer-group-toggle:hover { background: rgba(255,255,255,0.08); color: var(--text); transform: translateY(-1px); }
+    .drawer-chevron {
+      width: 10px; height: 10px;
+      border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-chevron { transform: rotate(-45deg) translate(-1px, 1px); }
+    .drawer-subnav {
+      list-style: none; padding: 8px;
+      max-height: 640px; opacity: 1; overflow: hidden;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-subnav { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+    .drawer-subnav li + li { margin-top: 4px; }
+    .drawer-subnav a {
+      display: flex; align-items: baseline; gap: 10px;
+      padding: 10px 10px; border-radius: 10px;
+      color: var(--text-muted); text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+    }
+    .drawer-subnav a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .drawer-subnav .sub-num { color: var(--accent); font-size: 11px; min-width: 42px; font-family: 'JetBrains Mono', monospace; }
+    .drawer-subnav .sub-label { font-size: 13px; }
+
+    /* Metric badges */
+    .metric-row {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .metric-badge {
+      display: flex; flex-direction: column; gap: 2px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 14px;
+      min-width: 120px;
+    }
+    .metric-badge .m-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-family: 'JetBrains Mono', monospace; }
+    .metric-badge .m-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .metric-badge.bad .m-value { color: var(--bad); }
+    .metric-badge.good .m-value { color: var(--good); }
+    .metric-badge.neutral .m-value { color: var(--accent); }
+
+    /* Complexity bar */
+    .complexity-bar-wrap { padding: 14px 16px; border-top: 1px solid var(--border); }
+    .complexity-bar-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
+    .complexity-bar-track { height: 12px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
+    .complexity-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease, background 0.5s ease; }
+
+    /* Interactive node diagram */
+    .node-diagram { padding: 16px; border-top: 1px solid var(--border); }
+
+    footer {
+      text-align: center; padding: 2rem;
+      color: var(--text-muted); font-size: 12px;
+      border-top: 1px solid var(--border); margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="false" aria-label="Toggle navigation menu">
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="sr-only">Toggle navigation menu</span>
+</button>
+<div id="sidebar-overlay"></div>
+<aside id="sidebar-drawer" aria-hidden="true">
+  <div class="drawer-top">
+    <div class="drawer-title">
+      <span class="drawer-kicker">Navigation</span>
+      <span class="drawer-heading">03 DRY · KISS · YAGNI</span>
+    </div>
+    <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+  </div>
+  <a class="drawer-index-link" href="00_index.html">
+    <strong>Coding Concepts Index</strong>
+    <span>Return to the coding concepts map</span>
+  </a>
+  <nav class="drawer-nav" aria-label="Coding concepts outline">
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="01_clean_code_fundamentals.html">01 Clean Code Fundamentals</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="01_clean_code_fundamentals.html#s-11"><span class="sub-num">1.1</span><span class="sub-label">Naming</span></a></li>
+        <li><a href="01_clean_code_fundamentals.html#s-12"><span class="sub-num">1.2</span><span class="sub-label">Functions</span></a></li>
+        <li><a href="01_clean_code_fundamentals.html#s-13"><span class="sub-num">1.3</span><span class="sub-label">Comments</span></a></li>
+        <li><a href="01_clean_code_fundamentals.html#s-14"><span class="sub-num">1.4</span><span class="sub-label">Formatting</span></a></li>
+        <li><a href="01_clean_code_fundamentals.html#s-15"><span class="sub-num">1.5</span><span class="sub-label">Single Level of Abstraction</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="02_solid_principles.html">02 SOLID Principles</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="02_solid_principles.html#s-21"><span class="sub-num">2.1</span><span class="sub-label">SRP</span></a></li>
+        <li><a href="02_solid_principles.html#s-22"><span class="sub-num">2.2</span><span class="sub-label">OCP</span></a></li>
+        <li><a href="02_solid_principles.html#s-23"><span class="sub-num">2.3</span><span class="sub-label">LSP</span></a></li>
+        <li><a href="02_solid_principles.html#s-24"><span class="sub-num">2.4</span><span class="sub-label">ISP</span></a></li>
+        <li><a href="02_solid_principles.html#s-25"><span class="sub-num">2.5</span><span class="sub-label">DIP</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group current">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="03_dry_kiss_yagni.html">03 DRY · KISS · YAGNI</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Collapse chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="#s-31"><span class="sub-num">3.1</span><span class="sub-label">DRY</span></a></li>
+        <li><a href="#s-32"><span class="sub-num">3.2</span><span class="sub-label">KISS</span></a></li>
+        <li><a href="#s-33"><span class="sub-num">3.3</span><span class="sub-label">YAGNI</span></a></li>
+        <li><a href="#s-34"><span class="sub-num">3.4</span><span class="sub-label">Boy Scout Rule</span></a></li>
+        <li><a href="#s-35"><span class="sub-num">3.5</span><span class="sub-label">Fail Fast</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="04_oo_design_principles.html">04 OO Design Principles</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="04_oo_design_principles.html#s-41"><span class="sub-num">4.1</span><span class="sub-label">Composition vs Inheritance</span></a></li>
+        <li><a href="04_oo_design_principles.html#s-42"><span class="sub-num">4.2</span><span class="sub-label">Law of Demeter</span></a></li>
+        <li><a href="04_oo_design_principles.html#s-43"><span class="sub-num">4.3</span><span class="sub-label">Tell Don't Ask</span></a></li>
+        <li><a href="04_oo_design_principles.html#s-44"><span class="sub-num">4.4</span><span class="sub-label">CQS</span></a></li>
+        <li><a href="04_oo_design_principles.html#s-45"><span class="sub-num">4.5</span><span class="sub-label">POLA</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="05_code_smells.html">05 Code Smells</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="05_code_smells.html#s-51"><span class="sub-num">5.1</span><span class="sub-label">Long Method / God Class</span></a></li>
+        <li><a href="05_code_smells.html#s-52"><span class="sub-num">5.2</span><span class="sub-label">Feature Envy</span></a></li>
+        <li><a href="05_code_smells.html#s-53"><span class="sub-num">5.3</span><span class="sub-label">Primitive Obsession</span></a></li>
+        <li><a href="05_code_smells.html#s-54"><span class="sub-num">5.4</span><span class="sub-label">Shotgun Surgery</span></a></li>
+        <li><a href="05_code_smells.html#s-55"><span class="sub-num">5.5</span><span class="sub-label">Deep Nesting</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="06_refactoring_patterns.html">06 Refactoring Patterns</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="06_refactoring_patterns.html#s-61"><span class="sub-num">6.1</span><span class="sub-label">Extract Method</span></a></li>
+        <li><a href="06_refactoring_patterns.html#s-62"><span class="sub-num">6.2</span><span class="sub-label">Guard Clauses</span></a></li>
+        <li><a href="06_refactoring_patterns.html#s-63"><span class="sub-num">6.3</span><span class="sub-label">Replace Conditional</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="07_defensive_and_advanced.html">07 Defensive &amp; Advanced</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="07_defensive_and_advanced.html#s-71"><span class="sub-num">7.1</span><span class="sub-label">Separation of Concerns</span></a></li>
+        <li><a href="07_defensive_and_advanced.html#s-72"><span class="sub-num">7.2</span><span class="sub-label">Defensive Programming</span></a></li>
+        <li><a href="07_defensive_and_advanced.html#s-73"><span class="sub-num">7.3</span><span class="sub-label">Offensive Programming</span></a></li>
+        <li><a href="07_defensive_and_advanced.html#s-74"><span class="sub-num">7.4</span><span class="sub-label">Dependency Injection</span></a></li>
+        <li><a href="07_defensive_and_advanced.html#s-75"><span class="sub-num">7.5</span><span class="sub-label">Design by Contract</span></a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<nav id="navbar">
+  <span class="nav-brand">03 — DRY · KISS · YAGNI</span>
+  <a class="back-link" href="00_index.html">← Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <a class="chapter-nav-chip" href="02_solid_principles.html" aria-label="Previous Chapter: SOLID Principles" title="Previous Chapter: SOLID Principles">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title"><span class="nav-arrow">←</span> SOLID Principles</span>
+    </a>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">03</span>
+    </span>
+    <a class="chapter-nav-chip" href="04_oo_design_principles.html" aria-label="Next Chapter: OO Design Principles" title="Next Chapter: OO Design Principles">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">OO Design Principles<span class="nav-arrow">→</span></span>
+    </a>
+  </div>
+  <a href="#s-31">DRY</a>
+  <a href="#s-32">KISS</a>
+  <a href="#s-33">YAGNI</a>
+  <a href="#s-34">Boy Scout</a>
+  <a href="#s-35">Fail Fast</a>
+</nav>
+
+<main>
+  <div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">DRY · KISS · YAGNI</h1>
+    <p style="color:var(--text-muted);margin-top:4px;">Chapter 3 — Everyday Discipline: Principles That Make Code Survivable</p>
+  </div>
+
+  <!-- ===================== SECTION 3.1 — DRY ===================== -->
+  <section id="s-31" class="concept-section" data-section="s31">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">3.1 —</span>
+          <span class="section-title">DRY — Don't Repeat Yourself</span>
+          <span class="section-desc">Every piece of knowledge must have a single, unambiguous representation in the system</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s31()">Replay</button>
+          <div class="slider-row">
+            DRY: <span id="dry-val">50%</span>
+            <input type="range" id="dry-slider" min="0" max="100" value="50" oninput="window.drySlider(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Metaphor: Master Document vs Photocopies -->
+      <div class="diagram-area" style="min-height:180px;">
+        <svg id="svg-31" viewBox="0 0 700 160" height="160"></svg>
+      </div>
+
+      <!-- D3 change-propagation diagram -->
+      <div class="node-diagram">
+        <svg id="svg-31b" viewBox="0 0 700 200" height="200" style="width:100%;overflow:visible;"></svg>
+      </div>
+
+      <!-- DRY Slider diagram -->
+      <div class="node-diagram" style="border-top:1px solid var(--border);">
+        <svg id="svg-31c" viewBox="0 0 700 120" height="120" style="width:100%;overflow:visible;"></svg>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-panel">
+          <div class="code-panel-label bad">❌ Duplicated Validation (WET)</div>
+          <pre><span class="cm">// In UserController:</span>
+<span class="kw">if</span> (email == <span class="kw">null</span> || !email.<span class="fn">contains</span>(<span class="str">"@"</span>))
+    <span class="kw">throw new</span> <span class="tp">BadRequestException</span>(<span class="str">"Invalid email"</span>);
+<span class="cm">// In OrderController:</span>
+<span class="kw">if</span> (email == <span class="kw">null</span> || !email.<span class="fn">contains</span>(<span class="str">"@"</span>))
+    <span class="kw">throw new</span> <span class="tp">BadRequestException</span>(<span class="str">"Invalid email"</span>);
+<span class="cm">// In PaymentController:</span>
+<span class="kw">if</span> (email == <span class="kw">null</span> || !email.<span class="fn">contains</span>(<span class="str">"@"</span>))
+    <span class="kw">throw new</span> <span class="tp">BadRequestException</span>(<span class="str">"Invalid email"</span>);</pre>
+        </div>
+        <div class="code-panel">
+          <div class="code-panel-label good">✅ Extracted EmailValidator (DRY)</div>
+          <pre><span class="cm">// In EmailValidator:</span>
+<span class="kw">void</span> <span class="fn">validate</span>(<span class="tp">String</span> email) {
+    <span class="kw">if</span> (email == <span class="kw">null</span> || !email.<span class="fn">contains</span>(<span class="str">"@"</span>))
+        <span class="kw">throw new</span> <span class="tp">BadRequestException</span>(<span class="str">"Invalid email"</span>);
+}
+<span class="cm">// Every controller calls:</span>
+emailValidator.<span class="fn">validate</span>(email);
+
+<span class="cm">// Business rule changes? 1 file. Always.</span></pre>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metric-row">
+        <div class="metric-badge bad">
+          <span class="m-label">Files to change (WET)</span>
+          <span class="m-value">5</span>
+        </div>
+        <div class="metric-badge bad">
+          <span class="m-label">Bugs created</span>
+          <span class="m-value">2</span>
+        </div>
+        <div class="metric-badge good">
+          <span class="m-label">Files to change (DRY)</span>
+          <span class="m-value">1</span>
+        </div>
+        <div class="metric-badge good">
+          <span class="m-label">Bugs created</span>
+          <span class="m-value">0</span>
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        DRY is about knowledge, not syntax. The goal: a business rule lives in exactly one place. Change it once; the entire system reflects the update.
+      </div>
+
+      <!-- Expandable panels -->
+      <div class="expand-panels">
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🟢</span>
+          New to this?
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>The <strong>Rule of Three</strong>: copy once = OK, copy twice = watch it, copy three times = extract it. If you see the same logic in three places, it's time to create a shared function or class.</p>
+          <p>Be careful though — the <em>wrong abstraction is worse than duplication</em> (Sandi Metz). Don't merge two identical-looking blocks if they represent <em>different business concepts</em> whose future evolution will diverge. Extract only when the knowledge is genuinely the same.</p>
+        </div>
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🔵</span>
+          Go deeper
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>DRY applies far beyond code: database schema, tests, documentation, configuration files, and even deployment scripts. If your staging config and production config duplicate 90% of their values, that's a DRY violation waiting to bite you.</p>
+          <p>Two blocks of code that look identical but represent different domain concepts should <em>not</em> be merged — their future evolution will diverge and the forced abstraction will make both harder to change. This is why mechanical de-duplication without understanding domain semantics is dangerous.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3.2 — KISS ===================== -->
+  <section id="s-32" class="concept-section" data-section="s32">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">3.2 —</span>
+          <span class="section-title">KISS — Keep It Simple, Stupid</span>
+          <span class="section-desc">Prefer the simplest solution that works — not the cleverest</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="kiss-toggle-btn" onclick="window.kissToggle()">Show Simple</button>
+          <button class="btn" onclick="window.animate_s32()">Replay</button>
+        </div>
+      </div>
+
+      <!-- Rube Goldberg metaphor SVG -->
+      <div class="diagram-area" style="min-height:180px;">
+        <svg id="svg-32" viewBox="0 0 700 160" height="160"></svg>
+      </div>
+
+      <!-- Complexity meter bar -->
+      <div class="complexity-bar-wrap">
+        <div class="complexity-bar-label" id="kiss-bar-label">Readability Score: showing complex version</div>
+        <div class="complexity-bar-track">
+          <div class="complexity-bar-fill" id="kiss-bar" style="width:15%;background:var(--bad);"></div>
+        </div>
+      </div>
+      <div class="metric-row">
+        <div class="metric-badge" id="kiss-time-badge" style="">
+          <span class="m-label">Time to understand</span>
+          <span class="m-value" id="kiss-time-val" style="color:var(--bad);">8s</span>
+        </div>
+        <div class="metric-badge" id="kiss-score-badge">
+          <span class="m-label">Readability</span>
+          <span class="m-value" id="kiss-score-val" style="color:var(--bad);">15%</span>
+        </div>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-panel">
+          <div class="code-panel-label bad">❌ Clever One-liner</div>
+          <pre><span class="kw">import</span> re
+<span class="kw">def</span> <span class="fn">is_valid_username</span>(u):
+    <span class="kw">return</span> <span class="fn">bool</span>(re.<span class="fn">match</span>(
+        <span class="str">r'^(?!.*[_.]{2})(?![_.])[a-zA-Z0-9._]{3,20}(?&lt;![_.])$'</span>, u
+    ))</pre>
+        </div>
+        <div class="code-panel">
+          <div class="code-panel-label good">✅ Readable Multi-step</div>
+          <pre><span class="kw">def</span> <span class="fn">is_valid_username</span>(u):
+    <span class="kw">if</span> <span class="fn">len</span>(u) &lt; <span class="num">3</span> <span class="kw">or</span> <span class="fn">len</span>(u) &gt; <span class="num">20</span>: <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">if not</span> <span class="fn">all</span>(c.<span class="fn">isalnum</span>() <span class="kw">or</span> c <span class="kw">in</span> <span class="str">'._'</span> <span class="kw">for</span> c <span class="kw">in</span> u): <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">if</span> u[<span class="num">0</span>] <span class="kw">in</span> <span class="str">'._'</span> <span class="kw">or</span> u[-<span class="num">1</span>] <span class="kw">in</span> <span class="str">'._'</span>: <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">if</span> <span class="str">'..'</span> <span class="kw">in</span> u <span class="kw">or</span> <span class="str">'__'</span> <span class="kw">in</span> u <span class="kw">or</span> <span class="str">'._'</span> <span class="kw">in</span> u <span class="kw">or</span> <span class="str">'_.'</span> <span class="kw">in</span> u: <span class="kw">return</span> <span class="kw">False</span>
+    <span class="kw">return</span> <span class="kw">True</span></pre>
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Complexity hides bugs. The "clever" regex is a single point of failure; one wrong character breaks all 5 rules invisibly. The multi-step version lets you test, read, and debug each constraint independently.
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🟢</span>
+          New to this?
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>Ask yourself: "Would a new team member understand this in 30 seconds?" If no, simplify — not because they're not smart, but because <em>you'll</em> be that new team member 6 months from now when you've forgotten all the context.</p>
+          <p>Cleverness is usually a sign that the solution needs more thought, not less. The simplest solution often requires the most mental effort to arrive at.</p>
+        </div>
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🔵</span>
+          Go deeper
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>"Any fool can write code that a computer can understand. Good programmers write code that humans can understand." — Martin Fowler</p>
+          <p>Simple is <em>not</em> the same as easy to write. The simplest solution often requires the most thought. Cleverness = technical debt: someone will eventually need to understand, modify, or debug that regex at 2am during an incident.</p>
+          <p>KISS applies at architecture level too: 3 services doing clear things beats 10 microservices with ambiguous boundaries. Complexity compounds — every clever shortcut in your codebase multiplies the cognitive load for everyone who follows.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3.3 — YAGNI ===================== -->
+  <section id="s-33" class="concept-section" data-section="s33">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">3.3 —</span>
+          <span class="section-title">YAGNI — You Aren't Gonna Need It</span>
+          <span class="section-desc">Implement things when you actually need them, never when you just foresee you might need them</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="yagni-btn" onclick="window.yagniMismatch()">Show Mismatch</button>
+          <button class="btn" onclick="window.animate_s33()">Replay</button>
+        </div>
+      </div>
+
+      <!-- Suitcase metaphor SVG -->
+      <div class="diagram-area" style="min-height:180px;">
+        <svg id="svg-33" viewBox="0 0 700 160" height="160"></svg>
+      </div>
+
+      <!-- Codebase weight animation -->
+      <div class="complexity-bar-wrap" style="border-top:1px solid var(--border);">
+        <div class="complexity-bar-label">Codebase weight from speculative features</div>
+        <div class="complexity-bar-track" style="height:16px;">
+          <div class="complexity-bar-fill" id="yagni-weight-bar" style="width:0%;background:var(--bad);"></div>
+        </div>
+      </div>
+      <div class="metric-row">
+        <div class="metric-badge bad">
+          <span class="m-label">Plugin system (+200 lines)</span>
+          <span class="m-value" id="yagni-m1">0 users</span>
+        </div>
+        <div class="metric-badge bad">
+          <span class="m-label">Config flags (+150 lines)</span>
+          <span class="m-value" id="yagni-m2">always false</span>
+        </div>
+        <div class="metric-badge bad">
+          <span class="m-label">Event system (+300 lines)</span>
+          <span class="m-value" id="yagni-m3">0 consumers</span>
+        </div>
+      </div>
+
+      <!-- Speculative vs actual feature node diagram -->
+      <div class="node-diagram" style="border-top:1px solid var(--border);">
+        <svg id="svg-33b" viewBox="0 0 700 130" height="130" style="width:100%;overflow:visible;"></svg>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-panel">
+          <div class="code-panel-label bad">❌ Speculative Generality</div>
+          <pre><span class="kw">class</span> <span class="tp">OrderService</span> {
+    <span class="cm">// "Might need this for microservices later"</span>
+    <span class="kw">private final</span> <span class="tp">EventBus</span> eventBus;
+    <span class="kw">private final</span> <span class="tp">PluginRegistry</span> plugins;
+    <span class="kw">private final</span> <span class="tp">CacheStrategy</span> cacheStrategy; <span class="cm">// not used</span>
+    <span class="kw">void</span> <span class="fn">save</span>(<span class="tp">Order</span> o) {
+        plugins.<span class="fn">runHooks</span>(<span class="str">"pre-save"</span>, o);
+        db.<span class="fn">insert</span>(o);
+        eventBus.<span class="fn">publish</span>(<span class="kw">new</span> <span class="tp">OrderSaved</span>(o));
+        cacheStrategy.<span class="fn">invalidate</span>(o.<span class="fn">id</span>()); <span class="cm">// never called</span>
+    }
+}</pre>
+        </div>
+        <div class="code-panel">
+          <div class="code-panel-label good">✅ Only What's Needed Today</div>
+          <pre><span class="kw">class</span> <span class="tp">OrderService</span> {
+    <span class="kw">private final</span> <span class="tp">OrderRepository</span> db;
+    <span class="kw">void</span> <span class="fn">save</span>(<span class="tp">Order</span> o) {
+        db.<span class="fn">insert</span>(o);
+    }
+}
+
+<span class="cm">// When you ACTUALLY need events → add it then.
+// The interface will be cleaner because you'll
+// have a real use case to design against.</span></pre>
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        The speculative code has 3 dependencies that will never be used and 650+ dead lines — all of which need reading, testing, and maintaining forever.
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🟢</span>
+          New to this?
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>YAGNI saves you from yourself. Requirements change — the feature you built speculatively is rarely the feature that's actually requested. You've now maintained dead code <em>and</em> must build the real thing anyway.</p>
+          <p>The simplest heuristic: only build something when there's a concrete user story or test that requires it. "We might need it later" is not a requirement.</p>
+        </div>
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🔵</span>
+          Go deeper
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p><strong>OCP/YAGNI tension:</strong> The Open/Closed Principle says "design for extension." YAGNI says "don't extend prematurely." Resolution: extend when you have the <em>second concrete use case</em>, not in anticipation of it.</p>
+          <p>The first user defines the interface; the second user validates whether the abstraction is right. Before the second user exists, any abstraction you create is speculation — and speculation is usually wrong because you're missing the information that would make it correct.</p>
+          <p>Dead code is not neutral — it adds cognitive load to every reader, makes refactoring harder, and can hide bugs. Code that doesn't exist has zero maintenance cost.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3.4 — BOY SCOUT RULE ===================== -->
+  <section id="s-34" class="concept-section" data-section="s34">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">3.4 —</span>
+          <span class="section-title">Boy Scout Rule</span>
+          <span class="section-desc">Always leave the code cleaner than you found it</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s34()">Replay</button>
+        </div>
+      </div>
+
+      <!-- Trail metaphor + D3 line chart -->
+      <div class="diagram-area" style="min-height:240px;">
+        <svg id="svg-34" viewBox="0 0 700 220" height="220"></svg>
+      </div>
+
+      <!-- Concrete examples -->
+      <div style="padding:14px 16px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div style="color:var(--good);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:6px;">30 seconds</div>
+          <div style="font-size:12px;color:var(--text);">Renamed <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;">d</code> → <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;">daysSinceLastLogin</code> while fixing adjacent bug</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Permanent clarity for every future reader</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div style="color:var(--good);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:6px;">5 minutes</div>
+          <div style="font-size:12px;color:var(--text);">Extracted 15-line block into <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;">calculateDiscount()</code> while adding nearby feature</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Readable forever, testable in isolation</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;">
+          <div style="color:var(--good);font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:6px;">10 seconds</div>
+          <div style="font-size:12px;color:var(--text);">Deleted commented-out <code style="color:var(--accent);font-family:'JetBrains Mono',monospace;">oldProcessOrder()</code> while touching the file</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Less noise, less confusion about what's active</div>
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Each micro-cleanup takes seconds. Compounded across a team over months, the codebase improves organically without needing dedicated "refactoring sprints."
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🟢</span>
+          New to this?
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>Robert C. Martin (Uncle Bob) coined this from the Boy Scout motto. The idea: you don't need a separate "cleanup week" — just commit to leaving each file slightly better than you found it.</p>
+          <p>Even tiny improvements compound: a renamed variable today means faster comprehension for everyone who reads that file for the next 5 years. That's a huge ROI on 30 seconds of effort.</p>
+        </div>
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🔵</span>
+          Go deeper
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p><strong>Key constraint:</strong> "in the area you're already touching." Boy Scout Rule is NOT a license for large refactors inside a feature PR. Scope it.</p>
+          <p>A 5-line cleanup = good. A 500-line restructure disguised as a cleanup = dangerous and hard to review. Your reviewer cannot distinguish the intentional behavior change from the incidental refactoring — and large structural changes in feature PRs have a way of introducing subtle bugs.</p>
+          <p>When you identify a large cleanup that needs to happen: open a separate PR, give it a clear name, and make it purely mechanical with no behavior change. Your team will love you for the separation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECTION 3.5 — FAIL FAST ===================== -->
+  <section id="s-35" class="concept-section" data-section="s35">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">3.5 —</span>
+          <span class="section-title">Fail Fast</span>
+          <span class="section-desc">Surface errors at the earliest possible moment — close to the source</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="fail-toggle-btn" onclick="window.failToggle()">Show Fail Fast</button>
+          <button class="btn" onclick="window.animate_s35()">Replay</button>
+        </div>
+      </div>
+
+      <!-- Car dashboard metaphor + request flow -->
+      <div class="diagram-area" style="min-height:200px;">
+        <svg id="svg-35" viewBox="0 0 700 180" height="180"></svg>
+      </div>
+
+      <!-- Interactive flow diagram -->
+      <div class="node-diagram" style="border-top:1px solid var(--border);">
+        <svg id="svg-35b" viewBox="0 0 700 140" height="140" style="width:100%;overflow:visible;"></svg>
+      </div>
+
+      <!-- Metrics -->
+      <div class="metric-row">
+        <div class="metric-badge" id="ff-hops-badge">
+          <span class="m-label">Hops before failure</span>
+          <span class="m-value" id="ff-hops" style="color:var(--bad);">10</span>
+        </div>
+        <div class="metric-badge" id="ff-debug-badge">
+          <span class="m-label">Debug time</span>
+          <span class="m-value" id="ff-debug" style="color:var(--bad);">2 hrs</span>
+        </div>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-panel">
+          <div class="code-panel-label bad">❌ Fail Slow (NPE at layer 4)</div>
+          <pre><span class="kw">void</span> <span class="fn">processOrder</span>(<span class="tp">String</span> userId, <span class="kw">int</span> quantity) {
+    <span class="cm">// Bad input travels all the way to DB</span>
+    <span class="tp">User</span> user = userService.<span class="fn">find</span>(userId);  <span class="cm">// null if invalid</span>
+    <span class="tp">Product</span> p = inventory.<span class="fn">get</span>(<span class="kw">null</span>);       <span class="cm">// NPE here!</span>
+    p.<span class="fn">reserve</span>(quantity);
+}</pre>
+        </div>
+        <div class="code-panel">
+          <div class="code-panel-label good">✅ Fail Fast (validated at border)</div>
+          <pre><span class="kw">void</span> <span class="fn">processOrder</span>(<span class="tp">String</span> userId, <span class="kw">int</span> quantity) {
+    <span class="tp">Objects</span>.<span class="fn">requireNonNull</span>(userId, <span class="str">"userId required"</span>);
+    <span class="kw">if</span> (quantity &lt;= <span class="num">0</span>)
+        <span class="kw">throw new</span> <span class="tp">IllegalArgumentException</span>(<span class="str">"quantity must be positive"</span>);
+    <span class="tp">User</span> user = userService.<span class="fn">find</span>(userId)
+        .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="tp">NotFoundException</span>(
+            <span class="str">"User not found: "</span> + userId));
+    inventory.<span class="fn">get</span>(user.<span class="fn">productId</span>()).<span class="fn">reserve</span>(quantity);
+}</pre>
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        The golden rule: validate at the border of your system (HTTP endpoints, CLI args, file inputs, external API responses). Assert invariants everywhere else inside. Bad data should never travel far.
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🟢</span>
+          New to this?
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>Think of validation like a border checkpoint: every piece of external input must be cleared before it enters your system. Once inside, code should be able to assume data is valid — this is what makes logic clean and testable.</p>
+          <p>When something does go wrong, a Fail Fast error message like "userId required at line 12" pinpoints the problem immediately. A NullPointerException 10 layers deep requires archaeology.</p>
+        </div>
+        <button class="expand-trigger" aria-expanded="false" onclick="toggleExpand(this)">
+          <span class="expand-icon">🔵</span>
+          Go deeper
+          <span class="expand-arrow" aria-hidden="true">▶</span>
+        </button>
+        <div class="expand-body">
+          <p>Fail-fast is <em>offensive programming</em>. Know when defensive is needed: user-facing input (never crash the UI), payment flows (validate everything, fail gracefully with a human-readable message), external APIs (always handle failure paths).</p>
+          <p>Offensive programming is about surfacing bugs loudly in <em>controlled environments</em> — tests, staging, dev — not about crashing production. In production, offensive assertions should produce clear error messages and structured logs that route to your on-call system, not silent NPEs that propagate into data corruption.</p>
+          <p><strong>assert vs. throw:</strong> Use <code>assert</code> for invariants you control (internal consistency checks). Use <code>throw</code> with a meaningful type for conditions driven by external input.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom chapter navigation -->
+  <div class="chapter-page-nav">
+    <a class="chapter-nav-link" href="02_solid_principles.html" aria-label="Previous Chapter: SOLID Principles">
+      <span class="nav-kicker">Previous Chapter</span>
+      <span class="nav-title">SOLID Principles</span>
+      <span class="nav-arrow" aria-hidden="true">←</span>
+    </a>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">You are here</span>
+      <span class="nav-title">03 — DRY · KISS · YAGNI</span>
+    </div>
+    <a class="chapter-nav-link next" href="04_oo_design_principles.html" aria-label="Next Chapter: OO Design Principles">
+      <span class="nav-kicker">Next Chapter</span>
+      <span class="nav-title">OO Design Principles</span>
+      <span class="nav-arrow" aria-hidden="true">→</span>
+    </a>
+  </div>
+</main>
+
+<footer>Coding Concepts &nbsp;·&nbsp; Clean Code (Robert C. Martin) &nbsp;·&nbsp; The Pragmatic Programmer (Hunt &amp; Thomas) &nbsp;·&nbsp; Refactoring (Martin Fowler) &nbsp;·&nbsp; Working Effectively with Legacy Code (Michael Feathers)</footer>
+
+<script>
+  // ── Progress bar ──────────────────────────────────────────────────────────
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  });
+
+  // ── IntersectionObserver ─────────────────────────────────────────────────
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        animateSection(entry.target.dataset.section);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.25 });
+  document.querySelectorAll('.concept-section').forEach(el => observer.observe(el));
+
+  function animateSection(id) {
+    if (id === 's31') window.animate_s31();
+    else if (id === 's32') window.animate_s32();
+    else if (id === 's33') window.animate_s33();
+    else if (id === 's34') window.animate_s34();
+    else if (id === 's35') window.animate_s35();
+  }
+
+  // ── Expandable panels ────────────────────────────────────────────────────
+  function toggleExpand(btn) {
+    const isOpen = btn.getAttribute('aria-expanded') === 'true';
+    const body = btn.nextElementSibling;
+    btn.setAttribute('aria-expanded', String(!isOpen));
+    body.classList.toggle('open', !isOpen);
+  }
+
+  // ── SVG helpers ──────────────────────────────────────────────────────────
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function mkEl(tag) { return document.createElementNS(SVG_NS, tag); }
+  function clearSVG(el) {
+    el._gen = (el._gen || 0) + 1;
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function svgRect(parent, x, y, w, h, opts) {
+    const r = mkEl('rect');
+    r.setAttribute('x', x - w/2); r.setAttribute('y', y - h/2);
+    r.setAttribute('width', w); r.setAttribute('height', h);
+    r.setAttribute('rx', opts.rx || 6);
+    r.setAttribute('fill', opts.fill || '#161b22');
+    r.setAttribute('stroke', opts.stroke || '#30363d');
+    r.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.opacity !== undefined) r.setAttribute('opacity', opts.opacity);
+    if (opts.id) r.setAttribute('id', opts.id);
+    parent.appendChild(r);
+    return r;
+  }
+
+  function svgText(parent, x, y, txt, opts) {
+    const t = mkEl('text');
+    t.setAttribute('x', x); t.setAttribute('y', y);
+    t.setAttribute('text-anchor', opts.anchor || 'middle');
+    t.setAttribute('fill', opts.fill || '#e6edf3');
+    t.setAttribute('font-size', opts.size || 11);
+    t.setAttribute('font-family', opts.mono ? 'JetBrains Mono, monospace' : 'Inter, sans-serif');
+    if (opts.weight) t.setAttribute('font-weight', opts.weight);
+    if (opts.id) t.setAttribute('id', opts.id);
+    t.textContent = txt;
+    parent.appendChild(t);
+    return t;
+  }
+
+  function svgLine(parent, x1, y1, x2, y2, opts) {
+    const l = mkEl('line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', opts.stroke || '#30363d');
+    l.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.dash) l.setAttribute('stroke-dasharray', opts.dash);
+    if (opts.opacity !== undefined) l.setAttribute('opacity', opts.opacity);
+    if (opts.id) l.setAttribute('id', opts.id);
+    parent.appendChild(l);
+    return l;
+  }
+
+  function svgCircle(parent, cx, cy, r, opts) {
+    const c = mkEl('circle');
+    c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', r);
+    c.setAttribute('fill', opts.fill || 'none');
+    c.setAttribute('stroke', opts.stroke || '#30363d');
+    c.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.opacity !== undefined) c.setAttribute('opacity', opts.opacity);
+    if (opts.id) c.setAttribute('id', opts.id);
+    parent.appendChild(c);
+    return c;
+  }
+
+  function animPacket(svgEl, x1, y1, x2, y2, color, dur, cb) {
+    if (!svgEl._gen) svgEl._gen = 0;
+    const gen = svgEl._gen;
+    const c = mkEl('circle');
+    c.setAttribute('r', 5); c.setAttribute('cx', x1); c.setAttribute('cy', y1);
+    c.setAttribute('fill', color || '#a78bfa');
+    svgEl.appendChild(c);
+    anime({ targets: c, cx: x2, cy: y2, duration: dur || 600, easing: 'easeInOutSine',
+      complete: () => {
+        if (svgEl.contains(c)) svgEl.removeChild(c);
+        if (svgEl._gen === gen && cb) cb();
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION 3.1 — DRY
+  // ═══════════════════════════════════════════════════════════════
+  window.animate_s31 = function() {
+    // --- Top SVG: Master Document vs Photocopies ---
+    const svg = document.getElementById('svg-31');
+    clearSVG(svg);
+
+    // Master document (left)
+    svgRect(svg, 120, 80, 100, 120, { fill: '#1c2330', stroke: '#a78bfa', sw: 2 });
+    svgText(svg, 120, 40, 'Master Document', { fill: '#a78bfa', size: 11, weight: '600' });
+    svgText(svg, 120, 65, 'One source of truth', { fill: '#8b949e', size: 10 });
+    svgText(svg, 120, 80, '📄 validate(email)', { fill: '#e6edf3', size: 10, mono: true });
+    svgText(svg, 120, 100, 'Business rule:', { fill: '#8b949e', size: 9 });
+    svgText(svg, 120, 115, 'must contain "@"', { fill: '#a78bfa', size: 10, mono: true });
+
+    // Arrows down (initially hidden)
+    const arrowTargets = [];
+    const xPositions = [300, 380, 460, 540, 620];
+    const labels = ['User\nCtrl', 'Order\nCtrl', 'Pay\nCtrl', 'Admin\nCtrl', 'Api\nCtrl'];
+    xPositions.forEach((x, i) => {
+      const ln = svgLine(svg, 190, 80, x, 120, { stroke: '#a78bfa', sw: 1.5, opacity: 0 });
+      ln.id = 'dry-arrow-' + i;
+      arrowTargets.push(ln);
+      svgRect(svg, x, 140, 70, 36, { fill: '#161b22', stroke: '#30363d' });
+      svgText(svg, x, 137, labels[i].split('\n')[0], { fill: '#e6edf3', size: 10, mono: true });
+      svgText(svg, x, 152, labels[i].split('\n')[1], { fill: '#8b949e', size: 9, mono: true });
+    });
+
+    // Glow animation on master
+    const masterRect = svg.querySelector('rect');
+    setTimeout(() => {
+      anime({ targets: masterRect, stroke: ['#a78bfa', '#e9d8fd', '#a78bfa'], duration: 800, easing: 'easeInOutSine' });
+      arrowTargets.forEach((ln, i) => {
+        setTimeout(() => {
+          anime({ targets: ln, opacity: [0, 1], duration: 400, easing: 'easeOutQuad' });
+        }, i * 120);
+      });
+    }, 400);
+
+    // --- D3 change propagation diagram ---
+    const svg2 = document.getElementById('svg-31b');
+    clearSVG(svg2);
+    const nodes = [
+      { id: 'UserCtrl',     x: 80,  y: 80  },
+      { id: 'OrderCtrl',    x: 200, y: 40  },
+      { id: 'PaymentCtrl',  x: 320, y: 80  },
+      { id: 'AdminCtrl',    x: 200, y: 130 },
+      { id: 'ApiCtrl',      x: 440, y: 40  },
+    ];
+    nodes.forEach((n, i) => {
+      const rect = svgRect(svg2, n.x, n.y, 90, 32, { fill: '#1c2330', stroke: '#30363d', id: 'dry-node-' + i });
+      svgText(svg2, n.x, n.y + 4, n.id, { fill: '#e6edf3', size: 10, mono: true });
+    });
+    svgText(svg2, 350, 170, '⚡ "Business rule changes" → all 5 files flash red', { fill: '#f87171', size: 11 });
+    svgRect(svg2, 600, 80, 120, 32, { fill: '#1c2330', stroke: '#f87171', sw: 2 });
+    svgText(svg2, 600, 80, '2 bugs created', { fill: '#f87171', size: 11, weight: '600' });
+    svgText(svg2, 600, 95, 'Dev A missed 2 files', { fill: '#8b949e', size: 9 });
+
+    setTimeout(() => {
+      nodes.forEach((n, i) => {
+        const rect = document.getElementById('dry-node-' + i);
+        anime({ targets: rect, stroke: ['#30363d', '#f87171', '#f87171'], duration: 600, delay: i * 100, easing: 'easeOutQuad' });
+      });
+      // 2 stay red (bugs)
+      setTimeout(() => {
+        [0, 3].forEach(i => {
+          const rect = document.getElementById('dry-node-' + i);
+          if (rect) anime({ targets: rect, stroke: '#f87171', duration: 200 });
+        });
+        [1, 2, 4].forEach(i => {
+          const rect = document.getElementById('dry-node-' + i);
+          if (rect) anime({ targets: rect, stroke: '#4ade80', duration: 400, delay: 200 });
+        });
+      }, 1200);
+    }, 800);
+
+    // --- DRY Slider (initial render) ---
+    window.drySlider(document.getElementById('dry-slider').value);
+  };
+
+  window.drySlider = function(val) {
+    val = parseInt(val);
+    document.getElementById('dry-val').textContent = val + '%';
+    const svg = document.getElementById('svg-31c');
+    clearSVG(svg);
+
+    if (val < 50) {
+      // WET: scattered nodes
+      const cx = [60, 170, 280, 390, 500, 620];
+      const labels = ['UserCtrl', 'OrderCtrl', 'PayCtrl', 'AdminCtrl', 'ApiCtrl', 'Change\nRadius: 5'];
+      cx.forEach((x, i) => {
+        const col = i === 5 ? '#f87171' : '#f87171';
+        svgCircle(svg, x, 60, 22, { fill: 'rgba(248,113,113,0.15)', stroke: col, sw: 2 });
+        svgText(svg, x, 63, labels[i].split('\n')[0], { fill: col, size: 9, mono: true });
+        if (labels[i].includes('\n')) {
+          svgText(svg, x, 76, labels[i].split('\n')[1], { fill: col, size: 9, mono: true });
+        }
+      });
+      svgText(svg, 350, 110, '❌ 5 files must change when the rule changes', { fill: '#f87171', size: 11 });
+    } else {
+      // DRY: centralized service
+      svgCircle(svg, 350, 55, 28, { fill: 'rgba(74,222,128,0.15)', stroke: '#4ade80', sw: 2.5 });
+      svgText(svg, 350, 50, 'Validation', { fill: '#4ade80', size: 10, mono: true, weight: '600' });
+      svgText(svg, 350, 65, 'Service', { fill: '#4ade80', size: 10, mono: true });
+      const targets = [130, 220, 350, 480, 570];
+      const tlabels = ['UserCtrl', 'OrderCtrl', 'PayCtrl', 'AdminCtrl', 'ApiCtrl'];
+      targets.forEach((x, i) => {
+        svgLine(svg, 350, 83, x, 100, { stroke: '#60a5fa', sw: 1.5 });
+        svgRect(svg, x, 110, 75, 22, { fill: '#161b22', stroke: '#60a5fa', sw: 1.5 });
+        svgText(svg, x, 113, tlabels[i], { fill: '#60a5fa', size: 9, mono: true });
+      });
+      svgText(svg, 350, 108, '✅ Change radius: 1 file', { fill: '#4ade80', size: 11 });
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION 3.2 — KISS
+  // ═══════════════════════════════════════════════════════════════
+  let kissMode = 'complex'; // 'complex' | 'simple'
+
+  window.animate_s32 = function() {
+    kissMode = 'complex';
+    const btn = document.getElementById('kiss-toggle-btn');
+    if (btn) btn.textContent = 'Show Simple';
+    drawKissDiagram('complex');
+    updateKissMetrics('complex');
+  };
+
+  window.kissToggle = function() {
+    kissMode = kissMode === 'complex' ? 'simple' : 'complex';
+    const btn = document.getElementById('kiss-toggle-btn');
+    if (btn) btn.textContent = kissMode === 'complex' ? 'Show Simple' : 'Show Complex';
+    drawKissDiagram(kissMode);
+    updateKissMetrics(kissMode);
+  };
+
+  function drawKissDiagram(mode) {
+    const svg = document.getElementById('svg-32');
+    clearSVG(svg);
+
+    if (mode === 'complex') {
+      // Rube Goldberg chain
+      const steps = [
+        { x: 60,  y: 80,  label: 'regex\nengine' },
+        { x: 160, y: 50,  label: 'lookahead\nassert' },
+        { x: 260, y: 100, label: 'char\nclass' },
+        { x: 360, y: 50,  label: 'lookbehind\nassert' },
+        { x: 460, y: 100, label: 'quantifier\n{3,20}' },
+        { x: 560, y: 60,  label: 'match\nresult' },
+        { x: 650, y: 100, label: '🔘 press\nbutton' },
+      ];
+      steps.forEach((s, i) => {
+        svgCircle(svg, s.x, s.y, 24, { fill: 'rgba(248,113,113,0.12)', stroke: '#f87171', sw: 2 });
+        svgText(svg, s.x, s.y - 2, s.label.split('\n')[0], { fill: '#f87171', size: 9, mono: true });
+        svgText(svg, s.x, s.y + 11, s.label.split('\n')[1], { fill: '#8b949e', size: 8 });
+        if (i < steps.length - 1) {
+          svgLine(svg, s.x + 24, s.y, steps[i+1].x - 24, steps[i+1].y, { stroke: '#f87171', sw: 1.5, dash: '4,3' });
+        }
+      });
+      svgText(svg, 350, 145, '❌ Rube Goldberg machine — 7 steps to press one button', { fill: '#f87171', size: 11 });
+    } else {
+      // Simple: hand → button
+      svgCircle(svg, 200, 80, 32, { fill: 'rgba(74,222,128,0.12)', stroke: '#4ade80', sw: 2 });
+      svgText(svg, 200, 76, '🖐', { fill: '#4ade80', size: 22 });
+      svgText(svg, 200, 100, 'direct', { fill: '#4ade80', size: 9 });
+
+      svgLine(svg, 232, 80, 450, 80, { stroke: '#4ade80', sw: 2.5 });
+
+      svgCircle(svg, 490, 80, 32, { fill: 'rgba(74,222,128,0.12)', stroke: '#4ade80', sw: 2 });
+      svgText(svg, 490, 77, '🔘', { fill: '#4ade80', size: 22 });
+      svgText(svg, 490, 97, 'button', { fill: '#4ade80', size: 9 });
+
+      svgText(svg, 350, 140, '✅ One step. Direct. Readable. Done.', { fill: '#4ade80', size: 11 });
+
+      // Animate packet
+      animPacket(svg, 200, 80, 490, 80, '#4ade80', 900, null);
+    }
+  }
+
+  function updateKissMetrics(mode) {
+    const bar = document.getElementById('kiss-bar');
+    const label = document.getElementById('kiss-bar-label');
+    const timeVal = document.getElementById('kiss-time-val');
+    const scoreVal = document.getElementById('kiss-score-val');
+    if (!bar) return;
+    if (mode === 'complex') {
+      bar.style.width = '15%'; bar.style.background = 'var(--bad)';
+      label.textContent = 'Readability Score: complex version — hard to understand';
+      timeVal.textContent = '8s'; timeVal.style.color = 'var(--bad)';
+      scoreVal.textContent = '15%'; scoreVal.style.color = 'var(--bad)';
+    } else {
+      bar.style.width = '85%'; bar.style.background = 'var(--good)';
+      label.textContent = 'Readability Score: simple version — clear at a glance';
+      timeVal.textContent = '2s'; timeVal.style.color = 'var(--good)';
+      scoreVal.textContent = '85%'; scoreVal.style.color = 'var(--good)';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION 3.3 — YAGNI
+  // ═══════════════════════════════════════════════════════════════
+  let yagniMismatchShown = false;
+
+  window.animate_s33 = function() {
+    yagniMismatchShown = false;
+    const btn = document.getElementById('yagni-btn');
+    if (btn) btn.textContent = 'Show Mismatch';
+    drawYagniSuitcase();
+    animYagniWeight();
+    drawYagniNodes(false);
+  };
+
+  function drawYagniSuitcase() {
+    const svg = document.getElementById('svg-33');
+    clearSVG(svg);
+
+    // LEFT — overpacked suitcase
+    svgRect(svg, 155, 80, 250, 110, { fill: '#1c2330', stroke: '#f87171', sw: 2.5, rx: 10 });
+    svgText(svg, 155, 30, '❌ Overpacked Suitcase', { fill: '#f87171', size: 11, weight: '600' });
+    const items = ['Plugin System', 'i18n Support', 'Multi-tenant', 'Webhook Framework', 'Feature Flags', 'Audit Logging', 'PDF Export'];
+    items.forEach((item, i) => {
+      const col = '#f87171';
+      svgRect(svg, 110 + (i % 3) * 50, 55 + Math.floor(i / 3) * 28, 44, 20, { fill: 'rgba(248,113,113,0.12)', stroke: col, sw: 1, rx: 4 });
+      svgText(svg, 110 + (i % 3) * 50, 67 + Math.floor(i / 3) * 28, item.split(' ')[0], { fill: col, size: 7, mono: true });
+    });
+    svgText(svg, 155, 145, '650+ dead lines', { fill: '#f87171', size: 11, weight: '600' });
+
+    // RIGHT — clean suitcase
+    svgRect(svg, 545, 80, 200, 100, { fill: '#1c2330', stroke: '#4ade80', sw: 2.5, rx: 10 });
+    svgText(svg, 545, 30, '✅ 3 items for 3-day trip', { fill: '#4ade80', size: 11, weight: '600' });
+    ['feature-A', 'feature-B', 'feature-C'].forEach((f, i) => {
+      svgRect(svg, 490 + i * 55, 80, 48, 22, { fill: 'rgba(74,222,128,0.12)', stroke: '#4ade80', sw: 1.5, rx: 4 });
+      svgText(svg, 490 + i * 55, 83, f, { fill: '#4ade80', size: 8, mono: true });
+    });
+    svgText(svg, 545, 145, 'Exactly what\'s needed', { fill: '#4ade80', size: 10 });
+  }
+
+  function animYagniWeight() {
+    const bar = document.getElementById('yagni-weight-bar');
+    if (!bar) return;
+    bar.style.width = '0%';
+    const stages = [
+      { pct: 30, delay: 500, label1: '1 user', label2: 'always false', label3: '0 consumers' },
+      { pct: 53, delay: 1200, label1: '0 users', label2: 'always false', label3: '0 consumers' },
+      { pct: 88, delay: 2000, label1: '0 users', label2: 'always false', label3: '0 consumers' },
+    ];
+    stages.forEach(s => {
+      setTimeout(() => {
+        bar.style.width = s.pct + '%';
+        const m1 = document.getElementById('yagni-m1');
+        const m2 = document.getElementById('yagni-m2');
+        const m3 = document.getElementById('yagni-m3');
+        if (m1) m1.textContent = s.label1;
+        if (m2) m2.textContent = s.label2;
+        if (m3) m3.textContent = s.label3;
+      }, s.delay);
+    });
+  }
+
+  function drawYagniNodes(showMismatch) {
+    const svg = document.getElementById('svg-33b');
+    clearSVG(svg);
+
+    // Speculative feature node
+    svgCircle(svg, 220, 65, 38, { fill: 'rgba(167,139,250,0.12)', stroke: '#a78bfa', sw: 2 });
+    svgText(svg, 220, 58, 'Speculative:', { fill: '#a78bfa', size: 9 });
+    svgText(svg, 220, 72, '"CSV Export"', { fill: '#a78bfa', size: 10, mono: true, weight: '600' });
+    svgText(svg, 220, 110, 'Built speculatively', { fill: '#8b949e', size: 10 });
+
+    if (showMismatch) {
+      // Actual requirement - different position (no overlap!)
+      svgCircle(svg, 500, 65, 38, { fill: 'rgba(74,222,128,0.12)', stroke: '#4ade80', sw: 2 });
+      svgText(svg, 500, 58, 'Actual need:', { fill: '#4ade80', size: 9 });
+      svgText(svg, 500, 72, '"PDF Export"', { fill: '#4ade80', size: 10, mono: true, weight: '600' });
+      svgText(svg, 500, 110, 'via 3rd-party service', { fill: '#8b949e', size: 10 });
+
+      // Mismatch arrow
+      svgLine(svg, 258, 65, 462, 65, { stroke: '#f87171', sw: 2, dash: '6,4' });
+      svgText(svg, 360, 58, '✗ no overlap', { fill: '#f87171', size: 11, weight: '600' });
+      svgText(svg, 360, 100, '650 lines wasted. Now build the real thing.', { fill: '#f87171', size: 10 });
+    } else {
+      svgText(svg, 350, 65, '← Click "Show Mismatch" →', { fill: '#8b949e', size: 10 });
+    }
+  }
+
+  window.yagniMismatch = function() {
+    yagniMismatchShown = !yagniMismatchShown;
+    const btn = document.getElementById('yagni-btn');
+    if (btn) btn.textContent = yagniMismatchShown ? 'Reset' : 'Show Mismatch';
+    drawYagniNodes(yagniMismatchShown);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION 3.4 — BOY SCOUT RULE
+  // ═══════════════════════════════════════════════════════════════
+  window.animate_s34 = function() {
+    const svg = document.getElementById('svg-34');
+    clearSVG(svg);
+
+    // D3 line chart: sprints on X, complexity warnings on Y
+    const margin = { top: 20, right: 20, bottom: 30, left: 40 };
+    const W = 660, H = 190;
+    const iW = W - margin.left - margin.right;
+    const iH = H - margin.top - margin.bottom;
+
+    const g = mkEl('g');
+    g.setAttribute('transform', `translate(${margin.left},${margin.top})`);
+    svg.appendChild(g);
+
+    const sprints = d3.range(1, 21);
+    const startVal = 40;
+    const withRule = sprints.map(s => Math.max(5, startVal - s * 2));
+    const noRule   = sprints.map(s => Math.min(100, startVal + s * 2.5));
+
+    const xScale = d3.scaleLinear().domain([1, 20]).range([0, iW]);
+    const yScale = d3.scaleLinear().domain([0, 100]).range([iH, 0]);
+
+    // Axes
+    const xAxis = d3.axisBottom(xScale).ticks(10).tickFormat(d => `S${d}`);
+    const yAxis = d3.axisLeft(yScale).ticks(5);
+
+    const xAxisG = mkEl('g');
+    xAxisG.setAttribute('transform', `translate(0,${iH})`);
+    g.appendChild(xAxisG);
+    d3.select(xAxisG).call(xAxis).selectAll('text').attr('fill', '#8b949e').style('font-size', '9px');
+    d3.select(xAxisG).selectAll('line,path').attr('stroke', '#30363d');
+
+    const yAxisG = mkEl('g');
+    g.appendChild(yAxisG);
+    d3.select(yAxisG).call(yAxis).selectAll('text').attr('fill', '#8b949e').style('font-size', '9px');
+    d3.select(yAxisG).selectAll('line,path').attr('stroke', '#30363d');
+
+    // Axis labels
+    svgText(g, iW / 2, iH + 28, 'Sprint', { fill: '#8b949e', size: 9 });
+    const yLabel = mkEl('text');
+    yLabel.setAttribute('transform', `rotate(-90)`);
+    yLabel.setAttribute('x', -(iH/2)); yLabel.setAttribute('y', -30);
+    yLabel.setAttribute('text-anchor', 'middle');
+    yLabel.setAttribute('fill', '#8b949e'); yLabel.setAttribute('font-size', '9');
+    yLabel.textContent = 'Complexity Warnings';
+    g.appendChild(yLabel);
+
+    // Draw "no rule" line
+    const noRuleLine = d3.line().x((d, i) => xScale(i + 1)).y(d => yScale(d)).curve(d3.curveCatmullRom);
+    const withRuleLine = d3.line().x((d, i) => xScale(i + 1)).y(d => yScale(d)).curve(d3.curveCatmullRom);
+
+    const pathNoRule = mkEl('path');
+    pathNoRule.setAttribute('d', noRuleLine(noRule));
+    pathNoRule.setAttribute('fill', 'none');
+    pathNoRule.setAttribute('stroke', '#f87171'); pathNoRule.setAttribute('stroke-width', '2.5');
+    pathNoRule.setAttribute('opacity', '0'); pathNoRule.id = 'bs-no-rule';
+    g.appendChild(pathNoRule);
+
+    const pathWithRule = mkEl('path');
+    pathWithRule.setAttribute('d', withRuleLine(withRule));
+    pathWithRule.setAttribute('fill', 'none');
+    pathWithRule.setAttribute('stroke', '#4ade80'); pathWithRule.setAttribute('stroke-width', '2.5');
+    pathWithRule.setAttribute('opacity', '0'); pathWithRule.id = 'bs-with-rule';
+    g.appendChild(pathWithRule);
+
+    // Legend
+    svgLine(g, iW - 120, 10, iW - 100, 10, { stroke: '#f87171', sw: 2.5 });
+    svgText(g, iW - 60, 14, 'No Boy Scout Rule', { fill: '#f87171', size: 9 });
+    svgLine(g, iW - 120, 26, iW - 100, 26, { stroke: '#4ade80', sw: 2.5 });
+    svgText(g, iW - 60, 30, 'With Boy Scout Rule', { fill: '#4ade80', size: 9 });
+
+    // Animate lines in
+    setTimeout(() => {
+      anime({ targets: document.getElementById('bs-no-rule'), opacity: [0, 1], duration: 1200, easing: 'easeOutQuad' });
+    }, 200);
+    setTimeout(() => {
+      anime({ targets: document.getElementById('bs-with-rule'), opacity: [0, 1], duration: 1200, easing: 'easeOutQuad' });
+    }, 700);
+  };
+
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION 3.5 — FAIL FAST
+  // ═══════════════════════════════════════════════════════════════
+  let failMode = 'slow'; // 'slow' | 'fast'
+
+  window.animate_s35 = function() {
+    failMode = 'slow';
+    const btn = document.getElementById('fail-toggle-btn');
+    if (btn) btn.textContent = 'Show Fail Fast';
+    drawCarDashboard('slow');
+    drawFailFlow('slow');
+    updateFailMetrics('slow');
+  };
+
+  window.failToggle = function() {
+    failMode = failMode === 'slow' ? 'fast' : 'slow';
+    const btn = document.getElementById('fail-toggle-btn');
+    if (btn) btn.textContent = failMode === 'slow' ? 'Show Fail Fast' : 'Show Fail Slow';
+    drawCarDashboard(failMode);
+    drawFailFlow(failMode);
+    updateFailMetrics(failMode);
+  };
+
+  function drawCarDashboard(mode) {
+    const svg = document.getElementById('svg-35');
+    clearSVG(svg);
+
+    if (mode === 'slow') {
+      // LEFT: warning light ignored for weeks → engine seizes
+      svgRect(svg, 160, 90, 280, 140, { fill: '#1c2330', stroke: '#f87171', sw: 1.5, rx: 8 });
+      svgText(svg, 160, 24, '❌ Fail Slow — warning ignored', { fill: '#f87171', size: 11, weight: '600' });
+
+      // Small yellow warning light
+      svgCircle(svg, 100, 75, 12, { fill: '#f59e0b', stroke: '#f59e0b', sw: 0 });
+      svgText(svg, 100, 79, '⚠', { fill: '#0d1117', size: 12 });
+      svgText(svg, 100, 95, 'ignored\nfor weeks', { fill: '#8b949e', size: 8 });
+
+      // Arrow → explosion
+      svgLine(svg, 120, 75, 260, 90, { stroke: '#f87171', sw: 1.5, dash: '5,3' });
+
+      // Engine seizure explosion
+      svgCircle(svg, 290, 90, 50, { fill: 'rgba(248,113,113,0.2)', stroke: '#f87171', sw: 3 });
+      svgText(svg, 290, 84, '💥', { fill: '#f87171', size: 28 });
+      svgText(svg, 290, 120, 'Engine seizes', { fill: '#f87171', size: 10, weight: '600' });
+      svgText(svg, 290, 135, 'far from home', { fill: '#8b949e', size: 9 });
+
+      // "NullPointerException at layer 7" analogy
+      svgText(svg, 160, 168, 'NPE buried 10 layers deep in call stack', { fill: '#8b949e', size: 10 });
+    } else {
+      // RIGHT: warning triggers immediately, car stops safely
+      svgRect(svg, 160, 90, 280, 140, { fill: '#1c2330', stroke: '#4ade80', sw: 1.5, rx: 8 });
+      svgText(svg, 160, 24, '✅ Fail Fast — surface immediately', { fill: '#4ade80', size: 11, weight: '600' });
+
+      // Large warning light triggers immediately
+      svgCircle(svg, 100, 75, 18, { fill: '#f87171', stroke: '#f87171', sw: 0 });
+      svgText(svg, 100, 80, '⚠', { fill: '#fff', size: 16 });
+      svgText(svg, 100, 100, 'detected\nimmediately', { fill: '#4ade80', size: 8 });
+
+      // Arrow → safe stop
+      svgLine(svg, 120, 75, 200, 90, { stroke: '#4ade80', sw: 2 });
+
+      svgCircle(svg, 250, 90, 40, { fill: 'rgba(74,222,128,0.12)', stroke: '#4ade80', sw: 2.5 });
+      svgText(svg, 250, 84, '🛑', { fill: '#4ade80', size: 22 });
+      svgText(svg, 250, 118, 'Stops safely', { fill: '#4ade80', size: 10, weight: '600' });
+      svgText(svg, 250, 132, 'near help', { fill: '#8b949e', size: 9 });
+
+      svgText(svg, 440, 75, '"userId required"', { fill: '#4ade80', size: 11, mono: true, weight: '600' });
+      svgText(svg, 440, 92, 'at line 12', { fill: '#4ade80', size: 10 });
+      svgText(svg, 440, 110, '→ instant diagnosis', { fill: '#8b949e', size: 10 });
+
+      svgText(svg, 160, 168, 'Error thrown at the border — exact source known', { fill: '#8b949e', size: 10 });
+    }
+  }
+
+  function drawFailFlow(mode) {
+    const svg = document.getElementById('svg-35b');
+    clearSVG(svg);
+
+    if (mode === 'slow') {
+      // Bad input → 10 hops → crash at DB
+      const steps = [
+        { x: 50,  label: 'Bad\nInput',    col: '#f87171' },
+        { x: 130, label: 'Controller',    col: '#8b949e' },
+        { x: 210, label: 'Service',       col: '#8b949e' },
+        { x: 290, label: 'Validator?',    col: '#8b949e' },
+        { x: 370, label: 'Repository',    col: '#8b949e' },
+        { x: 450, label: 'Cache',         col: '#8b949e' },
+        { x: 530, label: 'Conn\nPool',    col: '#8b949e' },
+        { x: 610, label: 'DB\n💥 NPE',   col: '#f87171' },
+      ];
+      steps.forEach((s, i) => {
+        const col = s.col;
+        svgCircle(svg, s.x, 55, 22, { fill: col === '#f87171' ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.04)', stroke: col, sw: 1.5 });
+        svgText(svg, s.x, 50, s.label.split('\n')[0], { fill: col, size: 8, mono: true });
+        if (s.label.includes('\n')) svgText(svg, s.x, 62, s.label.split('\n')[1], { fill: col, size: 8 });
+        if (i < steps.length - 1) {
+          svgLine(svg, s.x + 22, 55, steps[i+1].x - 22, 55, { stroke: '#30363d', sw: 1.5 });
+        }
+      });
+      svgText(svg, 330, 100, '10 hops · 2 hours to trace · stack full of red herrings', { fill: '#f87171', size: 10 });
+    } else {
+      // Fail fast: bad input → validator → reject immediately
+      const steps = [
+        { x: 80,  label: 'Bad\nInput',    col: '#f87171' },
+        { x: 200, label: 'Input\nValidator', col: '#a78bfa' },
+        { x: 320, label: '✓ Rejected\nimmediately', col: '#4ade80' },
+      ];
+      steps.forEach((s, i) => {
+        svgCircle(svg, s.x, 55, 28, { fill: s.col === '#f87171' ? 'rgba(248,113,113,0.15)' : s.col === '#a78bfa' ? 'rgba(167,139,250,0.15)' : 'rgba(74,222,128,0.15)', stroke: s.col, sw: 2 });
+        svgText(svg, s.x, 50, s.label.split('\n')[0], { fill: s.col, size: 9, mono: true });
+        if (s.label.includes('\n')) svgText(svg, s.x, 64, s.label.split('\n')[1], { fill: s.col, size: 8 });
+        if (i < steps.length - 1) {
+          svgLine(svg, s.x + 28, 55, steps[i+1].x - 28, 55, { stroke: s.col, sw: 2 });
+          animPacket(svg, s.x + 28, 55, steps[i+1].x - 28, 55, s.col, 700 + i * 300, null);
+        }
+      });
+      svgText(svg, 500, 45, 'HTTP 400:', { fill: '#4ade80', size: 11, mono: true, weight: '600' });
+      svgText(svg, 500, 62, '"userId required"', { fill: '#4ade80', size: 11, mono: true });
+      svgText(svg, 500, 80, 'Stack: line 12', { fill: '#8b949e', size: 10 });
+      svgText(svg, 330, 100, '2 hops · Immediate · Error message is the solution', { fill: '#4ade80', size: 10 });
+    }
+  }
+
+  function updateFailMetrics(mode) {
+    const hops = document.getElementById('ff-hops');
+    const debug = document.getElementById('ff-debug');
+    if (!hops) return;
+    if (mode === 'slow') {
+      hops.textContent = '10'; hops.style.color = 'var(--bad)';
+      debug.textContent = '2 hrs'; debug.style.color = 'var(--bad)';
+    } else {
+      hops.textContent = '2'; hops.style.color = 'var(--good)';
+      debug.textContent = 'Immediate'; debug.style.color = 'var(--good)';
+    }
+  }
+
+  // ── Sidebar toggle ───────────────────────────────────────────────────────
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  const sidebarDrawer = document.getElementById('sidebar-drawer');
+  const sidebarClose = document.getElementById('sidebar-close');
+
+  function openSidebar() {
+    document.body.classList.add('sidebar-open');
+    sidebarDrawer.classList.add('open');
+    sidebarOverlay.classList.add('open');
+    sidebarToggle.setAttribute('aria-expanded', 'true');
+    sidebarDrawer.setAttribute('aria-hidden', 'false');
+  }
+  function closeSidebar() {
+    document.body.classList.remove('sidebar-open');
+    sidebarDrawer.classList.remove('open');
+    sidebarOverlay.classList.remove('open');
+    sidebarToggle.setAttribute('aria-expanded', 'false');
+    sidebarDrawer.setAttribute('aria-hidden', 'true');
+  }
+
+  sidebarToggle.addEventListener('click', () => {
+    if (sidebarDrawer.classList.contains('open')) closeSidebar();
+    else openSidebar();
+  });
+  sidebarOverlay.addEventListener('click', closeSidebar);
+  sidebarClose.addEventListener('click', closeSidebar);
+
+  // Drawer group toggles
+  document.querySelectorAll('.drawer-group-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const group = btn.closest('.drawer-group');
+      const isCollapsed = group.classList.contains('collapsed');
+      group.classList.toggle('collapsed', !isCollapsed);
+      btn.setAttribute('aria-expanded', String(isCollapsed));
+    });
+  });
+</script>
+</body>
+</html>

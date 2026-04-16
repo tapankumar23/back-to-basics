@@ -28,8 +28,9 @@
 
     #progress-bar {
       position: fixed; top: 0; left: 0; height: 3px;
-      background: var(--accent); width: 0%; z-index: 9999;
-      transition: width 0.1s linear;
+      background: var(--accent); width: 100%; z-index: 9999;
+      transform: scaleX(0); transform-origin: left center;
+      transition: transform 0.1s linear;
     }
 
     #navbar {
@@ -779,7 +780,8 @@
 window.addEventListener('scroll', function() {
   var scrolled = window.scrollY;
   var total = document.documentElement.scrollHeight - window.innerHeight;
-  document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  if (total <= 0) return;
+  document.getElementById('progress-bar').style.transform = 'scaleX(' + (scrolled / total) + ')';
 });
 
 // ─── Expandable panels ─────────────────────────────────────────────────────────
@@ -821,7 +823,7 @@ function anim_s41_bricks() {
     anime({ targets: b, opacity: [0,1], translateY: [-10,0], delay: i * 200, duration: 400, easing: 'easeOutBack' });
   });
   comp.forEach(function(b, i) {
-    anime({ targets: b, opacity: [0,1], translateY: [-10,0], scale: [0.8,1], delay: 900 + i * 200, duration: 400, easing: 'easeOutBack' });
+    anime({ targets: b, opacity: [0,1], translateY: [-10,0], delay: 900 + i * 200, duration: 400, easing: 'easeOutBack' });
   });
 }
 
@@ -1272,7 +1274,7 @@ function toggleBadSwitch() {
   // fan, not light — always shows fan emoji to violate expectation
   document.getElementById('bad-result').textContent = badSwitchOn ? '\uD83D\uDCA8' : '\uD83D\uDCA8';
   document.getElementById('bad-reaction').textContent = badSwitchOn ? '\uD83D\uDE31' : '\uD83D\uDE10';
-  anime({ targets: '#bad-result', scale: [1.5,1], duration: 400, easing: 'easeOutBack' });
+  anime({ targets: '#bad-result', opacity: [0.4, 1], duration: 400, easing: 'easeOutBack' });
 }
 
 function toggleGoodSwitch() {
@@ -1280,7 +1282,7 @@ function toggleGoodSwitch() {
   document.getElementById('good-switch').classList.toggle('on', goodSwitchOn);
   document.getElementById('good-result').textContent = goodSwitchOn ? '\uD83D\uDCA1' : '\u2B1B';
   document.getElementById('good-reaction').textContent = '\uD83D\uDE0A';
-  anime({ targets: '#good-result', scale: [1.5,1], duration: 400, easing: 'easeOutBack' });
+  anime({ targets: '#good-result', opacity: [0.4, 1], duration: 400, easing: 'easeOutBack' });
 }
 
 function anim_switch_demo() {

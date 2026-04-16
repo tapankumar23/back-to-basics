@@ -36,10 +36,12 @@
       position: fixed;
       top: 0; left: 0;
       height: 3px;
-      width: 0%;
+      width: 100%;
       background: var(--accent);
       z-index: 9999;
-      transition: width 0.1s linear;
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform 0.1s linear;
     }
 
     /* Navbar */
@@ -523,7 +525,7 @@
     .complexity-bar-wrap { padding: 14px 16px; border-top: 1px solid var(--border); }
     .complexity-bar-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
     .complexity-bar-track { height: 12px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; }
-    .complexity-bar-fill { height: 100%; border-radius: 6px; transition: width 0.5s ease, background 0.5s ease; }
+    .complexity-bar-fill { height: 100%; border-radius: 6px; transform-origin: left center; transition: transform 0.5s ease, background 0.5s ease; }
 
     /* Interactive node diagram */
     .node-diagram { padding: 16px; border-top: 1px solid var(--border); }
@@ -736,7 +738,7 @@
           <button class="btn" onclick="window.animate_s31()">Replay</button>
           <div class="slider-row">
             DRY: <span id="dry-val">50%</span>
-            <input type="range" id="dry-slider" min="0" max="100" value="50" oninput="window.drySlider(this.value)">
+            <input type="range" id="dry-slider" min="0" max="100" value="50" oninput="window.drySlider(this.value)" aria-label="DRY-ness level">
           </div>
         </div>
       </div>
@@ -856,7 +858,7 @@ emailValidator.<span class="fn">validate</span>(email);
       <div class="complexity-bar-wrap">
         <div class="complexity-bar-label" id="kiss-bar-label">Readability Score: showing complex version</div>
         <div class="complexity-bar-track">
-          <div class="complexity-bar-fill" id="kiss-bar" style="width:15%;background:var(--bad);"></div>
+          <div class="complexity-bar-fill" id="kiss-bar" style="background:var(--bad);transform:scaleX(0.15);"></div>
         </div>
       </div>
       <div class="metric-row">
@@ -943,7 +945,7 @@ emailValidator.<span class="fn">validate</span>(email);
       <div class="complexity-bar-wrap" style="border-top:1px solid var(--border);">
         <div class="complexity-bar-label">Codebase weight from speculative features</div>
         <div class="complexity-bar-track" style="height:16px;">
-          <div class="complexity-bar-fill" id="yagni-weight-bar" style="width:0%;background:var(--bad);"></div>
+          <div class="complexity-bar-fill" id="yagni-weight-bar" style="background:var(--bad);transform:scaleX(0);"></div>
         </div>
       </div>
       <div class="metric-row">
@@ -1036,11 +1038,38 @@ emailValidator.<span class="fn">validate</span>(email);
           <span class="section-desc">Always leave the code cleaner than you found it</span>
         </div>
         <div class="header-controls">
+          <button class="btn" id="trail-toggle-btn" onclick="window.trailToggle()">Toggle Trail State</button>
           <button class="btn" onclick="window.animate_s34()">Replay</button>
         </div>
       </div>
 
-      <!-- Trail metaphor + D3 line chart -->
+      <!-- Trail metaphor SVG -->
+      <div class="diagram-area" style="min-height:120px;padding:12px 20px;">
+        <svg id="trail-svg" viewBox="0 0 700 110" height="110" style="width:100%;overflow:visible;">
+          <!-- Winding trail path -->
+          <path id="trail-path"
+            d="M 40,55 C 120,10 180,100 280,55 C 380,10 440,100 560,55 C 620,30 660,60 680,55"
+            fill="none" stroke="#555e68" stroke-width="4" stroke-linecap="round"/>
+          <!-- Unmaintained markers (red X) -->
+          <g id="trail-bad-marks">
+            <text x="148" y="78" text-anchor="middle" fill="#f87171" font-size="14" font-family="Inter,sans-serif">✕</text>
+            <text x="298" y="42" text-anchor="middle" fill="#f87171" font-size="14" font-family="Inter,sans-serif">✕</text>
+            <text x="448" y="78" text-anchor="middle" fill="#f87171" font-size="14" font-family="Inter,sans-serif">✕</text>
+            <text x="598" y="42" text-anchor="middle" fill="#f87171" font-size="14" font-family="Inter,sans-serif">✕</text>
+          </g>
+          <!-- Maintained markers (checkmarks) — hidden by default -->
+          <g id="trail-good-marks" opacity="0">
+            <text x="148" y="78" text-anchor="middle" fill="#4ade80" font-size="13" font-family="Inter,sans-serif">✓</text>
+            <text x="298" y="42" text-anchor="middle" fill="#4ade80" font-size="13" font-family="Inter,sans-serif">✓</text>
+            <text x="448" y="78" text-anchor="middle" fill="#4ade80" font-size="13" font-family="Inter,sans-serif">✓</text>
+            <text x="598" y="42" text-anchor="middle" fill="#4ade80" font-size="13" font-family="Inter,sans-serif">✓</text>
+          </g>
+          <!-- State label -->
+          <text id="trail-label" x="350" y="100" text-anchor="middle" fill="#8b949e" font-size="11" font-family="Inter,sans-serif">Unmaintained trail — obstacles accumulate</text>
+        </svg>
+      </div>
+
+      <!-- D3 line chart -->
       <div class="diagram-area" style="min-height:240px;">
         <svg id="svg-34" viewBox="0 0 700 220" height="220"></svg>
       </div>
@@ -1208,7 +1237,7 @@ emailValidator.<span class="fn">validate</span>(email);
   window.addEventListener('scroll', () => {
     const scrolled = window.scrollY;
     const total = document.documentElement.scrollHeight - window.innerHeight;
-    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+    document.getElementById('progress-bar').style.transform = 'scaleX(' + (scrolled / total) + ')';
   });
 
   // ── IntersectionObserver ─────────────────────────────────────────────────
@@ -1402,33 +1431,44 @@ emailValidator.<span class="fn">validate</span>(email);
     const svg = document.getElementById('svg-31c');
     clearSVG(svg);
 
-    if (val < 50) {
-      // WET: scattered nodes
-      const cx = [60, 170, 280, 390, 500, 620];
-      const labels = ['UserCtrl', 'OrderCtrl', 'PayCtrl', 'AdminCtrl', 'ApiCtrl', 'Change\nRadius: 5'];
-      cx.forEach((x, i) => {
-        const col = i === 5 ? '#f87171' : '#f87171';
-        svgCircle(svg, x, 60, 22, { fill: 'rgba(248,113,113,0.15)', stroke: col, sw: 2 });
-        svgText(svg, x, 63, labels[i].split('\n')[0], { fill: col, size: 9, mono: true });
-        if (labels[i].includes('\n')) {
-          svgText(svg, x, 76, labels[i].split('\n')[1], { fill: col, size: 9, mono: true });
-        }
-      });
-      svgText(svg, 350, 110, '❌ 5 files must change when the rule changes', { fill: '#f87171', size: 11 });
-    } else {
-      // DRY: centralized service
-      svgCircle(svg, 350, 55, 28, { fill: 'rgba(74,222,128,0.15)', stroke: '#4ade80', sw: 2.5 });
-      svgText(svg, 350, 50, 'Validation', { fill: '#4ade80', size: 10, mono: true, weight: '600' });
-      svgText(svg, 350, 65, 'Service', { fill: '#4ade80', size: 10, mono: true });
-      const targets = [130, 220, 350, 480, 570];
-      const tlabels = ['UserCtrl', 'OrderCtrl', 'PayCtrl', 'AdminCtrl', 'ApiCtrl'];
-      targets.forEach((x, i) => {
-        svgLine(svg, 350, 83, x, 100, { stroke: '#60a5fa', sw: 1.5 });
-        svgRect(svg, x, 110, 75, 22, { fill: '#161b22', stroke: '#60a5fa', sw: 1.5 });
-        svgText(svg, x, 113, tlabels[i], { fill: '#60a5fa', size: 9, mono: true });
-      });
-      svgText(svg, 350, 108, '✅ Change radius: 1 file', { fill: '#4ade80', size: 11 });
-    }
+    // Interpolate change radius: 5 files at 0, 1 file at 100
+    const changeRadius = Math.round(5 - (val / 100) * 4);
+
+    // Opacity for each side
+    const wetOpacity  = val < 50 ? 1 : (100 - val) / 50;
+    const dryOpacity  = val < 50 ? val / 50 : 1;
+
+    // WET: scattered nodes (g element so we can set opacity as a group)
+    const gWet = mkEl('g');
+    gWet.setAttribute('opacity', wetOpacity);
+    svg.appendChild(gWet);
+    const cx = [60, 170, 280, 390, 500, 620];
+    const labels = ['UserCtrl', 'OrderCtrl', 'PayCtrl', 'AdminCtrl', 'ApiCtrl', 'Change\nRadius: ' + changeRadius];
+    cx.forEach((x, i) => {
+      const col = '#f87171';
+      svgCircle(gWet, x, 60, 22, { fill: 'rgba(248,113,113,0.15)', stroke: col, sw: 2 });
+      svgText(gWet, x, 63, labels[i].split('\n')[0], { fill: col, size: 9, mono: true });
+      if (labels[i].includes('\n')) {
+        svgText(gWet, x, 76, labels[i].split('\n')[1], { fill: col, size: 9, mono: true });
+      }
+    });
+    svgText(gWet, 350, 110, '❌ ' + changeRadius + ' file' + (changeRadius !== 1 ? 's' : '') + ' must change when the rule changes', { fill: '#f87171', size: 11 });
+
+    // DRY: centralized service (g element so we can set opacity as a group)
+    const gDry = mkEl('g');
+    gDry.setAttribute('opacity', dryOpacity);
+    svg.appendChild(gDry);
+    svgCircle(gDry, 350, 55, 28, { fill: 'rgba(74,222,128,0.15)', stroke: '#4ade80', sw: 2.5 });
+    svgText(gDry, 350, 50, 'Validation', { fill: '#4ade80', size: 10, mono: true, weight: '600' });
+    svgText(gDry, 350, 65, 'Service', { fill: '#4ade80', size: 10, mono: true });
+    const targets = [130, 220, 350, 480, 570];
+    const tlabels = ['UserCtrl', 'OrderCtrl', 'PayCtrl', 'AdminCtrl', 'ApiCtrl'];
+    targets.forEach((x, i) => {
+      svgLine(gDry, 350, 83, x, 100, { stroke: '#60a5fa', sw: 1.5 });
+      svgRect(gDry, x, 110, 75, 22, { fill: '#161b22', stroke: '#60a5fa', sw: 1.5 });
+      svgText(gDry, x, 113, tlabels[i], { fill: '#60a5fa', size: 9, mono: true });
+    });
+    svgText(gDry, 350, 108, '✅ Change radius: ' + changeRadius + ' file', { fill: '#4ade80', size: 11 });
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -1502,12 +1542,12 @@ emailValidator.<span class="fn">validate</span>(email);
     const scoreVal = document.getElementById('kiss-score-val');
     if (!bar) return;
     if (mode === 'complex') {
-      bar.style.width = '15%'; bar.style.background = 'var(--bad)';
+      bar.style.transform = 'scaleX(0.15)'; bar.style.background = 'var(--bad)';
       label.textContent = 'Readability Score: complex version — hard to understand';
       timeVal.textContent = '8s'; timeVal.style.color = 'var(--bad)';
       scoreVal.textContent = '15%'; scoreVal.style.color = 'var(--bad)';
     } else {
-      bar.style.width = '85%'; bar.style.background = 'var(--good)';
+      bar.style.transform = 'scaleX(0.85)'; bar.style.background = 'var(--good)';
       label.textContent = 'Readability Score: simple version — clear at a glance';
       timeVal.textContent = '2s'; timeVal.style.color = 'var(--good)';
       scoreVal.textContent = '85%'; scoreVal.style.color = 'var(--good)';
@@ -1553,26 +1593,31 @@ emailValidator.<span class="fn">validate</span>(email);
     svgText(svg, 545, 145, 'Exactly what\'s needed', { fill: '#4ade80', size: 10 });
   }
 
-  function animYagniWeight() {
+  function animYagniWeight(targetPct) {
     const bar = document.getElementById('yagni-weight-bar');
     if (!bar) return;
-    bar.style.width = '0%';
-    const stages = [
-      { pct: 30, delay: 500, label1: '1 user', label2: 'always false', label3: '0 consumers' },
-      { pct: 53, delay: 1200, label1: '0 users', label2: 'always false', label3: '0 consumers' },
-      { pct: 88, delay: 2000, label1: '0 users', label2: 'always false', label3: '0 consumers' },
-    ];
-    stages.forEach(s => {
-      setTimeout(() => {
-        bar.style.width = s.pct + '%';
-        const m1 = document.getElementById('yagni-m1');
-        const m2 = document.getElementById('yagni-m2');
-        const m3 = document.getElementById('yagni-m3');
-        if (m1) m1.textContent = s.label1;
-        if (m2) m2.textContent = s.label2;
-        if (m3) m3.textContent = s.label3;
-      }, s.delay);
-    });
+    if (targetPct === undefined) {
+      // Staged animation on section entry
+      bar.style.transform = 'scaleX(0)';
+      const stages = [
+        { pct: 30, delay: 500, label1: '1 user', label2: 'always false', label3: '0 consumers' },
+        { pct: 53, delay: 1200, label1: '0 users', label2: 'always false', label3: '0 consumers' },
+        { pct: 88, delay: 2000, label1: '0 users', label2: 'always false', label3: '0 consumers' },
+      ];
+      stages.forEach(s => {
+        setTimeout(() => {
+          bar.style.transform = 'scaleX(' + (s.pct / 100) + ')';
+          const m1 = document.getElementById('yagni-m1');
+          const m2 = document.getElementById('yagni-m2');
+          const m3 = document.getElementById('yagni-m3');
+          if (m1) m1.textContent = s.label1;
+          if (m2) m2.textContent = s.label2;
+          if (m3) m3.textContent = s.label3;
+        }, s.delay);
+      });
+    } else {
+      bar.style.transform = 'scaleX(' + (targetPct / 100) + ')';
+    }
   }
 
   function drawYagniNodes(showMismatch) {
@@ -1689,6 +1734,32 @@ emailValidator.<span class="fn">validate</span>(email);
     setTimeout(() => {
       anime({ targets: document.getElementById('bs-with-rule'), opacity: [0, 1], duration: 1200, easing: 'easeOutQuad' });
     }, 700);
+  };
+
+  // Trail toggle for Boy Scout section
+  let trailMaintained = false;
+  window.trailToggle = function() {
+    trailMaintained = !trailMaintained;
+    const path = document.getElementById('trail-path');
+    const badMarks = document.getElementById('trail-bad-marks');
+    const goodMarks = document.getElementById('trail-good-marks');
+    const label = document.getElementById('trail-label');
+    const btn = document.getElementById('trail-toggle-btn');
+    if (trailMaintained) {
+      anime({ targets: path, stroke: '#4ade80', duration: 600, easing: 'easeOutQuad' });
+      anime({ targets: badMarks, opacity: [1, 0], duration: 400, easing: 'easeOutQuad' });
+      anime({ targets: goodMarks, opacity: [0, 1], duration: 600, easing: 'easeOutQuad' });
+      if (label) label.textContent = 'Maintained trail — clear path ahead';
+      if (label) label.setAttribute('fill', '#4ade80');
+      if (btn) btn.textContent = 'Toggle Trail State';
+    } else {
+      anime({ targets: path, stroke: '#555e68', duration: 600, easing: 'easeOutQuad' });
+      anime({ targets: badMarks, opacity: [0, 1], duration: 600, easing: 'easeOutQuad' });
+      anime({ targets: goodMarks, opacity: [1, 0], duration: 400, easing: 'easeOutQuad' });
+      if (label) label.textContent = 'Unmaintained trail — obstacles accumulate';
+      if (label) label.setAttribute('fill', '#8b949e');
+      if (btn) btn.textContent = 'Toggle Trail State';
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════

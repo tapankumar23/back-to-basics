@@ -177,6 +177,11 @@
       transition: background 0.2s;
     }
     .btn:hover { background: rgba(74,222,128,0.25); }
+    .btn:focus-visible,
+    .expand-badge:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
     .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
     input[type=range] { accent-color: var(--accent); width: 90px; }
 
@@ -387,7 +392,8 @@
       border-radius: 4px;
       background: var(--bad);
       width: 100%;
-      transition: width 0.6s ease, background 0.6s ease;
+      transform-origin: left center;
+      transition: transform 0.6s ease, background 0.6s ease;
     }
     .metric-value {
       font-size: 11px;
@@ -801,7 +807,7 @@
       <div class="metric-row">
         <span class="metric-label">Cognitive Load:</span>
         <div class="metric-bar-track">
-          <div class="metric-bar-fill" id="cog-bar" style="width:80%;background:var(--bad);"></div>
+          <div class="metric-bar-fill" id="cog-bar" style="transform:scaleX(0.8);background:var(--bad);"></div>
         </div>
         <span class="metric-value" id="cog-val">80%</span>
       </div>
@@ -856,7 +862,7 @@
         <div class="header-controls">
           <span class="slider-row">
             Args:
-            <input type="range" id="arg-slider" min="0" max="5" value="0" oninput="window.updateArgSmell(this.value)">
+            <input type="range" id="arg-slider" min="0" max="5" value="0" aria-label="Argument count" oninput="window.updateArgSmell(this.value)">
             <span id="arg-count">0</span>
           </span>
         </div>
@@ -874,7 +880,7 @@
         <span class="gauge-label">Function Smell:</span>
         <span class="gauge-status" id="smell-status" style="color:var(--good);">Ideal — zero arguments</span>
         <div class="metric-bar-track" style="flex:1;margin-left:12px;">
-          <div class="metric-bar-fill" id="smell-bar" style="width:0%;background:var(--good);"></div>
+          <div class="metric-bar-fill" id="smell-bar" style="transform:scaleX(0);background:var(--good);"></div>
         </div>
       </div>
 
@@ -971,7 +977,7 @@
       <div class="metric-row">
         <span class="metric-label">Abstraction Mixing:</span>
         <div class="metric-bar-track">
-          <div class="metric-bar-fill" id="sla-bar" style="width:85%;background:var(--bad);"></div>
+          <div class="metric-bar-fill" id="sla-bar" style="transform:scaleX(0.85);background:var(--bad);"></div>
         </div>
         <span class="metric-value" id="sla-val">85%</span>
       </div>
@@ -1110,7 +1116,7 @@
       <div class="metric-row">
         <span class="metric-label">Comment Noise:</span>
         <div class="metric-bar-track">
-          <div class="metric-bar-fill" id="comment-bar" style="width:75%;background:var(--bad);"></div>
+          <div class="metric-bar-fill" id="comment-bar" style="transform:scaleX(0.75);background:var(--bad);"></div>
         </div>
         <span class="metric-value" id="comment-val">75%</span>
       </div>
@@ -1250,7 +1256,9 @@
   window.addEventListener('scroll', () => {
     const scrolled = window.scrollY;
     const total = document.documentElement.scrollHeight - window.innerHeight;
-    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+    if (total > 0) {
+      document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+    }
   });
 
   // ── IntersectionObserver ─────────────────────────────────────────────────
@@ -1309,6 +1317,7 @@
       complete: () => {
         good.style.opacity = '0';
         bad.style.opacity = '1';
+        bad.querySelectorAll('.name-pill').forEach(el => { el.style.filter = 'blur(2px)'; });
         anime({ targets: bad, opacity: [0, 1], duration: 400, easing: 'easeOutSine' });
         bad.querySelectorAll('.name-pill').forEach((el, i) => {
           anime({ targets: el, opacity: [0.6, 1], delay: i * 60, duration: 300, easing: 'easeOutSine' });
@@ -1321,6 +1330,7 @@
   window.showGoodNames = function() {
     const bad = document.getElementById('bad-names-panel');
     const good = document.getElementById('good-names-panel');
+    bad.querySelectorAll('.name-pill').forEach(el => { el.style.filter = 'blur(0)'; });
     anime({ targets: bad, opacity: 0, duration: 300, easing: 'easeInSine',
       complete: () => {
         bad.style.opacity = '0';
@@ -1338,7 +1348,7 @@
     const bar = document.getElementById('cog-bar');
     const val = document.getElementById('cog-val');
     bar.style.background = color;
-    bar.style.width = pct + '%';
+    bar.style.transform = 'scaleX(' + (pct / 100) + ')';
     val.textContent = pct + '%';
   }
 
@@ -1442,10 +1452,10 @@
       { max: 1, label: 'Good — 1 argument',               pct: 20,  color: 'var(--good)' },
       { max: 2, label: 'Acceptable — 2 arguments',        pct: 45,  color: '#f2cc60' },
       { max: 3, label: 'Questionable — 3 arguments',      pct: 70,  color: '#fb923c' },
-      { max: 99,'label': 'Introduce Parameter Object!',   pct: 100, color: 'var(--bad)' },
+      { max: 99, label: 'Introduce Parameter Object!',   pct: 100, color: 'var(--bad)' },
     ];
     const level = levels.find(l => val <= l.max);
-    smellBar.style.width = level.pct + '%';
+    smellBar.style.transform = 'scaleX(' + (level.pct / 100) + ')';
     smellBar.style.background = level.color;
     smellStatus.textContent = level.label;
     smellStatus.style.color = level.color;
@@ -1510,7 +1520,7 @@
     mixed.style.opacity = '1';
     clean.style.display = 'none';
     clean.style.opacity = '0';
-    mixedIds = ['ml-0','ml-1','ml-2','ml-3','ml-4','ml-5','ml-6','ml-7'];
+    const mixedIds = ['ml-0','ml-1','ml-2','ml-3','ml-4','ml-5','ml-6','ml-7'];
     mixedIds.forEach(id => {
       const el = document.getElementById(id);
       el.style.opacity = '1';
@@ -1520,7 +1530,7 @@
   };
 
   function setSLABar(pct, color) {
-    document.getElementById('sla-bar').style.width = pct + '%';
+    document.getElementById('sla-bar').style.transform = 'scaleX(' + (pct / 100) + ')';
     document.getElementById('sla-bar').style.background = color;
     document.getElementById('sla-val').textContent = pct + '%';
   }
@@ -1561,7 +1571,7 @@
   };
 
   function setCommentBar(pct, color) {
-    document.getElementById('comment-bar').style.width = pct + '%';
+    document.getElementById('comment-bar').style.transform = 'scaleX(' + (pct / 100) + ')';
     document.getElementById('comment-bar').style.background = color;
     document.getElementById('comment-val').textContent = pct + '%';
   }

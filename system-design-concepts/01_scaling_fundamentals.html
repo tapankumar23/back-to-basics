@@ -1,0 +1,1895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scaling Fundamentals — System Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #4ade80;
+      --accent-dim: rgba(74,222,128,0.15);
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --red: #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      margin-right: 1.5rem;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px;
+      padding-right: 16px;
+    }
+    #navbar a.back-link:hover {
+      color: var(--text);
+      background: rgba(74,222,128,0.08);
+    }
+    #navbar .chapter-pager {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-right: 12px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted);
+      font-size: 9px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title {
+      font-size: 11px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    #navbar .chapter-nav-chip .nav-arrow {
+      color: var(--accent);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+    .concept-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(74,222,128,0.25); }
+    .btn.danger { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.1); }
+    .btn.danger:hover { background: rgba(248,113,113,0.2); }
+    .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    input[type=range] { accent-color: var(--accent); width: 90px; }
+    .diagram-area {
+      padding: 20px;
+      min-height: 200px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .diagram-area svg { width: 100%; overflow: visible; }
+    .insight-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .chapter-nav-link,
+    .chapter-nav-disabled,
+    .chapter-nav-current {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 62px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .chapter-nav-link:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-nav-link.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-link .nav-kicker,
+    .chapter-nav-disabled .nav-kicker,
+    .chapter-nav-current .nav-kicker {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title,
+    .chapter-nav-disabled .nav-title,
+    .chapter-nav-current .nav-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .chapter-nav-link .nav-arrow,
+    .chapter-nav-disabled .nav-arrow {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .chapter-nav-disabled {
+      opacity: 0.38;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .chapter-nav-disabled.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-current {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav {
+        grid-template-columns: 1fr;
+      }
+      .chapter-nav-link.next,
+      .chapter-nav-disabled.next {
+        text-align: left;
+        align-items: flex-start;
+      }
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+
+    body.sidebar-open {
+      overflow: hidden;
+    }
+    #sidebar-toggle {
+      position: fixed;
+      top: 60px;
+      left: 16px;
+      z-index: 1001;
+      border: 1px solid var(--border);
+      background: rgba(22,27,34,0.92);
+      color: var(--accent, var(--text));
+      border-radius: 14px;
+      width: 46px;
+      height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+    }
+    #sidebar-toggle:hover {
+      transform: translateY(-1px);
+      background: rgba(28,35,48,0.98);
+      color: var(--text);
+    }
+    #sidebar-toggle .hamburger-line {
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) {
+      transform: translateY(6px) rotate(45deg);
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) {
+      opacity: 0;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) {
+      transform: translateY(-6px) rotate(-45deg);
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6,10,16,0.12);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+      z-index: 1001;
+    }
+    #sidebar-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #sidebar-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(340px, 86vw);
+      height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 18%), #0f141b;
+      border-right: 1px solid var(--border);
+      box-shadow: 24px 0 50px rgba(0,0,0,0.35);
+      padding: 22px 18px 24px;
+      transform: translateX(-102%);
+      transition: transform 0.24s ease;
+      z-index: 1002;
+      overflow-y: auto;
+    }
+    #sidebar-drawer.open {
+      transform: translateX(0);
+    }
+    .drawer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .drawer-title {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .drawer-kicker {
+      color: var(--accent, var(--text));
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .drawer-heading {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .drawer-close {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 999px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .drawer-close:hover {
+      color: var(--text);
+      border-color: var(--accent, var(--text));
+    }
+    .drawer-index-link {
+      display: block;
+      text-decoration: none;
+      color: var(--accent, var(--text));
+      background: var(--accent-dim, rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+    }
+    .drawer-index-link strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    .drawer-index-link span {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .drawer-group {
+      border: 1px solid rgba(48,54,61,0.9);
+      border-radius: 14px;
+      background: rgba(22,27,34,0.75);
+      overflow: hidden;
+    }
+    .drawer-group.current {
+      border-color: rgba(255,255,255,0.24);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .drawer-group-header {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(48,54,61,0.8);
+      background: rgba(255,255,255,0.02);
+    }
+    .drawer-group-title {
+      flex: 1;
+      min-width: 0;
+    }
+    .drawer-group-header .eyebrow {
+      display: block;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-group-header .name {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .drawer-group-header .name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .drawer-group-header .name a:hover {
+      color: var(--accent, var(--text));
+    }
+    .drawer-group-toggle {
+      flex: 0 0 auto;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .drawer-group-toggle:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .drawer-group-toggle:focus-visible {
+      outline: 2px solid var(--accent, var(--text));
+      outline-offset: 2px;
+    }
+    .drawer-chevron {
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-chevron {
+      transform: rotate(-45deg) translate(-1px, 1px);
+    }
+    .drawer-subnav {
+      list-style: none;
+      padding: 8px;
+      max-height: 640px;
+      opacity: 1;
+      overflow: hidden;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-subnav {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    .drawer-subnav li + li {
+      margin-top: 4px;
+    }
+    .drawer-subnav a {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+    }
+    .drawer-subnav a:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+    .drawer-subnav .sub-num {
+      color: var(--accent, var(--text));
+      font-size: 11px;
+      min-width: 42px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-subnav .sub-label {
+      font-size: 13px;
+    }
+
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="true" aria-label="Toggle navigation menu">
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="sr-only">Toggle navigation menu</span>
+</button>
+<div id="sidebar-overlay"></div>
+<aside id="sidebar-drawer" aria-hidden="true">
+  <div class="drawer-top">
+    <div class="drawer-title">
+      <span class="drawer-kicker">Navigation</span>
+      <span class="drawer-heading">01 Scaling</span>
+    </div>
+    <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+  </div>
+<a class="drawer-index-link" href="00_index.html">
+  <strong>Galaxy Index</strong>
+  <span>Return to the system design constellation map</span>
+</a>
+  <nav class="drawer-nav" aria-label="System design outline">
+    <div class="drawer-group current">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="01_scaling_fundamentals.html">01 Scaling</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Collapse chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="#s-11"><span class="sub-num">1.1</span><span class="sub-label">Single Server</span></a></li>
+        <li><a href="#s-12"><span class="sub-num">1.2</span><span class="sub-label">Scaling</span></a></li>
+        <li><a href="#s-13"><span class="sub-num">1.3</span><span class="sub-label">Load Balancer</span></a></li>
+        <li><a href="#s-14"><span class="sub-num">1.4</span><span class="sub-label">DB Replication</span></a></li>
+        <li><a href="#s-15"><span class="sub-num">1.5</span><span class="sub-label">Cache</span></a></li>
+        <li><a href="#s-16"><span class="sub-num">1.6</span><span class="sub-label">CDN</span></a></li>
+        <li><a href="#s-17"><span class="sub-num">1.7</span><span class="sub-label">Stateless</span></a></li>
+        <li><a href="#s-18"><span class="sub-num">1.8</span><span class="sub-label">Msg Queue</span></a></li>
+        <li><a href="#s-19"><span class="sub-num">1.9</span><span class="sub-label">Sharding</span></a></li>
+        <li><a href="#s-110"><span class="sub-num">1.10</span><span class="sub-label">Data Centers</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="02_core_distributed_systems.html">02 Core Distributed Systems</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="02_core_distributed_systems.html#s-21"><span class="sub-num">2.1</span><span class="sub-label">Consistent Hashing</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-22"><span class="sub-num">2.2</span><span class="sub-label">KV Store</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-23"><span class="sub-num">2.3</span><span class="sub-label">CAP Theorem</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-24"><span class="sub-num">2.4</span><span class="sub-label">Gossip</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-25"><span class="sub-num">2.5</span><span class="sub-label">Quorum</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-26"><span class="sub-num">2.6</span><span class="sub-label">Merkle Trees</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="03_rate_limiter_and_id_gen.html">03 Rate Limiter & ID</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="03_rate_limiter_and_id_gen.html#s-31"><span class="sub-num">3.1</span><span class="sub-label">Token Bucket</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-32"><span class="sub-num">3.2</span><span class="sub-label">Leaky Bucket</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-33"><span class="sub-num">3.3</span><span class="sub-label">Fixed Window</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-34"><span class="sub-num">3.4</span><span class="sub-label">Sliding Window</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-35"><span class="sub-num">3.5</span><span class="sub-label">Distributed RL</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-36"><span class="sub-num">3.6</span><span class="sub-label">Snowflake ID</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-37"><span class="sub-num">3.7</span><span class="sub-label">UUID</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-38"><span class="sub-num">3.8</span><span class="sub-label">Ticket Server</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="04_storage_and_search.html">04 Storage & Search</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="04_storage_and_search.html#s-41"><span class="sub-num">4.1</span><span class="sub-label">URL Shortener</span></a></li>
+        <li><a href="04_storage_and_search.html#s-42"><span class="sub-num">4.2</span><span class="sub-label">Web Crawler</span></a></li>
+        <li><a href="04_storage_and_search.html#s-43"><span class="sub-num">4.3</span><span class="sub-label">Trie Autocomplete</span></a></li>
+        <li><a href="04_storage_and_search.html#s-44"><span class="sub-num">4.4</span><span class="sub-label">Google Drive</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="05_feeds_and_messaging.html">05 Feeds & Messaging</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="05_feeds_and_messaging.html#s-51"><span class="sub-num">5.1</span><span class="sub-label">Push Feed</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-52"><span class="sub-num">5.2</span><span class="sub-label">Pull Feed</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-53"><span class="sub-num">5.3</span><span class="sub-label">Hybrid Feed</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-54"><span class="sub-num">5.4</span><span class="sub-label">Notifications</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-55"><span class="sub-num">5.5</span><span class="sub-label">Chat/WebSocket</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="06_video_and_object_storage.html">06 Video & Storage</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="06_video_and_object_storage.html#s-61"><span class="sub-num">6.1</span><span class="sub-label">Upload Pipeline</span></a></li>
+        <li><a href="06_video_and_object_storage.html#s-62"><span class="sub-num">6.2</span><span class="sub-label">Video Streaming</span></a></li>
+        <li><a href="06_video_and_object_storage.html#s-63"><span class="sub-num">6.3</span><span class="sub-label">Object Storage</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="07_geo_and_realtime.html">07 Geo & Realtime</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="07_geo_and_realtime.html#s-71"><span class="sub-num">7.1</span><span class="sub-label">Geohash</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-72"><span class="sub-num">7.2</span><span class="sub-label">Quadtree</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-73"><span class="sub-num">7.3</span><span class="sub-label">Nearby Friends</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-74"><span class="sub-num">7.4</span><span class="sub-label">Routing</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-75"><span class="sub-num">7.5</span><span class="sub-label">Map Tiles</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="08_data_pipelines.html">08 Data Pipelines</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="08_data_pipelines.html#s-81"><span class="sub-num">8.1</span><span class="sub-label">Kafka-like MQ</span></a></li>
+        <li><a href="08_data_pipelines.html#s-82"><span class="sub-num">8.2</span><span class="sub-label">Metrics Monitor</span></a></li>
+        <li><a href="08_data_pipelines.html#s-83"><span class="sub-num">8.3</span><span class="sub-label">Ad Click Agg</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="09_financial_systems.html">09 Financial Systems</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="09_financial_systems.html#s-91"><span class="sub-num">9.1</span><span class="sub-label">Hotel Reserve</span></a></li>
+        <li><a href="09_financial_systems.html#s-92"><span class="sub-num">9.2</span><span class="sub-label">Payment</span></a></li>
+        <li><a href="09_financial_systems.html#s-93"><span class="sub-num">9.3</span><span class="sub-label">Digital Wallet</span></a></li>
+        <li><a href="09_financial_systems.html#s-94"><span class="sub-num">9.4</span><span class="sub-label">Stock Exchange</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="10_interview_foundations.html">10 Interview Foundations</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="10_interview_foundations.html#s-101"><span class="sub-num">10.1</span><span class="sub-label">Back-of-Envelope</span></a></li>
+        <li><a href="10_interview_foundations.html#s-102"><span class="sub-num">10.2</span><span class="sub-label">Interview Framework</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="11_email_and_leaderboard.html">11 Email & Leaderboard</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="11_email_and_leaderboard.html#s-111"><span class="sub-num">11.1</span><span class="sub-label">Email Service</span></a></li>
+        <li><a href="11_email_and_leaderboard.html#s-112"><span class="sub-num">11.2</span><span class="sub-label">Leaderboard</span></a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<nav id="navbar">
+  <span class="nav-brand">01 — Scaling Fundamentals</span>
+  <a class="back-link" href="00_index.html">← Galaxy Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <span class="chapter-nav-chip disabled" aria-hidden="true">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Previous<span class="nav-arrow">←</span></span>
+    </span>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">01</span>
+    </span>
+    <a class="chapter-nav-chip" href="02_core_distributed_systems.html" aria-label="Next Chapter: Core Distributed Systems" title="Next Chapter: Core Distributed Systems">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Core Distributed Systems<span class="nav-arrow" aria-hidden="true">→</span></span>
+    </a>
+  </div>
+  <a href="#s-11">Single Server</a>
+  <a href="#s-12">Scaling</a>
+  <a href="#s-13">Load Balancer</a>
+  <a href="#s-14">DB Replication</a>
+  <a href="#s-15">Cache</a>
+  <a href="#s-16">CDN</a>
+  <a href="#s-17">Stateless</a>
+  <a href="#s-18">Msg Queue</a>
+  <a href="#s-19">Sharding</a>
+  <a href="#s-110">Data Centers</a>
+</nav>
+
+<main>
+  <div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">Scaling Fundamentals</h1>
+    <p style="color:var(--text-muted);margin-top:4px;">Chapter 1 — Scale From Zero To Millions Of Users</p>
+  </div>
+
+  <section id="s-11" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.1 —</span>
+          <span class="section-title">Single Server to Multi-Tier</span>
+          <span class="section-desc">DNS resolution and layer separation</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s11()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-11" viewBox="0 0 700 220" height="220"></svg>
+      </div>
+      <div class="insight-panel">
+        DNS returns an IP address — the client connects directly to that IP. Splitting into Web, App, and Database tiers lets each scale independently. A failure in one tier does not necessarily bring down the others.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-12" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.2 —</span>
+          <span class="section-title">Vertical vs Horizontal Scaling</span>
+          <span class="section-desc">Scale-up hits a ceiling; scale-out is unlimited</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s12()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-12" viewBox="0 0 700 240" height="240"></svg>
+      </div>
+      <div class="insight-panel">
+        Vertical scaling (adding CPU/RAM to one machine) hits a hard ceiling — both physical and financial. Horizontal scaling (adding more machines) is theoretically unlimited but requires stateless design and a load balancer.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-13" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.3 —</span>
+          <span class="section-title">Load Balancer</span>
+          <span class="section-desc">Round-robin routing + health-check failover</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.sendRequest_s13()">Send Request</button>
+          <button class="btn danger" onclick="window.killServer_s13()">Kill Server B</button>
+          <button class="btn" onclick="window.animate_s13()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-13" viewBox="0 0 700 200" height="200"></svg>
+      </div>
+      <div class="insight-panel">
+        The load balancer exposes one public IP — clients never see individual server IPs. Health checks poll servers every few seconds; a server that stops responding is removed from rotation automatically.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-14" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.4 —</span>
+          <span class="section-title">Database Replication</span>
+          <span class="section-desc">Primary writes, replica reads, automatic failover</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.sendWrite_s14()">Write</button>
+          <button class="btn" onclick="window.sendRead_s14()">Read</button>
+          <button class="btn danger" onclick="window.failPrimary_s14()">Fail Primary</button>
+          <button class="btn" onclick="window.animate_s14()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-14" viewBox="0 0 700 200" height="200"></svg>
+      </div>
+      <div class="insight-panel">
+        Writes always go to the Primary; replicas are read-only copies. Replication is asynchronous — replicas may lag milliseconds behind. On primary failure, a replica is promoted (via sentinel or Raft) and becomes the new primary.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-15" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.5 —</span>
+          <span class="section-title">Cache Layer (Redis)</span>
+          <span class="section-desc">Cache-aside: HIT returns ~1ms, MISS fetches from DB ~100ms</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.cacheHit_s15()">Cache HIT</button>
+          <button class="btn" onclick="window.cacheMiss_s15()">Cache MISS</button>
+          <button class="btn" onclick="window.animate_s15()">Reset</button>
+          <span class="slider-row">Hit rate: <span id="s15-rate">—</span></span>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-15" viewBox="0 0 700 180" height="180"></svg>
+      </div>
+      <div class="insight-panel">
+        Cache-aside (lazy loading): the app checks the cache first. A HIT returns data in ~1ms. A MISS fetches from DB (~100ms), then writes the result into the cache. Cache invalidation — knowing when to evict stale data — is the hard part.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-16" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.6 —</span>
+          <span class="section-title">Content Delivery Network (CDN)</span>
+          <span class="section-desc">Edge nodes serve static assets near users</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.staticReq_s16()">Static Asset</button>
+          <button class="btn" onclick="window.dynamicReq_s16()">Dynamic Request</button>
+          <button class="btn" onclick="window.animate_s16()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-16" viewBox="0 0 700 220" height="220"></svg>
+      </div>
+      <div class="insight-panel">
+        Static assets (images, JS, CSS) are pre-cached at CDN edge nodes worldwide — cutting latency from ~200ms to single digits. Dynamic API responses cannot be cached and must still travel to the origin server on every request.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-17" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.7 —</span>
+          <span class="section-title">Stateless Architecture</span>
+          <span class="section-desc">Session state moved to a shared store</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.toggleMode_s17()">Toggle Stateful / Stateless</button>
+          <button class="btn" onclick="window.sendReq_s17()">Send Request</button>
+          <button class="btn" onclick="window.animate_s17()">Reset</button>
+          <span id="s17-mode-lbl" style="font-size:11px;color:var(--red);font-family:'JetBrains Mono',monospace;">STATEFUL</span>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-17" viewBox="0 0 700 200" height="200"></svg>
+      </div>
+      <div class="insight-panel">
+        Stateful servers pin users to a specific instance — routing to the wrong server returns a 403. Moving sessions to a shared Redis instance means any server can handle any request, enabling true horizontal scaling and zero-downtime deploys.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-18" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.8 —</span>
+          <span class="section-title">Message Queue (Async Processing)</span>
+          <span class="section-desc">Producers and consumers decoupled via a buffer</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.spike_s18()">Producer Spike</button>
+          <button class="btn" onclick="window.animate_s18()">Reset</button>
+          <span class="slider-row">Queue depth: <span id="s18-depth">0</span></span>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-18" viewBox="0 0 700 180" height="180"></svg>
+      </div>
+      <div class="insight-panel">
+        The queue absorbs bursts — producers enqueue at any rate without blocking. Consumers pull at a steady, sustainable rate. During a spike the queue depth rises; it gradually falls back to zero as consumers catch up.
+      </div>
+    </div>
+  </section>
+
+  <section id="s-19" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.9 —</span>
+          <span class="section-title">Database Sharding</span>
+          <span class="section-desc">Horizontal partitioning by shard key</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.queryUser_s19()">Query user_id=7</button>
+          <button class="btn" onclick="window.addShard_s19()">Add Shard</button>
+          <button class="btn" onclick="window.animate_s19()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-19" viewBox="0 0 700 220" height="220"></svg>
+      </div>
+      <div class="insight-panel">
+        Each shard holds a subset of rows — user_id modulo N routes to the correct shard without scanning others. Adding a shard requires resharding: migrating a fraction of keys to the new node, which is why consistent hashing is preferred at scale.
+      </div>
+    </div>
+  </section>
+
+<section id="s-110" class="concept-section">
+  <div class="section-card">
+    <div class="card-header">
+      <div class="header-left">
+        <span class="section-num">1.10 —</span>
+        <span class="section-title">Multi-Data-Center Traffic Routing</span>
+        <span class="section-desc">Geo DNS, regional failover, and active-active resilience</span>
+      </div>
+      <div class="header-controls">
+        <button class="btn" onclick="window.animate_s110()">Replay</button>
+        <button class="btn danger" onclick="window.failover_s110()">Simulate Regional Failure</button>
+      </div>
+    </div>
+    <div class="diagram-area">
+      <svg id="svg-110" viewBox="0 0 700 240" height="240"></svg>
+    </div>
+    <div class="insight-panel">
+      A globally distributed system does not stop at one data center. Geo DNS or latency-based routing sends users to the nearest healthy region; if a region goes dark, traffic shifts to the next closest region while replicated data and stateless services preserve continuity.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="chapter-page-nav" aria-label="Chapter navigation">
+  <div class="chapter-nav-disabled prev" aria-hidden="true">
+    <span class="nav-kicker">Previous Chapter</span>
+    <span class="nav-title">Not available</span>
+    <span class="nav-arrow">←</span>
+  </div>
+  <div class="chapter-nav-current">
+    <span class="nav-kicker">Current Chapter</span>
+    <span class="nav-title">01 — Scaling Fundamentals</span>
+  </div>
+  <a class="chapter-nav-link next" href="02_core_distributed_systems.html" aria-label="Next Chapter: Core Distributed Systems">
+    <span class="nav-kicker">Next Chapter</span>
+    <span class="nav-title">Core Distributed Systems</span>
+    <span class="nav-arrow" aria-hidden="true">→</span>
+  </a>
+</div>
+
+
+<footer>System Design Concepts</footer>
+
+<script>
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  });
+
+  // IntersectionObserver: trigger animate_sNN on scroll into view
+  window.sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        // Convert id "s-11" to function name "animate_s11"
+        const fnName = 'animate_' + entry.target.id.replace('-', '');
+        const fn = window[fnName];
+        if (typeof fn === 'function') fn();
+        window.sectionObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.25 });
+
+  document.querySelectorAll('.concept-section').forEach(el => window.sectionObserver.observe(el));
+
+  // clearSVG: safe DOM-based SVG reset — increments _gen to cancel in-flight animatePacket chains
+  function clearSVG(svgEl) {
+    svgEl._gen = (svgEl._gen || 0) + 1;
+    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+  }
+
+  // makeSVGEl: shorthand for createElementNS
+  function makeSVGEl(tag) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag);
+  }
+
+  // addArrowMarker: programmatic SVG marker — no innerHTML
+  function addArrowMarker(svgEl, id, color) {
+    const defs = makeSVGEl('defs');
+    const marker = makeSVGEl('marker');
+    marker.setAttribute('id', id);
+    marker.setAttribute('markerWidth', '8');
+    marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('refX', '6');
+    marker.setAttribute('refY', '3');
+    marker.setAttribute('orient', 'auto');
+    const poly = makeSVGEl('polygon');
+    poly.setAttribute('points', '0 0, 8 3, 0 6');
+    poly.setAttribute('fill', color || '#30363d');
+    marker.appendChild(poly);
+    defs.appendChild(marker);
+    svgEl.prepend(defs);
+  }
+
+  // svgRect: create a styled SVG rect
+  function svgRect(x, y, w, h, opts) {
+    const r = makeSVGEl('rect');
+    r.setAttribute('x', x - w/2);
+    r.setAttribute('y', y - h/2);
+    r.setAttribute('width', w);
+    r.setAttribute('height', h);
+    r.setAttribute('rx', opts.rx || 6);
+    r.setAttribute('fill', opts.fill || '#161b22');
+    r.setAttribute('stroke', opts.stroke || '#30363d');
+    r.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.id) r.id = opts.id;
+    return r;
+  }
+
+  // svgText: create SVG text element
+  function svgText(x, y, content, opts) {
+    const t = makeSVGEl('text');
+    t.setAttribute('x', x);
+    t.setAttribute('y', y);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('fill', opts.fill || '#e6edf3');
+    t.setAttribute('font-size', opts.size || 11);
+    if (opts.mono) t.setAttribute('font-family', 'JetBrains Mono, monospace');
+    if (opts.weight) t.setAttribute('font-weight', opts.weight);
+    t.textContent = content;
+    return t;
+  }
+
+  // drawNode: create a labeled box node and append to svgEl
+  function drawNode(svgEl, x, y, w, h, label, sub, opts) {
+    opts = opts || {};
+    const g = makeSVGEl('g');
+    const rect = svgRect(x, y, w, h, { stroke: opts.stroke || '#30363d', id: opts.id });
+    const t1 = svgText(x, y - 4, label, { mono: true, size: 11 });
+    g.appendChild(rect);
+    g.appendChild(t1);
+    if (sub) {
+      const t2 = svgText(x, y + 11, sub, { fill: '#8b949e', size: 9 });
+      g.appendChild(t2);
+    }
+    svgEl.appendChild(g);
+    return { g, rect };
+  }
+
+  // animatePacket: move a circle from (x1,y1) to (x2,y2)
+  // Uses svgEl._gen to cancel onComplete chains when SVG is reset
+  function animatePacket(svgEl, x1, y1, x2, y2, color, size, duration, onComplete) {
+    if (!svgEl._gen) svgEl._gen = 0;
+    const capturedGen = svgEl._gen;
+    const circle = makeSVGEl('circle');
+    circle.setAttribute('r', size || 6);
+    circle.setAttribute('fill', color);
+    circle.setAttribute('cx', x1);
+    circle.setAttribute('cy', y1);
+    svgEl.appendChild(circle);
+    anime({
+      targets: circle,
+      cx: x2, cy: y2,
+      duration: duration || 700,
+      easing: 'easeInOutSine',
+      complete: () => {
+        if (svgEl.contains(circle)) svgEl.removeChild(circle);
+        if (svgEl._gen === capturedGen && onComplete) onComplete();
+      }
+    });
+  }
+
+  // pulseStroke: briefly flash an element's stroke color then return to its original
+  function pulseStroke(el, color) {
+    if (!el) return;
+    const origStroke = el.getAttribute('stroke') || '#30363d';
+    anime({ targets: el, stroke: [color || '#4ade80', origStroke], duration: 600, easing: 'easeOutQuad' });
+  }
+
+  window.animate_s11 = function() {
+    const svg = document.getElementById('svg-11');
+    clearSVG(svg);
+
+    const nodeData = [
+      { id: 'user', x: 70,  y: 110, w: 80,  h: 38, label: 'User',       sub: 'browser'  },
+      { id: 'dns',  x: 210, y: 40,  w: 80,  h: 38, label: 'DNS',        sub: 'lookup'   },
+      { id: 'web',  x: 350, y: 110, w: 95,  h: 38, label: 'Web Server', sub: 'nginx'    },
+      { id: 'app',  x: 500, y: 110, w: 95,  h: 38, label: 'App Server', sub: 'node.js'  },
+      { id: 'db',   x: 610, y: 180, w: 80,  h: 38, label: 'Database',   sub: 'mysql'    },
+    ];
+
+    nodeData.forEach((n, i) => {
+      const { g } = drawNode(svg, n.x, n.y, n.w, n.h, n.label, n.sub, { id: 's11-' + n.id });
+      g.style.opacity = '0';
+      anime({ targets: g, opacity: [0, 1], delay: i * 280, duration: 380, easing: 'easeOutQuad' });
+    });
+
+    // After nodes appear, animate DNS flow then request chain
+    setTimeout(() => {
+      // User -> DNS (blue = lookup)
+      animatePacket(svg, 110, 110, 210, 60, '#60a5fa', 5, 550, () => {
+        // DNS -> User (green = IP returned)
+        animatePacket(svg, 210, 60, 110, 110, '#4ade80', 5, 450, () => {
+          // User -> Web (orange = HTTP request)
+          animatePacket(svg, 110, 110, 303, 110, '#fb923c', 6, 650, () => {
+            pulseStroke(document.getElementById('s11-web'));
+            // Web -> App
+            animatePacket(svg, 397, 110, 452, 110, '#fb923c', 6, 500, () => {
+              pulseStroke(document.getElementById('s11-app'));
+              // App -> DB
+              animatePacket(svg, 548, 120, 570, 162, '#fb923c', 6, 480);
+            });
+          });
+        });
+      });
+    }, nodeData.length * 280 + 200);
+  };
+
+  // Register with IntersectionObserver
+  window.sectionObserver.observe(document.getElementById('s-11'));
+
+  window.animate_s12 = function() {
+    const svg = document.getElementById('svg-12');
+    clearSVG(svg);
+
+    // LEFT SIDE — Vertical Scaling title
+    svg.appendChild(svgText(175, 22, 'Vertical Scaling (Scale Up)', { fill: '#e6edf3', size: 12, weight: '600' }));
+
+    // CPU and RAM bars
+    ['CPU', 'RAM'].forEach((lbl, i) => {
+      const bgR = makeSVGEl('rect');
+      bgR.setAttribute('x', 125); bgR.setAttribute('y', 38 + i * 30);
+      bgR.setAttribute('width', 100); bgR.setAttribute('height', 16);
+      bgR.setAttribute('rx', 3); bgR.setAttribute('fill', '#0d1117');
+      bgR.setAttribute('stroke', '#30363d'); bgR.setAttribute('stroke-width', '1');
+      svg.appendChild(bgR);
+
+      const fill = makeSVGEl('rect');
+      fill.setAttribute('x', 125); fill.setAttribute('y', 38 + i * 30);
+      fill.setAttribute('width', 0); fill.setAttribute('height', 16);
+      fill.setAttribute('rx', 3); fill.setAttribute('fill', '#4ade80');
+      fill.id = 's12-bar-' + i;
+      svg.appendChild(fill);
+
+      svg.appendChild(svgText(175, 38 + i * 30 + 11, lbl, { fill: '#8b949e', size: 9 }));
+    });
+
+    // Server box (vertical scaling)
+    svg.appendChild(svgRect(175, 155, 100, 80, { stroke: '#30363d' }));
+    svg.appendChild(svgText(175, 158, 'Server', { mono: true, size: 11 }));
+
+    // Animate bars filling to 100%, then show MAX warning
+    anime({ targets: document.getElementById('s12-bar-0'), width: [0, 100], delay: 400, duration: 1200, easing: 'easeInOutSine' });
+    anime({
+      targets: document.getElementById('s12-bar-1'), width: [0, 100], delay: 600, duration: 1400, easing: 'easeInOutSine',
+      complete: () => {
+        const maxLbl = svgText(175, 108, 'MAX REACHED', { fill: '#f87171', size: 13, weight: '700' });
+        maxLbl.style.opacity = '0';
+        svg.appendChild(maxLbl);
+        anime({ targets: maxLbl, opacity: [0, 1], duration: 400 });
+      }
+    });
+
+    // RIGHT SIDE — Horizontal Scaling title
+    svg.appendChild(svgText(525, 22, 'Horizontal Scaling (Scale Out)', { fill: '#e6edf3', size: 12, weight: '600' }));
+
+    // 3 server boxes that pop in with spring animation
+    [430, 525, 620].forEach((sx, i) => {
+      const g = makeSVGEl('g');
+      g.style.opacity = '0';
+      const sr = makeSVGEl('rect');
+      sr.setAttribute('x', sx - 42); sr.setAttribute('y', 60);
+      sr.setAttribute('width', 84); sr.setAttribute('height', 140);
+      sr.setAttribute('rx', 6); sr.setAttribute('fill', '#161b22');
+      sr.setAttribute('stroke', '#4ade80'); sr.setAttribute('stroke-width', '1.5');
+      const st = svgText(sx, 135, 'Server ' + (i + 1), { mono: true, size: 10 });
+      g.appendChild(sr); g.appendChild(st);
+      svg.appendChild(g);
+      anime({ targets: g, opacity: [0, 1], scale: [0.5, 1], delay: 500 + i * 500, duration: 400, easing: 'easeOutBack' });
+    });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-12'));
+
+  let s13_rr = 0;
+  let s13_dead = -1;
+
+  window.animate_s13 = function() {
+    const svg = document.getElementById('svg-13');
+    clearSVG(svg);
+    s13_rr = 0; s13_dead = -1;
+
+    drawNode(svg, 90, 100, 100, 40, 'Client', '', {});
+    drawNode(svg, 300, 100, 130, 44, 'Load Balancer', '(public IP)', { id: 's13-lb', stroke: '#4ade80' });
+    [50, 105, 160].forEach((sy, i) => {
+      drawNode(svg, 565, sy, 110, 38, ['Server A', 'Server B', 'Server C'][i], '', { id: 's13-srv-' + i });
+    });
+  };
+
+  window.sendRequest_s13 = function() {
+    const svg = document.getElementById('svg-13');
+    let t = s13_rr % 3;
+    if (t === s13_dead) { s13_rr++; t = s13_rr % 3; }
+    if (t === s13_dead) { s13_rr++; t = s13_rr % 3; }
+    s13_rr++;
+    const serverYs = [50, 105, 160];
+    const colors = ['#60a5fa', '#fb923c', '#a78bfa'];
+    animatePacket(svg, 140, 100, 235, 100, colors[t], 7, 450, () => {
+      animatePacket(svg, 365, 100, 510, serverYs[t], colors[t], 7, 500, () => {
+        pulseStroke(document.getElementById('s13-srv-' + t));
+      });
+    });
+  };
+
+  window.killServer_s13 = function() {
+    if (s13_dead !== -1) return;
+    s13_dead = 1;
+    const srv = document.getElementById('s13-srv-1');
+    if (srv) anime({ targets: srv, fill: '#1a0808', stroke: '#f87171', opacity: [1, 0.4], duration: 500 });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-13'));
+
+  let s14_primaryAlive = true;
+  let s14_readIdx = 0;
+
+  window.animate_s14 = function() {
+    const svg = document.getElementById('svg-14');
+    clearSVG(svg);
+    s14_primaryAlive = true; s14_readIdx = 0;
+
+    drawNode(svg, 90,  100, 95, 40, 'App Server', '', { id: 's14-app' });
+    drawNode(svg, 300, 80,  110, 40, 'Primary DB',  'read+write', { id: 's14-pri', stroke: '#4ade80' });
+    drawNode(svg, 530, 50,  110, 40, 'Replica 1',   'read-only',  { id: 's14-rep0' });
+    drawNode(svg, 530, 140, 110, 40, 'Replica 2',   'read-only',  { id: 's14-rep1' });
+  };
+
+  window.sendWrite_s14 = function() {
+    const svg = document.getElementById('svg-14');
+    if (!s14_primaryAlive) return;
+    animatePacket(svg, 138, 100, 245, 82, '#fb923c', 7, 550, () => {
+      pulseStroke(document.getElementById('s14-pri'), '#fb923c');
+      setTimeout(() => animatePacket(svg, 355, 72, 475, 52, '#fb923c', 5, 450), 150);
+      setTimeout(() => animatePacket(svg, 355, 88, 475, 142, '#fb923c', 5, 450), 300);
+    });
+  };
+
+  window.sendRead_s14 = function() {
+    const svg = document.getElementById('svg-14');
+    const repYs = [50, 140];
+    const idx = s14_readIdx % 2; s14_readIdx++;
+    animatePacket(svg, 138, 100, 475, repYs[idx], '#60a5fa', 7, 650, () => {
+      pulseStroke(document.getElementById('s14-rep' + idx), '#60a5fa');
+    });
+  };
+
+  window.failPrimary_s14 = function() {
+    if (!s14_primaryAlive) return;
+    s14_primaryAlive = false;
+    const pri = document.getElementById('s14-pri');
+    if (pri) anime({ targets: pri, opacity: [1, 0.3], stroke: '#f87171', duration: 600 });
+    setTimeout(() => {
+      const rep0 = document.getElementById('s14-rep0');
+      if (rep0) anime({ targets: rep0, stroke: '#4ade80', duration: 500 });
+    }, 800);
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-14'));
+
+  let s15_hits = 0, s15_total = 0;
+
+  window.animate_s15 = function() {
+    const svg = document.getElementById('svg-15');
+    clearSVG(svg);
+    s15_hits = 0; s15_total = 0;
+    const rateEl = document.getElementById('s15-rate');
+    if (rateEl) rateEl.textContent = '—';
+
+    drawNode(svg, 80,  90,  90, 40, 'Client',   '',                   { id: 's15-client' });
+    drawNode(svg, 240, 90,  90, 40, 'App',       '',                   { id: 's15-app'    });
+    drawNode(svg, 430, 50,  100, 40, 'Redis',    'cache',              { id: 's15-cache', stroke: '#fb923c' });
+    drawNode(svg, 430, 140, 100, 40, 'Database', 'source of truth',    { id: 's15-db'     });
+  };
+
+  function s15_updateRate() {
+    const el = document.getElementById('s15-rate');
+    if (el) el.textContent = s15_total === 0 ? '—' : Math.round(s15_hits / s15_total * 100) + '%';
+  }
+
+  window.cacheHit_s15 = function() {
+    const svg = document.getElementById('svg-15');
+    s15_hits++; s15_total++; s15_updateRate();
+    animatePacket(svg, 125, 90, 195, 90, '#e6edf3', 6, 380, () => {
+      animatePacket(svg, 285, 80, 380, 55, '#60a5fa', 6, 400, () => {
+        pulseStroke(document.getElementById('s15-cache'), '#4ade80');
+        animatePacket(svg, 380, 55, 285, 80, '#4ade80', 6, 300, () => {
+          animatePacket(svg, 195, 90, 125, 90, '#4ade80', 6, 300);
+        });
+      });
+    });
+  };
+
+  window.cacheMiss_s15 = function() {
+    const svg = document.getElementById('svg-15');
+    s15_total++; s15_updateRate();
+    animatePacket(svg, 125, 90, 195, 90, '#e6edf3', 6, 380, () => {
+      animatePacket(svg, 285, 80, 380, 55, '#60a5fa', 6, 400, () => {
+        pulseStroke(document.getElementById('s15-cache'), '#f87171');
+        setTimeout(() => {
+          animatePacket(svg, 285, 100, 380, 140, '#fb923c', 6, 500, () => {
+            pulseStroke(document.getElementById('s15-db'), '#fb923c');
+            setTimeout(() => {
+              animatePacket(svg, 380, 140, 285, 100, '#fb923c', 6, 480, () => {
+                animatePacket(svg, 285, 80, 380, 55, '#4ade80', 5, 380);
+                animatePacket(svg, 195, 90, 125, 90, '#fb923c', 6, 400);
+              });
+            }, 200);
+          });
+        }, 350);
+      });
+    });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-15'));
+
+  window.animate_s16 = function() {
+    const svg = document.getElementById('svg-16');
+    clearSVG(svg);
+
+    drawNode(svg, 575, 110, 120, 40, 'Origin Server', 'dynamic+static', { id: 's16-origin' });
+
+    const regions = [
+      { name: 'US Edge',   ex: 360, ey: 50,  ux: 110, uy: 50  },
+      { name: 'EU Edge',   ex: 360, ey: 110, ux: 110, uy: 110 },
+      { name: 'Asia Edge', ex: 360, ey: 170, ux: 110, uy: 170 },
+    ];
+    regions.forEach((r, i) => {
+      drawNode(svg, r.ux, r.uy, 100, 36, ['US User', 'EU User', 'Asia User'][i], '', { id: 's16-user-' + i });
+      drawNode(svg, r.ex, r.ey, 110, 36, r.name, '', { id: 's16-edge-' + i, stroke: '#818cf8' });
+    });
+  };
+
+  window.staticReq_s16 = function() {
+    const svg = document.getElementById('svg-16');
+    const regions = [
+      { ux: 110, uy: 50,  ex: 360, ey: 50  },
+      { ux: 110, uy: 110, ex: 360, ey: 110 },
+      { ux: 110, uy: 170, ex: 360, ey: 170 },
+    ];
+    regions.forEach((r, i) => {
+      setTimeout(() => {
+        animatePacket(svg, r.ux + 50, r.uy, r.ex - 55, r.ey, '#60a5fa', 6, 400, () => {
+          pulseStroke(document.getElementById('s16-edge-' + i), '#4ade80');
+          animatePacket(svg, r.ex - 55, r.ey, r.ux + 50, r.uy, '#4ade80', 6, 380);
+        });
+      }, i * 180);
+    });
+  };
+
+  window.dynamicReq_s16 = function() {
+    const svg = document.getElementById('svg-16');
+    animatePacket(svg, 160, 50, 305, 50, '#fb923c', 6, 400, () => {
+      animatePacket(svg, 415, 50, 515, 100, '#fb923c', 6, 550, () => {
+        pulseStroke(document.getElementById('s16-origin'), '#fb923c');
+        animatePacket(svg, 515, 100, 415, 50, '#fb923c', 6, 550, () => {
+          animatePacket(svg, 305, 50, 160, 50, '#fb923c', 6, 400);
+        });
+      });
+    });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-16'));
+
+  let s17_stateless = false;
+
+  window.animate_s17 = function() {
+    s17_stateless = false;
+    const lbl = document.getElementById('s17-mode-lbl');
+    if (lbl) { lbl.textContent = 'STATEFUL'; lbl.style.color = 'var(--red)'; }
+    s17_draw();
+  };
+
+  function s17_draw() {
+    const svg = document.getElementById('svg-17');
+    clearSVG(svg);
+    drawNode(svg, 75, 100, 90, 40, 'User', '', { id: 's17-user' });
+    drawNode(svg, 225, 100, 90, 40, 'LB', '', { id: 's17-lb', stroke: '#4ade80' });
+    drawNode(svg, 400, 55, 110, 38, 'Server A',
+      s17_stateless ? '' : '(session)',
+      { id: 's17-srvA', stroke: s17_stateless ? '#30363d' : '#fb923c' });
+    drawNode(svg, 400, 145, 110, 38, 'Server B', '', { id: 's17-srvB' });
+    if (s17_stateless) {
+      drawNode(svg, 580, 100, 110, 40, 'Redis', 'shared sessions', { id: 's17-redis', stroke: '#4ade80' });
+    }
+  }
+
+  window.toggleMode_s17 = function() {
+    s17_stateless = !s17_stateless;
+    const lbl = document.getElementById('s17-mode-lbl');
+    if (lbl) {
+      lbl.textContent = s17_stateless ? 'STATELESS' : 'STATEFUL';
+      lbl.style.color = s17_stateless ? 'var(--accent)' : 'var(--red)';
+    }
+    s17_draw();
+  };
+
+  window.sendReq_s17 = function() {
+    const svg = document.getElementById('svg-17');
+    animatePacket(svg, 120, 100, 180, 100, '#60a5fa', 6, 380, () => {
+      animatePacket(svg, 270, 100, 345, 148, '#60a5fa', 6, 420, () => {
+        if (!s17_stateless) {
+          pulseStroke(document.getElementById('s17-srvB'), '#f87171');
+        } else {
+          animatePacket(svg, 455, 148, 525, 100, '#60a5fa', 5, 380, () => {
+            animatePacket(svg, 525, 100, 455, 148, '#4ade80', 5, 320, () => {
+              pulseStroke(document.getElementById('s17-srvB'), '#4ade80');
+            });
+          });
+        }
+      });
+    });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-17'));
+
+  let s18_depth = 0;
+  let s18_drain = null;
+  let s18_blocks = [];
+  let s18_seq = 0;
+
+  const S18 = {
+    prodX: 80, prodY: 90,
+    queueX: 330, queueY: 90, queueW: 200, queueH: 60,
+    consX: 615, consY: 90,
+    inletX: 230, inletY: 90,
+    outletX: 430, outletY: 90,
+    buffer: { x: 330, y: 98, w: 170, h: 32 },
+    block: { w: 12, h: 10, gap: 4, rows: 2 }
+  };
+
+  function s18_setDepth(n) {
+    s18_depth = n;
+    const el = document.getElementById('s18-depth');
+    if (el) el.textContent = String(n);
+  }
+
+  function s18_slotsPerRow() {
+    return Math.max(1, Math.floor((S18.buffer.w - 12) / (S18.block.w + S18.block.gap)));
+  }
+
+  function s18_slotTopLeft(idx) {
+    const perRow = s18_slotsPerRow();
+    const row = Math.floor(idx / perRow);
+    const maxRows = S18.block.rows;
+    const maxPerCol = perRow * maxRows;
+    const clampedIdx = Math.min(idx, maxPerCol - 1);
+    const c = clampedIdx % perRow;
+    const r = Math.floor(clampedIdx / perRow);
+
+    const startX = S18.buffer.x - S18.buffer.w / 2 + 8;
+    const startY = S18.buffer.y - S18.buffer.h / 2 + 8;
+    const x = startX + c * (S18.block.w + S18.block.gap);
+    const y = startY + r * (S18.block.h + S18.block.gap);
+    return { x, y };
+  }
+
+  function s18_drawQueueChrome(svg) {
+    const q = svgRect(S18.buffer.x, S18.buffer.y, S18.buffer.w, S18.buffer.h, {
+      rx: 8,
+      fill: 'rgba(12,17,23,0.6)',
+      stroke: '#30363d',
+      id: 's18-buffer'
+    });
+    svg.appendChild(q);
+    svg.appendChild(svgText(S18.buffer.x, S18.buffer.y + S18.buffer.h / 2 + 16, 'Buffer', { fill: '#8b949e', size: 9, mono: true }));
+  }
+
+  function s18_layoutBlocks(svg) {
+    const capturedGen = svg._gen || 0;
+    s18_blocks.forEach((b, idx) => {
+      const pos = s18_slotTopLeft(idx);
+      anime({
+        targets: b.el,
+        x: pos.x,
+        y: pos.y,
+        duration: 280,
+        easing: 'easeOutQuad',
+        complete: () => {
+          if ((svg._gen || 0) !== capturedGen) return;
+          b.x = pos.x;
+          b.y = pos.y;
+        }
+      });
+    });
+  }
+
+  function s18_makeBlock(svg, id) {
+    const rect = makeSVGEl('rect');
+    rect.setAttribute('id', id);
+    rect.setAttribute('width', S18.block.w);
+    rect.setAttribute('height', S18.block.h);
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('fill', '#fb923c');
+    rect.setAttribute('stroke', '#30363d');
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('opacity', '1');
+    svg.appendChild(rect);
+    return rect;
+  }
+
+  function s18_produceOne() {
+    const svg = document.getElementById('svg-18');
+    if (!svg) return;
+    const capturedGen = svg._gen || 0;
+
+    animatePacket(svg, 130, 90, S18.inletX, S18.inletY, '#fb923c', 6, 280, () => {
+      if ((svg._gen || 0) !== capturedGen) return;
+
+      const id = 's18-msg-' + (s18_seq++);
+      const pos = s18_slotTopLeft(s18_blocks.length);
+      const blockEl = s18_makeBlock(svg, id);
+      blockEl.setAttribute('x', String(S18.inletX - S18.block.w / 2));
+      blockEl.setAttribute('y', String(S18.inletY - S18.block.h / 2));
+
+      anime({
+        targets: blockEl,
+        x: pos.x,
+        y: pos.y,
+        duration: 260,
+        easing: 'easeOutQuad',
+        complete: () => {
+          if ((svg._gen || 0) !== capturedGen) return;
+          s18_blocks.push({ id, el: blockEl, x: pos.x, y: pos.y });
+          s18_setDepth(s18_blocks.length);
+        }
+      });
+    });
+  }
+
+  function s18_consumeOne() {
+    const svg = document.getElementById('svg-18');
+    if (!svg) return;
+    if (!s18_blocks.length) return;
+    const capturedGen = svg._gen || 0;
+
+    const b = s18_blocks.shift();
+    s18_setDepth(s18_blocks.length);
+
+    const outX = S18.outletX - S18.block.w / 2;
+    const outY = S18.outletY - S18.block.h / 2;
+    anime({
+      targets: b.el,
+      x: outX,
+      y: outY,
+      duration: 260,
+      easing: 'easeInOutSine',
+      complete: () => {
+        if ((svg._gen || 0) !== capturedGen) return;
+        animatePacket(svg, S18.outletX, S18.outletY, 560, 90, '#4ade80', 6, 600);
+        if (svg.contains(b.el)) svg.removeChild(b.el);
+      }
+    });
+
+    s18_layoutBlocks(svg);
+  }
+
+  window.animate_s18 = function() {
+    clearInterval(s18_drain);
+    s18_blocks = [];
+    s18_seq = 0;
+    s18_setDepth(0);
+    const svg = document.getElementById('svg-18');
+    clearSVG(svg);
+
+    drawNode(svg, 80,  90, 100, 40, 'Producer', '', { id: 's18-prod', stroke: '#fb923c' });
+    drawNode(svg, 330, 90, 200, 60, 'Message Queue', '', { id: 's18-queue' });
+    drawNode(svg, 615, 90, 110, 40, 'Consumer', '', { id: 's18-cons', stroke: '#4ade80' });
+
+    s18_drawQueueChrome(svg);
+
+    s18_drain = setInterval(() => {
+      s18_consumeOne();
+    }, 900);
+  };
+
+  window.spike_s18 = function() {
+    for (let i = 0; i < 7; i++) {
+      setTimeout(() => {
+        s18_produceOne();
+      }, i * 130);
+    }
+  };
+
+  let s19_shards = 3;
+
+  window.animate_s19 = function() {
+    s19_shards = 3;
+    s19_draw();
+  };
+
+  function s19_draw() {
+    const svg = document.getElementById('svg-19');
+    clearSVG(svg);
+
+    drawNode(svg, 80, 110, 95, 40, 'App', '', { id: 's19-app' });
+    drawNode(svg, 255, 110, 130, 44, 'Shard Router', 'user_id % ' + s19_shards, { id: 's19-router', stroke: '#818cf8' });
+
+    const shardColors = ['#4ade80', '#60a5fa', '#fb923c', '#f472b6'];
+    const shardYs = [45, 110, 175, 220];
+    for (let i = 0; i < s19_shards; i++) {
+      const sy = shardYs[i];
+      drawNode(svg, 560, sy, 170, 38,
+        'Shard ' + i + ' (id%' + s19_shards + '=' + i + ')',
+        '', { id: 's19-shard-' + i, stroke: shardColors[i] });
+    }
+  }
+
+  window.queryUser_s19 = function() {
+    const svg = document.getElementById('svg-19');
+    const target = 7 % s19_shards;
+    const shardYs = [45, 110, 175, 220];
+    animatePacket(svg, 128, 110, 190, 110, '#60a5fa', 7, 420, () => {
+      animatePacket(svg, 320, 110, 475, shardYs[target], '#60a5fa', 7, 500, () => {
+        pulseStroke(document.getElementById('s19-shard-' + target), '#4ade80');
+      });
+    });
+  };
+
+  window.addShard_s19 = function() {
+    if (s19_shards >= 4) return;
+    s19_shards++;
+    s19_draw();
+    const newShard = document.getElementById('s19-shard-' + (s19_shards - 1));
+    if (newShard) anime({ targets: newShard, opacity: [0, 1], scale: [0.7, 1], duration: 500, easing: 'easeOutBack' });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-19'));
+
+  const s110_regions = [
+    { key: 'us', label: 'US-East', x: 560, y: 70, healthy: true },
+    { key: 'eu', label: 'EU-West', x: 560, y: 120, healthy: true },
+    { key: 'ap', label: 'AP-SG', x: 560, y: 170, healthy: true }
+  ];
+  const s110_users = [
+    { key: 'us', label: 'Users (NA)', x: 90, y: 70 },
+    { key: 'eu', label: 'Users (EU)', x: 90, y: 120 },
+    { key: 'ap', label: 'Users (AP)', x: 90, y: 170 }
+  ];
+  const s110_prefs = {
+    us: ['us', 'eu', 'ap'],
+    eu: ['eu', 'us', 'ap'],
+    ap: ['ap', 'eu', 'us']
+  };
+
+  function s110_getRegion(key) {
+    return s110_regions.find(r => r.key === key);
+  }
+
+  function s110_pickRegionFor(userKey) {
+    const prefs = s110_prefs[userKey] || [];
+    for (const k of prefs) {
+      const region = s110_getRegion(k);
+      if (region && region.healthy) return region;
+    }
+    return s110_regions[0];
+  }
+
+  function s110_draw() {
+    const svg = document.getElementById('svg-110');
+    if (!svg) return;
+    clearSVG(svg);
+
+    drawNode(svg, 305, 45, 140, 40, 'Geo DNS', 'latency routing', { id: 's110-dns', stroke: '#4ade80' });
+    drawNode(svg, 305, 110, 140, 40, 'Global LB', 'active-active', { id: 's110-glb', stroke: '#60a5fa' });
+
+    s110_users.forEach((u) => {
+      drawNode(svg, u.x, u.y, 120, 38, u.label, '', { id: 's110-user-' + u.key, stroke: '#30363d' });
+    });
+
+    s110_regions.forEach((r) => {
+      const stroke = r.healthy ? '#4ade80' : '#f87171';
+      drawNode(svg, r.x, r.y, 145, 42, r.label, r.healthy ? 'healthy' : 'down', { id: 's110-region-' + r.key, stroke });
+    });
+
+    const dashed = makeSVGEl('line');
+    dashed.setAttribute('x1', s110_regions[0].x);
+    dashed.setAttribute('y1', s110_regions[0].y + 25);
+    dashed.setAttribute('x2', s110_regions[2].x);
+    dashed.setAttribute('y2', s110_regions[2].y - 25);
+    dashed.setAttribute('stroke', '#30363d');
+    dashed.setAttribute('stroke-width', '1.5');
+    dashed.setAttribute('stroke-dasharray', '5 6');
+    dashed.setAttribute('opacity', '0.8');
+    svg.appendChild(dashed);
+
+    svg.appendChild(svgText(350, 225, 'Clients → Geo DNS → region; if a region fails, route to next closest healthy region', { fill: '#8b949e', size: 10 }));
+  }
+
+  function s110_runOnce() {
+    const svg = document.getElementById('svg-110');
+    if (!svg) return;
+
+    s110_users.forEach((u, i) => {
+      const region = s110_pickRegionFor(u.key);
+      setTimeout(() => {
+        pulseStroke(document.getElementById('s110-user-' + u.key), '#60a5fa');
+        animatePacket(svg, u.x + 60, u.y, 305 - 70, 45, '#60a5fa', 6, 480, () => {
+          pulseStroke(document.getElementById('s110-dns'), '#4ade80');
+          animatePacket(svg, 305 + 70, 45, region.x - 73, region.y, '#4ade80', 6, 620, () => {
+            pulseStroke(document.getElementById('s110-region-' + region.key), region.healthy ? '#4ade80' : '#f87171');
+            animatePacket(svg, region.x - 73, region.y, 305 + 70, 110, '#fb923c', 5, 520, () => {
+              pulseStroke(document.getElementById('s110-glb'), '#60a5fa');
+              animatePacket(svg, 305 - 70, 110, u.x + 60, u.y, '#60a5fa', 5, 520);
+            });
+          });
+        });
+      }, i * 520);
+    });
+  }
+
+  window.animate_s110 = function() {
+    s110_regions.forEach(r => { r.healthy = true; });
+    s110_draw();
+    s110_runOnce();
+  };
+
+  window.failover_s110 = function() {
+    const eu = s110_getRegion('eu');
+    const allHealthy = s110_regions.every(r => r.healthy);
+    if (allHealthy && eu) eu.healthy = false;
+    else s110_regions.forEach(r => { r.healthy = true; });
+    s110_draw();
+    s110_runOnce();
+  };
+
+  // ─── Sidebar toggle ───────────────────────────────────────────────────────
+  (function() {
+    const body = document.body;
+    const toggle = document.getElementById("sidebar-toggle");
+    const overlay = document.getElementById("sidebar-overlay");
+    const drawer = document.getElementById("sidebar-drawer");
+    const closeBtn = document.getElementById("sidebar-close");
+
+    function openSidebar() {
+      body.classList.add("sidebar-open");
+      overlay.classList.add("open");
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+      toggle.setAttribute("aria-expanded", "true");
+    }
+    function closeSidebar() {
+      body.classList.remove("sidebar-open");
+      overlay.classList.remove("open");
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
+    toggle.addEventListener("click", function() {
+      body.classList.contains("sidebar-open") ? closeSidebar() : openSidebar();
+    });
+    overlay.addEventListener("click", closeSidebar);
+    if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+
+    // Chapter accordion
+    document.querySelectorAll(".drawer-group-toggle").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const group = btn.closest(".drawer-group");
+        const isCollapsed = group.classList.toggle("collapsed");
+        btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      });
+    });
+
+    // Close sidebar when a section link is clicked (mobile)
+    drawer.querySelectorAll('a[href^="#"]').forEach(function(a) {
+      a.addEventListener("click", closeSidebar);
+    });
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Problem Solving Atlas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #081018;
+      --bg-soft: #0d1722;
+      --panel: rgba(12, 21, 31, 0.92);
+      --panel-strong: rgba(14, 24, 36, 0.98);
+      --panel-alt: rgba(24, 36, 52, 0.88);
+      --border: rgba(148, 163, 184, 0.18);
+      --border-strong: rgba(244, 180, 88, 0.34);
+      --text: #edf2f7;
+      --text-muted: #98a7b8;
+      --accent: #f4b458;
+      --accent-soft: rgba(244, 180, 88, 0.14);
+      --accent-2: #7dd3fc;
+      --accent-3: #86efac;
+      --shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+      --sidebar-width: 340px;
+      --sidebar-offset: 28px;
+      --content-width: min(1120px, calc(100vw - var(--sidebar-width) - 96px));
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(125, 211, 252, 0.12), transparent 26%),
+        radial-gradient(circle at 20% 15%, rgba(244, 180, 88, 0.16), transparent 22%),
+        linear-gradient(180deg, #09111a 0%, #081018 54%, #071019 100%);
+      color: var(--text);
+      font-family: "Manrope", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.2;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.8), transparent 88%);
+    }
+
+    a { color: inherit; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    #sidebar-toggle {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 1001;
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(10, 18, 28, 0.92);
+      color: var(--accent);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.26);
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    #sidebar-toggle:hover {
+      transform: translateY(-1px);
+      background: rgba(16, 27, 39, 0.98);
+      color: #ffe2ba;
+    }
+
+    #sidebar-toggle .hamburger-line {
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) {
+      transform: translateY(6px) rotate(45deg);
+    }
+
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) {
+      opacity: 0;
+    }
+
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) {
+      transform: translateY(-6px) rotate(-45deg);
+    }
+
+    #sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(2, 6, 11, 0.46);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+
+    body.sidebar-open #sidebar-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #sidebar-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      width: min(var(--sidebar-width), 88vw);
+      height: 100vh;
+      padding: 24px 18px 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0) 18%),
+        linear-gradient(180deg, rgba(12, 21, 31, 0.98), rgba(8, 16, 24, 0.98));
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow-y: auto;
+      transform: translateX(-104%);
+      transition: transform 0.24s ease;
+    }
+
+    body.sidebar-open #sidebar-drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .drawer-kicker,
+    .eyebrow {
+      display: inline-block;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .drawer-title h1 {
+      margin-top: 8px;
+      font-family: "Fraunces", serif;
+      font-size: 1.65rem;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+
+    .drawer-title p {
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .drawer-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .meta-card {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .meta-card strong {
+      display: block;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+
+    .meta-card span {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .drawer-group {
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      overflow: hidden;
+    }
+
+    .drawer-group-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .drawer-group-title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .drawer-group-title .name {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .drawer-group-title .note {
+      display: block;
+      margin-top: 5px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    .drawer-group-toggle {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .drawer-chevron {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform 0.18s ease;
+    }
+
+    .drawer-group.collapsed .drawer-chevron {
+      transform: rotate(-45deg) translate(-1px, 1px);
+    }
+
+    .drawer-subnav {
+      list-style: none;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      max-height: 900px;
+      opacity: 1;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+      overflow: hidden;
+    }
+
+    .drawer-group.collapsed .drawer-subnav {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .drawer-subnav a {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      padding: 10px 12px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text-muted);
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+
+    .drawer-subnav a:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      transform: translateX(2px);
+    }
+
+    .drawer-subnav .num {
+      min-width: 26px;
+      color: var(--accent);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+    }
+
+    .drawer-subnav .label {
+      flex: 1;
+      font-size: 0.87rem;
+      line-height: 1.45;
+    }
+
+    .page-shell {
+      position: relative;
+      width: 100%;
+      padding: 36px 24px 60px;
+      transition: padding-left 0.24s ease;
+    }
+
+    body.sidebar-open .page-shell {
+      padding-left: calc(var(--sidebar-width) + var(--sidebar-offset));
+    }
+
+    .content {
+      width: var(--content-width);
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 44px;
+      border-radius: 32px;
+      border: 1px solid var(--border-strong);
+      background:
+        radial-gradient(circle at top right, rgba(125,211,252,0.12), transparent 28%),
+        linear-gradient(135deg, rgba(244,180,88,0.13), rgba(255,255,255,0.02) 48%, rgba(125,211,252,0.08));
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -90px -110px auto;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(244,180,88,0.18), transparent 64%);
+      pointer-events: none;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+    }
+
+    .hero-copy h2 {
+      margin-top: 14px;
+      font-family: "Fraunces", serif;
+      font-size: clamp(2.8rem, 6vw, 5.3rem);
+      line-height: 0.96;
+      letter-spacing: -0.04em;
+    }
+
+    .hero-copy p {
+      margin-top: 18px;
+      max-width: 620px;
+      color: #cfdae3;
+      font-size: 1.04rem;
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      font-weight: 700;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #121212;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+    }
+
+    .hero-stats,
+    .signal-grid,
+    .cluster-grid,
+    .lesson-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero-stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-top: 28px;
+    }
+
+    .stat-card,
+    .signal-card,
+    .cluster-card,
+    .lesson-card {
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+    }
+
+    .stat-card {
+      padding: 18px 18px 16px;
+    }
+
+    .stat-card strong {
+      display: block;
+      font-size: 1.9rem;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .stat-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.5;
+    }
+
+    .section {
+      margin-top: 28px;
+      padding: 32px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      background: rgba(8, 16, 24, 0.72);
+      backdrop-filter: blur(10px);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .section-head h3 {
+      margin-top: 10px;
+      font-family: "Fraunces", serif;
+      font-size: clamp(1.8rem, 3vw, 2.6rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+
+    .section-head p {
+      max-width: 540px;
+      color: var(--text-muted);
+      line-height: 1.75;
+    }
+
+    .signal-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .signal-card {
+      padding: 20px;
+    }
+
+    .signal-card strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .signal-card p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      line-height: 1.7;
+    }
+
+    .cluster-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cluster-card {
+      padding: 22px;
+    }
+
+    .cluster-card .cluster-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .cluster-card h4 {
+      margin-top: 14px;
+      font-size: 1.2rem;
+    }
+
+    .cluster-card p {
+      margin-top: 10px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      font-size: 0.93rem;
+    }
+
+    .cluster-card ul {
+      list-style: none;
+      margin-top: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .cluster-card li {
+      color: #d7e0e8;
+      font-size: 0.9rem;
+    }
+
+    .cluster-card li span {
+      color: var(--accent-2);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.76rem;
+      margin-right: 8px;
+    }
+
+    .lesson-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .lesson-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 22px;
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .lesson-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      background: var(--panel-strong);
+    }
+
+    .lesson-card .lesson-num {
+      color: var(--accent);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .lesson-card h4 {
+      font-size: 1.08rem;
+      line-height: 1.35;
+      color: var(--text);
+    }
+
+    .lesson-card p {
+      color: var(--text-muted);
+      font-size: 0.91rem;
+      line-height: 1.7;
+    }
+
+    .lesson-card .lesson-arrow {
+      margin-top: auto;
+      color: var(--accent-3);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1100px) {
+      :root {
+        --content-width: min(100%, calc(100vw - 64px));
+      }
+
+      .hero-stats,
+      .signal-grid,
+      .cluster-grid,
+      .lesson-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 860px) {
+      body.sidebar-open .page-shell {
+        padding-left: 24px;
+      }
+
+      #sidebar-overlay {
+        display: block;
+      }
+
+      .content,
+      :root {
+        --content-width: 100%;
+      }
+
+      .hero,
+      .section {
+        padding: 24px;
+      }
+
+      .hero-copy h2 {
+        font-size: 2.8rem;
+      }
+
+      .hero-stats,
+      .signal-grid,
+      .cluster-grid,
+      .lesson-grid,
+      .drawer-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page-shell {
+        padding: 24px 16px 42px;
+      }
+
+      body.sidebar-open .page-shell {
+        padding-left: 16px;
+      }
+
+      .hero {
+        padding-top: 70px;
+      }
+
+      .hero-copy h2 {
+        font-size: 2.35rem;
+      }
+    }
+  </style>
+</head>
+<body class="sidebar-open">
+  <button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="true" aria-label="Toggle navigation menu">
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+    <span class="sr-only">Toggle navigation</span>
+  </button>
+
+  <div id="sidebar-overlay"></div>
+
+  <aside id="sidebar-drawer" aria-hidden="false">
+    <div class="drawer-top">
+      <div class="drawer-title">
+        <span class="drawer-kicker">Problem Solving Track</span>
+        <h1>Interview Pattern Atlas</h1>
+        <p>One home page for the full DSA track: what each module teaches, when to use it, and where to start next.</p>
+      </div>
+    </div>
+
+    <div class="drawer-meta">
+      <div class="meta-card">
+        <strong>21</strong>
+        <span>Interactive pattern pages</span>
+      </div>
+      <div class="meta-card">
+        <strong>4</strong>
+        <span>Learning clusters</span>
+      </div>
+      <div class="meta-card">
+        <strong>Java</strong>
+        <span>Templates and code-first walkthroughs</span>
+      </div>
+    </div>
+
+    <nav class="drawer-nav">
+      <section class="drawer-group">
+        <div class="drawer-group-header">
+          <div class="drawer-group-title">
+            <span class="eyebrow">Foundation</span>
+            <span class="name">Patterns 01-05</span>
+            <span class="note">Core templates for windowing, search, recursion, stack thinking, and DP state design.</span>
+          </div>
+          <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Toggle Foundation group">
+            <span class="drawer-chevron"></span>
+          </button>
+        </div>
+        <ul class="drawer-subnav">
+          <li><a href="01_sliding_window.html"><span class="num">01</span><span class="label">Sliding Window</span></a></li>
+          <li><a href="02_binary_search.html"><span class="num">02</span><span class="label">Binary Search</span></a></li>
+          <li><a href="03_recursion.html"><span class="num">03</span><span class="label">Recursion</span></a></li>
+          <li><a href="04_monotonic_stack.html"><span class="num">04</span><span class="label">Monotonic Stack</span></a></li>
+          <li><a href="05_dynamic_programming.html"><span class="num">05</span><span class="label">Dynamic Programming</span></a></li>
+        </ul>
+      </section>
+
+      <section class="drawer-group">
+        <div class="drawer-group-header">
+          <div class="drawer-group-title">
+            <span class="eyebrow">Core Toolkit</span>
+            <span class="name">Patterns 06-13</span>
+            <span class="note">High-frequency interview building blocks: heaps, backtracking, arrays, linked structures, trees, and tries.</span>
+          </div>
+          <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Toggle Core Toolkit group">
+            <span class="drawer-chevron"></span>
+          </button>
+        </div>
+        <ul class="drawer-subnav">
+          <li><a href="06_heap_priority_queue.html"><span class="num">06</span><span class="label">Heap / Priority Queue</span></a></li>
+          <li><a href="07_backtracking.html"><span class="num">07</span><span class="label">Backtracking</span></a></li>
+          <li><a href="08_mixed_must_do.html"><span class="num">08</span><span class="label">Mixed Must-Do Interview Problems</span></a></li>
+          <li><a href="09_arrays_two_pointers_prefix_sums.html"><span class="num">09</span><span class="label">Arrays, Two Pointers, Prefix Sums</span></a></li>
+          <li><a href="10_hashing_intervals_sweep_line.html"><span class="num">10</span><span class="label">Hashing, Intervals, Sweep Line</span></a></li>
+          <li><a href="11_linked_lists.html"><span class="num">11</span><span class="label">Linked Lists</span></a></li>
+          <li><a href="12_trees_bst.html"><span class="num">12</span><span class="label">Trees + BST</span></a></li>
+          <li><a href="13_trie.html"><span class="num">13</span><span class="label">Trie</span></a></li>
+        </ul>
+      </section>
+
+      <section class="drawer-group">
+        <div class="drawer-group-header">
+          <div class="drawer-group-title">
+            <span class="eyebrow">Graphs</span>
+            <span class="name">Patterns 14-18</span>
+            <span class="note">Traversal, DAG ordering, shortest paths, spanning trees, and connectivity with DSU.</span>
+          </div>
+          <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Toggle Graph group">
+            <span class="drawer-chevron"></span>
+          </button>
+        </div>
+        <ul class="drawer-subnav">
+          <li><a href="14_graphs_bfs_dfs.html"><span class="num">14</span><span class="label">Graphs: BFS + DFS</span></a></li>
+          <li><a href="15_graphs_toposort.html"><span class="num">15</span><span class="label">Graphs: Topological Sort</span></a></li>
+          <li><a href="16_graphs_shortest_path.html"><span class="num">16</span><span class="label">Graphs: Shortest Path</span></a></li>
+          <li><a href="17_graphs_mst.html"><span class="num">17</span><span class="label">Graphs: MST</span></a></li>
+          <li><a href="18_union_find_dsu.html"><span class="num">18</span><span class="label">Union-Find (DSU)</span></a></li>
+        </ul>
+      </section>
+
+      <section class="drawer-group">
+        <div class="drawer-group-header">
+          <div class="drawer-group-title">
+            <span class="eyebrow">Edge Cases</span>
+            <span class="name">Patterns 19-21</span>
+            <span class="note">Bit tricks, string parsing, and interview-style data-structure design patterns.</span>
+          </div>
+          <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Toggle Edge Cases group">
+            <span class="drawer-chevron"></span>
+          </button>
+        </div>
+        <ul class="drawer-subnav">
+          <li><a href="19_bit_manipulation.html"><span class="num">19</span><span class="label">Bit Manipulation</span></a></li>
+          <li><a href="20_string_algorithms_parsing.html"><span class="num">20</span><span class="label">String Algorithms + Parsing</span></a></li>
+          <li><a href="21_designish_lru_lfu_stream.html"><span class="num">21</span><span class="label">Design-ish DSA</span></a></li>
+        </ul>
+      </section>
+    </nav>
+  </aside>
+
+  <div class="page-shell">
+    <main class="content">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <span class="eyebrow">Problem Solving Home</span>
+          <h2>Build pattern memory, not just problem count.</h2>
+          <p>This track is a guided DSA refresh for interviews: each page explains the pattern, shows the mental model, includes Java code, and uses interactive visuals to make the invariant feel obvious instead of memorized. Use it as a revision atlas before interviews or as a structured path from fundamentals to graph-heavy and design-ish questions.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="01_sliding_window.html">Start At Pattern 01</a>
+            <a class="btn btn-secondary" href="#clusters">See The Roadmap</a>
+            <a class="btn btn-secondary" href="#all-lessons">Browse All Lessons</a>
+          </div>
+        </div>
+
+        <div class="hero-stats">
+          <article class="stat-card">
+            <strong>21</strong>
+            <span>interactive pages covering the main interview problem families</span>
+          </article>
+          <article class="stat-card">
+            <strong>O(n)</strong>
+            <span>style intuition around pointer, stack, queue, and graph traversal invariants</span>
+          </article>
+          <article class="stat-card">
+            <strong>Java</strong>
+            <span>templates and implementation patterns tuned for coding rounds</span>
+          </article>
+          <article class="stat-card">
+            <strong>Staff+</strong>
+            <span>follow-up prompts that push from solving to explaining tradeoffs clearly</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="overview">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">What Is Here</span>
+            <h3>A compact map of the full interview toolkit.</h3>
+          </div>
+          <p>The content moves from core patterns to higher-composition topics. Early modules teach recognition; later ones combine multiple ideas in the same problem and force better state modeling.</p>
+        </div>
+
+        <div class="signal-grid">
+          <article class="signal-card">
+            <strong>Template-first learning</strong>
+            <p>Each module anchors on the reusable skeleton: where pointers move, when a stack pops, what state a DP cell means, or how a graph traversal marks progress.</p>
+          </article>
+          <article class="signal-card">
+            <strong>Visual intuition</strong>
+            <p>The interactive sections are not decorative. They make transitions, window boundaries, event ordering, and graph frontier expansion easier to reason about during interviews.</p>
+          </article>
+          <article class="signal-card">
+            <strong>Interview transfer</strong>
+            <p>The goal is to recognize a pattern quickly, explain why it fits, and implement it in Java without rebuilding the idea from scratch every time.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="clusters">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Learning Roadmap</span>
+            <h3>Four clusters that build on each other.</h3>
+          </div>
+          <p>If you are revising, jump by cluster. If you are rebuilding fundamentals, go in order and treat each section as a pattern family rather than a one-off page.</p>
+        </div>
+
+        <div class="cluster-grid">
+          <article class="cluster-card">
+            <span class="cluster-tag">Foundation</span>
+            <h4>Recognize the classic interview shapes</h4>
+            <p>Start here to refresh movement-based reasoning: shrinking and expanding windows, monotone predicates for binary search, recursive state reduction, stack boundary logic, and DP state definition.</p>
+            <ul>
+              <li><span>01-05</span>Sliding Window, Binary Search, Recursion, Monotonic Stack, Dynamic Programming</li>
+            </ul>
+          </article>
+
+          <article class="cluster-card">
+            <span class="cluster-tag">Core Toolkit</span>
+            <h4>Get fluent with everyday data-structure choices</h4>
+            <p>This block covers the patterns that appear constantly in medium-to-hard rounds: heaps, backtracking, arrays plus prefix logic, interval processing, list manipulation, trees, and tries.</p>
+            <ul>
+              <li><span>06-13</span>Priority queues, backtracking, mixed drills, arrays and prefixes, intervals, linked lists, trees, tries</li>
+            </ul>
+          </article>
+
+          <article class="cluster-card">
+            <span class="cluster-tag">Graphs</span>
+            <h4>Move from traversal to graph optimization</h4>
+            <p>These lessons progress from simple visiting strategies to DAG ordering, weighted path computation, spanning trees, and connectivity maintenance using union-find.</p>
+            <ul>
+              <li><span>14-18</span>BFS/DFS, topological sort, shortest path, MST, DSU</li>
+            </ul>
+          </article>
+
+          <article class="cluster-card">
+            <span class="cluster-tag">Edge Cases</span>
+            <h4>Finish with topics that sharpen interview polish</h4>
+            <p>These modules cover tricky but high-yield areas: bit-level manipulation, string scanning and parsing, and data-structure design questions that test API plus invariant thinking together.</p>
+            <ul>
+              <li><span>19-21</span>Bit tricks, parsing, LRU/LFU/stream-style designs</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="all-lessons">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">All Lessons</span>
+            <h3>Open any pattern directly.</h3>
+          </div>
+          <p>Use this grid when you want a fast refresh on a specific family or need to jump back into a page while practicing problems elsewhere.</p>
+        </div>
+
+        <div class="lesson-grid">
+          <a class="lesson-card" href="01_sliding_window.html"><span class="lesson-num">Pattern 01</span><h4>Sliding Window</h4><p>Contiguous ranges, fixed-size windows, variable windows, and the invariants that keep the scan linear.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="02_binary_search.html"><span class="lesson-num">Pattern 02</span><h4>Binary Search</h4><p>Classic sorted search plus search-on-answer using a monotone feasibility predicate.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="03_recursion.html"><span class="lesson-num">Pattern 03</span><h4>Recursion</h4><p>Self-similar decomposition, backtracking setup, and when to trust or replace the call stack.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="04_monotonic_stack.html"><span class="lesson-num">Pattern 04</span><h4>Monotonic Stack</h4><p>Nearest greater/smaller logic, range boundaries, and one-pass stack cleanup patterns.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="05_dynamic_programming.html"><span class="lesson-num">Pattern 05</span><h4>Dynamic Programming</h4><p>State meaning, transition design, memoization, tabulation, and interview-ready recurrence framing.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="06_heap_priority_queue.html"><span class="lesson-num">Pattern 06</span><h4>Heap / Priority Queue</h4><p>Top-k, running order statistics, greedy extraction, and event scheduling workflows.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="07_backtracking.html"><span class="lesson-num">Pattern 07</span><h4>Backtracking</h4><p>Choice trees, pruning, path construction, and search-space control under constraints.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="08_mixed_must_do.html"><span class="lesson-num">Pattern 08</span><h4>Mixed Must-Do Interview Problems</h4><p>A curated set of high-frequency drills that force fast pattern recognition across categories.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="09_arrays_two_pointers_prefix_sums.html"><span class="lesson-num">Pattern 09</span><h4>Arrays, Two Pointers, Prefix Sums</h4><p>Linear scans, range aggregation, and space-time tradeoffs that appear in countless warm-ups and mediums.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="10_hashing_intervals_sweep_line.html"><span class="lesson-num">Pattern 10</span><h4>Hashing, Intervals, Sweep Line</h4><p>Frequency maps, overlap reasoning, and event sorting for concurrency-style problems.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="11_linked_lists.html"><span class="lesson-num">Pattern 11</span><h4>Linked Lists</h4><p>Pointer rewiring, fast-slow techniques, cycle handling, and list surgery without losing references.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="12_trees_bst.html"><span class="lesson-num">Pattern 12</span><h4>Trees + BST</h4><p>Traversal patterns, recursive decomposition, balanced reasoning, and ordered-tree operations.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="13_trie.html"><span class="lesson-num">Pattern 13</span><h4>Trie</h4><p>Prefix indexing, lexicographic reasoning, and how to turn string lookup into node traversal.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="14_graphs_bfs_dfs.html"><span class="lesson-num">Pattern 14</span><h4>Graphs: BFS + DFS</h4><p>Traversal order, visited state, component discovery, and frontier expansion across graph shapes.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="15_graphs_toposort.html"><span class="lesson-num">Pattern 15</span><h4>Graphs: Topological Sort</h4><p>Dependency ordering, indegree management, and cycle detection in DAG-shaped problems.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="16_graphs_shortest_path.html"><span class="lesson-num">Pattern 16</span><h4>Graphs: Shortest Path</h4><p>Choose between BFS, Dijkstra, Bellman-Ford, and related shortest-path strategies based on edge behavior.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="17_graphs_mst.html"><span class="lesson-num">Pattern 17</span><h4>Graphs: MST</h4><p>Kruskal and Prim for minimum connection cost, plus how to reason about edge choices globally.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="18_union_find_dsu.html"><span class="lesson-num">Pattern 18</span><h4>Union-Find (DSU)</h4><p>Connectivity, grouping, cycle detection, and near-constant-time merge/find operations.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="19_bit_manipulation.html"><span class="lesson-num">Pattern 19</span><h4>Bit Manipulation</h4><p>Masks, shifts, parity, subset tricks, and representation-level shortcuts for tight solutions.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="20_string_algorithms_parsing.html"><span class="lesson-num">Pattern 20</span><h4>String Algorithms + Parsing</h4><p>Scan, tokenize, compare, and transform strings with clean state handling under interview pressure.</p><span class="lesson-arrow">Open lesson -></span></a>
+          <a class="lesson-card" href="21_designish_lru_lfu_stream.html"><span class="lesson-num">Pattern 21</span><h4>Design-ish DSA</h4><p>LRU, LFU, sliding medians, and stream-minded data structures that test API plus invariant thinking.</p><span class="lesson-arrow">Open lesson -></span></a>
+        </div>
+
+        <p class="footer-note">The sidebar is open by default so the full map is always visible, but the hamburger stays available when you want to collapse it and focus on the main content.</p>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const sidebarToggle = document.getElementById("sidebar-toggle");
+    const sidebarDrawer = document.getElementById("sidebar-drawer");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    const drawerGroupToggles = document.querySelectorAll(".drawer-group-toggle");
+
+    function setSidebarState(open) {
+      document.body.classList.toggle("sidebar-open", open);
+      sidebarDrawer.setAttribute("aria-hidden", String(!open));
+      sidebarToggle.setAttribute("aria-expanded", String(open));
+      if (window.innerWidth > 860) {
+        sidebarOverlay.style.pointerEvents = "none";
+      } else {
+        sidebarOverlay.style.pointerEvents = open ? "auto" : "none";
+      }
+    }
+
+    setSidebarState(true);
+
+    sidebarToggle.addEventListener("click", () => {
+      setSidebarState(!document.body.classList.contains("sidebar-open"));
+    });
+
+    sidebarOverlay.addEventListener("click", () => {
+      if (window.innerWidth <= 860) setSidebarState(false);
+    });
+
+    drawerGroupToggles.forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const group = toggle.closest(".drawer-group");
+        const collapsed = group.classList.toggle("collapsed");
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+      });
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 860) {
+        document.body.classList.add("sidebar-open");
+        sidebarOverlay.style.pointerEvents = "none";
+      } else if (!document.body.classList.contains("sidebar-open")) {
+        sidebarOverlay.style.pointerEvents = "none";
+      } else {
+        sidebarOverlay.style.pointerEvents = "auto";
+      }
+    });
+  </script>
+</body>
+</html>

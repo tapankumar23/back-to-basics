@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 - Monotonic Stack — Problem Solving Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-card-hover: #1c2330;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #f472b6;
+  --accent-dim: rgba(244,114,182,0.15);
+  --good: #4ade80;
+  --bad: #f87171;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+#scroll-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;backdrop-filter:blur(12px);background:rgba(13,17,23,0.85);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+nav a{color:var(--text-muted);text-decoration:none;font-size:.85rem;transition:color .2s;white-space:nowrap}
+nav a:hover{color:var(--accent)}
+.nav-divider{color:var(--border);user-select:none}
+.nav-chapter{display:flex;align-items:center;gap:.5rem;margin-left:auto}
+.nav-chapter a{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:.2rem .6rem;font-size:.8rem}
+.nav-chapter span{color:var(--text-muted);font-size:.8rem}
+.nav-anchors{display:flex;gap:.5rem;flex-wrap:wrap}
+.nav-anchors a{font-size:.75rem;color:var(--text-muted);padding:.15rem .5rem;border-radius:4px;border:1px solid transparent}
+.nav-anchors a:hover{border-color:var(--accent);color:var(--accent)}
+main{padding-top:72px;max-width:1100px;margin:0 auto;padding-left:1.5rem;padding-right:1.5rem}
+section{padding:3rem 0;border-bottom:1px solid var(--border)}
+section:last-child{border-bottom:none}
+h1{font-size:2.8rem;font-weight:700;line-height:1.2}
+h2{font-size:1.6rem;font-weight:600;margin-bottom:1.2rem;color:var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-bottom:.8rem;color:var(--text)}
+p{color:var(--text-muted);margin-bottom:.8rem}
+.tag{display:inline-block;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:.2rem .8rem;font-size:.8rem;font-weight:600;letter-spacing:.04em}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;transition:border-color .2s}
+.card:hover{border-color:var(--accent)}
+.concept-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem}
+@media(max-width:700px){.concept-grid{grid-template-columns:1fr}}
+.concept-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;text-align:center;opacity:0;transform:translateY(30px);transition:border-color .2s}
+.concept-card:hover{border-color:var(--accent)}
+.concept-card .icon{font-size:2rem;margin-bottom:.6rem}
+.concept-card h4{font-size:.95rem;font-weight:600;margin-bottom:.4rem;color:var(--accent)}
+.concept-card p{font-size:.82rem;color:var(--text-muted);margin:0}
+.stepper-controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-size:.85rem;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent);color:#0d1117;border-color:var(--accent)}
+select{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:.4rem .8rem;border-radius:6px;font-size:.85rem;font-family:'Inter',sans-serif;cursor:pointer}
+select:focus{outline:none;border-color:var(--accent)}
+label{font-size:.85rem;color:var(--text-muted)}
+input[type=range]{accent-color:var(--accent);cursor:pointer}
+.stepper-layout{display:grid;grid-template-columns:1fr 280px;gap:1.5rem}
+@media(max-width:800px){.stepper-layout{grid-template-columns:1fr}}
+.viz-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem;min-height:320px;overflow:hidden}
+.trace-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.trace-box h4{font-size:.85rem;font-weight:600;color:var(--accent);margin-bottom:.8rem;text-transform:uppercase;letter-spacing:.06em}
+.trace-row{display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.trace-row:last-child{border-bottom:none}
+.trace-label{color:var(--text-muted)}
+.trace-val{color:var(--text);font-family:'JetBrains Mono',monospace;font-weight:600}
+.code-panel{background:#0d1117;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.code-header{background:var(--bg-card);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+.code-header span{font-size:.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+pre{padding:1.2rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.7}
+.kw{color:#ff7b72}
+.fn{color:#d2a8ff}
+.str{color:#a5d6ff}
+.cm{color:#8b949e;font-style:italic}
+.num{color:#f2cc60}
+.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:1rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;opacity:0;transform:translateY(20px);transition:border-color .2s}
+.problem-card:hover{border-color:var(--accent)}
+.problem-title{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:.25rem}
+.problem-note{font-size:.78rem;color:var(--text-muted)}
+.complexity-badge{display:inline-block;font-size:.72rem;font-family:'JetBrains Mono',monospace;background:var(--accent-dim);color:var(--accent);border-radius:4px;padding:.1rem .4rem;margin-top:.3rem}
+.difficulty-hard{color:var(--bad);font-size:.72rem;font-weight:600;margin-left:.4rem}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:1.2rem;margin-bottom:1rem}
+.staff-q{font-size:.9rem;color:var(--text);font-style:italic;margin-bottom:.5rem}
+.staff-a{font-size:.82rem;color:var(--text-muted)}
+.hero-subtitle{font-size:1.1rem;color:var(--text-muted);margin:1rem 0 1.5rem;max-width:600px}
+.hero-meta{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+.meta-pill{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:.3rem .9rem;font-size:.82rem;color:var(--text-muted)}
+.meta-pill strong{color:var(--text)}
+/* Stack column visual */
+.stack-visual{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.8rem;min-height:160px;display:flex;flex-direction:column-reverse;gap:3px;overflow:hidden}
+.stack-item{background:var(--accent-dim);border:1px solid var(--accent);border-radius:4px;padding:.3rem .7rem;font-size:.82rem;font-family:'JetBrains Mono',monospace;color:var(--accent);text-align:center;transition:all .2s}
+.result-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:.5rem}
+.result-cell{background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:.25rem .5rem;font-size:.78rem;font-family:'JetBrains Mono',monospace;color:var(--text-muted);min-width:36px;text-align:center}
+.result-cell.filled{border-color:var(--good);color:var(--good);background:rgba(74,222,128,0.08)}
+.result-cell.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+/* Speed slider */
+.speed-label{font-size:.82rem;color:var(--text-muted)}
+footer{text-align:center;padding:2rem 1.5rem;color:var(--text-muted);font-size:.78rem;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div id="scroll-bar"></div>
+
+<nav>
+  <a href="../coding-concepts/00_index.html">← Coding Concepts</a>
+  <span class="nav-divider">|</span>
+  <a href="../system-design-concepts/00_index.html">← System Design</a>
+  <span class="nav-divider">|</span>
+  <div class="nav-anchors">
+    <a href="#hero">Hero</a>
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+  <div class="nav-chapter">
+    <a href="03_recursion.html">Prev</a>
+    <span>04 Monotonic Stack</span>
+    <a href="05_dynamic_programming.html">Next</a>
+  </div>
+</nav>
+
+<main>
+  <section id="hero">
+    <div style="margin-bottom:.6rem">
+      <span class="tag">Pattern 04</span>
+    </div>
+    <h1 style="color:var(--accent)">Monotonic Stack</h1>
+    <p class="hero-subtitle">Use when you need the <strong style="color:var(--text)">next/previous greater or smaller element</strong>, histogram areas, or temperature spans. Maintain a stack monotonically increasing or decreasing — pop and process when the invariant is violated.</p>
+    <div class="hero-meta">
+      <div class="meta-pill"><strong>Signal</strong> — "next/previous greater/smaller"</div>
+      <div class="meta-pill"><strong>Time</strong> O(n) amortized</div>
+      <div class="meta-pill"><strong>Space</strong> O(n) stack</div>
+      <div class="meta-pill"><strong>Pop trigger</strong> — invariant violated</div>
+    </div>
+  </section>
+
+  <section id="concept">
+    <h2>Core Concepts</h2>
+    <p>A monotonic stack keeps elements in a sorted order. When the current element violates the order, we pop and process — each element is pushed and popped at most once, giving <strong style="color:var(--accent)">O(n) total</strong> work.</p>
+    <div class="concept-grid">
+      <div class="concept-card" id="cc1">
+        <div class="icon">📈</div>
+        <h4>Increasing Stack</h4>
+        <p>Pop when arr[i] is smaller than top. Used for next smaller element, largest rectangle.</p>
+      </div>
+      <div class="concept-card" id="cc2">
+        <div class="icon">📉</div>
+        <h4>Decreasing Stack</h4>
+        <p>Pop when arr[i] is larger than top. Used for next greater element, daily temperatures.</p>
+      </div>
+      <div class="concept-card" id="cc3">
+        <div class="icon">🏗️</div>
+        <h4>Store Indices</h4>
+        <p>Almost always store indices, not values. Lets you compute widths, spans, distances.</p>
+      </div>
+    </div>
+    <div style="margin-top:2rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card" id="mono-rule1" style="opacity:0;transform:translateY(20px)">
+        <h3>The Pop Moment</h3>
+        <p>When you pop index j because arr[i] triggered it: arr[i] is the <strong style="color:var(--accent)">next greater element</strong> for j. The new stack top is the <strong style="color:var(--accent)">previous greater element</strong>. One pop gives you both answers.</p>
+      </div>
+      <div class="card" id="mono-rule2" style="opacity:0;transform:translateY(20px)">
+        <h3>Sentinel Trick</h3>
+        <p>Append a sentinel value (0 or -infinity) to flush the stack at the end. Avoids a separate post-loop cleanup pass for histogram and rectangle problems.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <p>Visualizing a decreasing monotonic stack on the input array. Bars in pink are the current element, grey bars are in the stack.</p>
+    <div class="stepper-controls">
+      <select id="example-select">
+        <option value="nge">Next Greater Element</option>
+        <option value="temp">Daily Temperatures</option>
+        <option value="hist">Largest Rectangle Histogram</option>
+      </select>
+      <label class="speed-label">Speed: <input type="range" id="speed-slider" min="200" max="1500" value="800" step="100" style="width:80px"></label>
+      <button class="btn primary" id="play-btn">Play</button>
+      <button class="btn" id="step-btn">Step</button>
+      <button class="btn" id="reset-btn">Reset</button>
+      <span id="step-counter" style="color:var(--text-muted);font-size:.82rem;margin-left:.5rem">Step 0 / 0</span>
+    </div>
+    <div class="stepper-layout">
+      <div>
+        <div class="viz-box" id="bar-viz" style="min-height:280px"></div>
+        <div style="margin-top:.8rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.8rem">
+          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.05em;font-weight:600">Result Array</div>
+          <div class="result-row" id="result-row"></div>
+        </div>
+      </div>
+      <div>
+        <div class="trace-box">
+          <h4>Trace</h4>
+          <div class="trace-row"><span class="trace-label">Index i</span><span class="trace-val" id="tr-i">—</span></div>
+          <div class="trace-row"><span class="trace-label">arr[i]</span><span class="trace-val" id="tr-val">—</span></div>
+          <div class="trace-row"><span class="trace-label">Stack top</span><span class="trace-val" id="tr-top">—</span></div>
+          <div class="trace-row"><span class="trace-label">Action</span><span class="trace-val" id="tr-action">—</span></div>
+          <div class="trace-row"><span class="trace-label">Stack size</span><span class="trace-val" id="tr-stacksize">0</span></div>
+        </div>
+        <div style="margin-top:.8rem">
+          <div style="font-size:.78rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:.5rem">Stack (bottom → top)</div>
+          <div class="stack-visual" id="stack-visual"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>Java Templates</h2>
+    <div class="code-panel">
+      <div class="code-header">
+        <span>MonotonicStack.java</span>
+        <button class="btn" id="copy-btn">Copy</button>
+      </div>
+      <pre id="code-content"><span class="cm">// NEXT GREATER ELEMENT — O(n) decreasing monotonic stack</span>
+<span class="kw">public</span> <span class="tp">int</span>[] <span class="fn">nextGreaterElement</span>(<span class="tp">int</span>[] nums) {
+    <span class="tp">int</span> n = nums.length; <span class="tp">int</span>[] result = <span class="kw">new</span> <span class="tp">int</span>[n]; <span class="tp">Arrays</span>.<span class="fn">fill</span>(result, -<span class="num">1</span>);
+    <span class="tp">ArrayDeque</span>&lt;<span class="tp">Integer</span>&gt; stack = <span class="kw">new</span> <span class="fn">ArrayDeque</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; n; i++) {
+        <span class="kw">while</span> (!stack.isEmpty() &amp;&amp; nums[stack.peek()] &lt; nums[i])
+            result[stack.pop()] = nums[i];
+        stack.push(i);
+    }
+    <span class="kw">return</span> result;
+}
+
+<span class="cm">// LARGEST RECTANGLE IN HISTOGRAM — sentinel trick</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">largestRectangleArea</span>(<span class="tp">int</span>[] heights) {
+    <span class="tp">int</span> n = heights.length, maxArea = <span class="num">0</span>;
+    <span class="tp">ArrayDeque</span>&lt;<span class="tp">Integer</span>&gt; stack = <span class="kw">new</span> <span class="fn">ArrayDeque</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt;= n; i++) {
+        <span class="tp">int</span> h = (i == n) ? <span class="num">0</span> : heights[i];
+        <span class="kw">while</span> (!stack.isEmpty() &amp;&amp; heights[stack.peek()] &gt; h) {
+            <span class="tp">int</span> height = heights[stack.pop()];
+            <span class="tp">int</span> width = stack.isEmpty() ? i : i - stack.peek() - <span class="num">1</span>;
+            maxArea = <span class="tp">Math</span>.<span class="fn">max</span>(maxArea, height * width);
+        }
+        stack.push(i);
+    }
+    <span class="kw">return</span> maxArea;
+}
+
+<span class="cm">// TRAPPING RAIN WATER — two-pointer O(1) space</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">trap</span>(<span class="tp">int</span>[] height) {
+    <span class="tp">int</span> left=<span class="num">0</span>, right=height.length-<span class="num">1</span>, water=<span class="num">0</span>, maxL=<span class="num">0</span>, maxR=<span class="num">0</span>;
+    <span class="kw">while</span> (left &lt; right) {
+        <span class="kw">if</span> (height[left] &lt;= height[right]) {
+            maxL = <span class="tp">Math</span>.<span class="fn">max</span>(maxL, height[left]);
+            water += maxL - height[left++];
+        } <span class="kw">else</span> {
+            maxR = <span class="tp">Math</span>.<span class="fn">max</span>(maxR, height[right]);
+            water += maxR - height[right--];
+        }
+    }
+    <span class="kw">return</span> water;
+}</pre>
+    </div>
+  </section>
+
+  <section id="problems">
+    <h2>Problem Set</h2>
+    <p>15 stack problems from fundamentals to hard classics.</p>
+    <div class="problems-grid" id="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">1. Next Greater Element I &amp; II (LC 496, 503)</div>
+        <div class="problem-note">II uses modulo for circular array traversal.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">2. Nearest Greater to Left</div>
+        <div class="problem-note">Reverse traversal or push before processing.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">3. Stock Span Problem</div>
+        <div class="problem-note">Consecutive non-decreasing days. Stack stores (price, span).</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">4. Largest Rectangle in Histogram (LC 84)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Classic. Increasing monotonic stack + sentinel. Width from stack top.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">5. Max Area Rectangle in Binary Matrix (LC 85)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Treat each row as histogram. Apply LC 84 row by row.</div>
+        <div class="complexity-badge">O(m*n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">6. Trapping Rain Water (LC 42)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Stack or two-pointer. Water accumulates between walls.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">7. Min Stack (LC 155)</div>
+        <div class="problem-note">Auxiliary min stack. O(1) getMin at any time.</div>
+        <div class="complexity-badge">O(1) ops</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">8. Valid Parentheses (LC 20)</div>
+        <div class="problem-note">Stack fundamentals. Match opening brackets on close.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">9. Remove K Digits (LC 402)</div>
+        <div class="problem-note">Monotonic stack to greedily minimize the number digit by digit.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">10. Decode String (LC 394)</div>
+        <div class="problem-note">Two stacks: one for counts, one for partial strings.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">11. Daily Temperatures (LC 739)</div>
+        <div class="problem-note">Next warmer day. result[i] = days to wait. Decreasing stack.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">12. Asteroid Collision (LC 735)</div>
+        <div class="problem-note">Simulate with stack. Handle equal-size collision edge case.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">13. Simplify Path (LC 71)</div>
+        <div class="problem-note">Path parsing. ".." pops, "." ignored, empty segment ignored.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">14. Celebrity Problem</div>
+        <div class="problem-note">Elimination: two-pointer. Everyone knows celebrity, celebrity knows nobody.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">15. Score of Parentheses (LC 856)</div>
+        <div class="problem-note">() = 1, (X) = 2*X, A+B = A+B. Stack doubles on open paren.</div>
+        <div class="complexity-badge">O(n)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="staff">
+    <h2>Staff Engineer Angles</h2>
+    <div class="staff-card">
+      <div class="staff-q">"Maintain 'previous greater element' for every insert in a stream of 10B stock prices with a 30-day window, bounded memory?"</div>
+      <div class="staff-a">Use a sliding window monotonic deque (ArrayDeque). Evict elements outside the 30-day window from the front. Each new price evicts smaller prices from the back. Store (price, timestamp) tuples. Memory is bounded to window size O(30). Time bucketing with periodic compaction reduces overhead for burst traffic. Total: O(1) amortized per insert.</div>
+    </div>
+    <div class="staff-card">
+      <div class="staff-q">"Largest rectangle across a histogram split across 10 shards without merging full data?"</div>
+      <div class="staff-a">Divide-and-conquer: each shard computes its internal max rectangle independently. Boundary rectangles spanning shards require the minimum height across the boundary region — each shard exposes a range-min segment tree. During merge, binary search on width and query range-min to find cross-shard candidates. Total work: O(n log n) with O(k) inter-shard messages where k is shard count.</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt &amp; Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  var bar = document.getElementById('scroll-bar');
+  window.addEventListener('scroll', function() {
+    var total = document.body.scrollHeight - window.innerHeight;
+    if (total <= 0) return;
+    bar.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+  });
+
+  function observe(sel, cb) {
+    var els = document.querySelectorAll(sel);
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) { cb(e.target); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.25 });
+    els.forEach(function(el) { io.observe(el); });
+  }
+
+  observe('.concept-card', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [30,0], duration: 600, easing: 'easeOutExpo' });
+  });
+  observe('.problem-card', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [20,0], duration: 500, easing: 'easeOutExpo' });
+  });
+  observe('#mono-rule1', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [20,0], duration: 500, easing: 'easeOutExpo' });
+  });
+  observe('#mono-rule2', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [20,0], duration: 500, delay: 150, easing: 'easeOutExpo' });
+  });
+
+  // ---- EXAMPLES ----
+  var EXAMPLES = {
+    nge: {
+      arr: [2,1,5,6,2,3],
+      label: 'Next Greater Element',
+      run: function(arr) {
+        var steps = [];
+        var n = arr.length;
+        var result = new Array(n).fill(-1);
+        var stack = [];
+        for (var i = 0; i <= n; i++) {
+          var pops = [];
+          while (stack.length && arr[stack[stack.length-1]] < (i < n ? arr[i] : 0)) {
+            var popped = stack.pop();
+            result[popped] = i < n ? arr[i] : -1;
+            pops.push(popped);
+          }
+          var action = '';
+          if (pops.length) action = 'Pop ' + pops.map(function(x) { return 'idx' + x + '(val' + arr[x] + ')'; }).join(', ') + ' -> NGE=' + (i < n ? arr[i] : -1);
+          else if (i < n) action = 'Push idx ' + i + ' (val ' + arr[i] + ')';
+          else action = 'End (sentinel flush)';
+          if (i < n) stack.push(i);
+          steps.push({ i: i < n ? i : -1, val: i < n ? arr[i] : 'END', top: stack.length ? arr[stack[stack.length-1]] : 'empty', action: action, stackContents: stack.slice(), result: result.slice() });
+        }
+        return steps;
+      }
+    },
+    temp: {
+      arr: [73,74,75,71,69,72,76,73],
+      label: 'Daily Temperatures',
+      run: function(arr) {
+        var steps = [];
+        var n = arr.length;
+        var result = new Array(n).fill(0);
+        var stack = [];
+        for (var i = 0; i < n; i++) {
+          var pops = [];
+          while (stack.length && arr[stack[stack.length-1]] < arr[i]) {
+            var popped = stack.pop();
+            result[popped] = i - popped;
+            pops.push(popped);
+          }
+          var action = '';
+          if (pops.length) action = 'Pop ' + pops.map(function(x) { return 'idx' + x; }).join(', ') + ' -> wait=' + (pops.map(function(x) { return i - x; }).join(','));
+          else action = 'Push idx ' + i + ' (temp=' + arr[i] + ')';
+          stack.push(i);
+          steps.push({ i: i, val: arr[i], top: stack.length > 1 ? arr[stack[stack.length-2]] : 'empty', action: action, stackContents: stack.slice(), result: result.slice() });
+        }
+        return steps;
+      }
+    },
+    hist: {
+      arr: [2,1,5,6,2,3],
+      label: 'Largest Rectangle Histogram',
+      run: function(arr) {
+        var steps = [];
+        var n = arr.length;
+        var result = new Array(n).fill(0);
+        var stack = [];
+        var maxArea = 0;
+        for (var i = 0; i <= n; i++) {
+          var h = i === n ? 0 : arr[i];
+          var pops = [];
+          while (stack.length && arr[stack[stack.length-1]] > h) {
+            var popped = stack.pop();
+            var height = arr[popped];
+            var width = stack.length ? i - stack[stack.length-1] - 1 : i;
+            var area = height * width;
+            if (area > maxArea) maxArea = area;
+            result[popped] = area;
+            pops.push({ idx: popped, area: area });
+          }
+          var action = '';
+          if (pops.length) action = 'Pop: area=' + pops[0].area + ' (maxSoFar=' + maxArea + ')';
+          else if (i < n) action = 'Push idx ' + i + ' (h=' + h + ')';
+          else action = 'Sentinel flush done';
+          if (i < n) stack.push(i);
+          steps.push({ i: i < n ? i : -1, val: i < n ? arr[i] : 0, top: stack.length ? arr[stack[stack.length-1]] : 'empty', action: action, stackContents: stack.slice(), result: result.slice(), maxArea: maxArea });
+        }
+        return steps;
+      }
+    }
+  };
+
+  var currentArr = EXAMPLES.nge.arr;
+  var steps = [];
+  var stepIdx = 0;
+  var playTimer = null;
+  var isPlaying = false;
+
+  var exampleSelect = document.getElementById('example-select');
+  var speedSlider = document.getElementById('speed-slider');
+  var playBtn = document.getElementById('play-btn');
+  var stepBtn = document.getElementById('step-btn');
+  var resetBtn = document.getElementById('reset-btn');
+  var stepCounter = document.getElementById('step-counter');
+
+  exampleSelect.addEventListener('change', buildSteps);
+
+  function buildSteps() {
+    stopPlay();
+    var ex = exampleSelect.value;
+    var eg = EXAMPLES[ex];
+    currentArr = eg.arr;
+    steps = eg.run(eg.arr);
+    stepIdx = 0;
+    renderStep();
+  }
+
+  // D3 bar chart
+  function renderBars(stepData) {
+    var vizBox = document.getElementById('bar-viz');
+    while (vizBox.firstChild) vizBox.removeChild(vizBox.firstChild);
+
+    var arr = currentArr;
+    var n = arr.length;
+    var W = vizBox.clientWidth || 580;
+    var H = 260;
+    var margin = { top: 20, right: 20, bottom: 30, left: 30 };
+    var innerW = W - margin.left - margin.right;
+    var innerH = H - margin.top - margin.bottom;
+
+    var svg = d3.select('#bar-viz').append('svg').attr('width', '100%').attr('height', H);
+    var g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+    var maxVal = d3.max(arr) || 1;
+    var xScale = d3.scaleBand().domain(d3.range(n)).range([0, innerW]).padding(0.12);
+    var yScale = d3.scaleLinear().domain([0, maxVal + 1]).range([innerH, 0]);
+
+    var stackSet = {};
+    (stepData.stackContents || []).forEach(function(idx) { stackSet[idx] = true; });
+    var currentI = stepData.i;
+
+    g.selectAll('rect').data(arr).enter().append('rect')
+      .attr('x', function(d, i) { return xScale(i); })
+      .attr('y', function(d) { return yScale(d); })
+      .attr('width', xScale.bandwidth())
+      .attr('height', function(d) { return innerH - yScale(d); })
+      .attr('rx', 3)
+      .attr('fill', function(d, i) {
+        if (i === currentI) return 'var(--accent)';
+        if (stackSet[i]) return 'rgba(244,114,182,0.35)';
+        return 'var(--border)';
+      })
+      .attr('stroke', function(d, i) {
+        if (i === currentI) return 'var(--accent)';
+        if (stackSet[i]) return 'var(--accent)';
+        return 'transparent';
+      })
+      .attr('stroke-width', 1.5);
+
+    g.selectAll('.bar-label').data(arr).enter().append('text')
+      .attr('class', 'bar-label')
+      .attr('x', function(d, i) { return xScale(i) + xScale.bandwidth() / 2; })
+      .attr('y', function(d) { return yScale(d) - 4; })
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '11px')
+      .attr('font-family', 'JetBrains Mono,monospace')
+      .attr('fill', function(d, i) { return i === currentI ? 'var(--accent)' : 'var(--text-muted)'; })
+      .text(function(d) { return d; });
+
+    g.selectAll('.idx-label').data(arr).enter().append('text')
+      .attr('class', 'idx-label')
+      .attr('x', function(d, i) { return xScale(i) + xScale.bandwidth() / 2; })
+      .attr('y', innerH + 18)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '10px')
+      .attr('font-family', 'JetBrains Mono,monospace')
+      .attr('fill', 'var(--text-muted)')
+      .text(function(d, i) { return i; });
+  }
+
+  function renderResultRow(stepData) {
+    var row = document.getElementById('result-row');
+    while (row.firstChild) row.removeChild(row.firstChild);
+    var res = stepData.result || [];
+    var n = currentArr.length;
+    for (var i = 0; i < n; i++) {
+      var cell = document.createElement('div');
+      cell.className = 'result-cell';
+      var val = res[i];
+      if (val !== 0 && val !== -1 && val !== undefined) {
+        cell.className += ' filled';
+      }
+      if (i === stepData.i) cell.className += ' active';
+      cell.textContent = (val !== undefined) ? val : '?';
+      row.appendChild(cell);
+    }
+  }
+
+  function renderStackVisual(stepData) {
+    var sv = document.getElementById('stack-visual');
+    while (sv.firstChild) sv.removeChild(sv.firstChild);
+    var contents = stepData.stackContents || [];
+    contents.forEach(function(idx) {
+      var d = document.createElement('div');
+      d.className = 'stack-item';
+      d.textContent = 'idx' + idx + ' (val=' + currentArr[idx] + ')';
+      sv.appendChild(d);
+    });
+    if (!contents.length) {
+      var empty = document.createElement('div');
+      empty.style.cssText = 'font-size:.78rem;color:var(--text-muted);text-align:center;padding:.5rem';
+      empty.textContent = '(empty)';
+      sv.appendChild(empty);
+    }
+  }
+
+  function renderStep() {
+    if (!steps.length) return;
+    stepIdx = Math.max(0, Math.min(stepIdx, steps.length - 1));
+    stepCounter.textContent = 'Step ' + (stepIdx + 1) + ' / ' + steps.length;
+    var s = steps[stepIdx];
+    document.getElementById('tr-i').textContent = s.i >= 0 ? s.i : 'END';
+    document.getElementById('tr-val').textContent = s.val;
+    document.getElementById('tr-top').textContent = s.top;
+    document.getElementById('tr-action').textContent = s.action.length > 30 ? s.action.slice(0,30)+'...' : s.action;
+    document.getElementById('tr-stacksize').textContent = s.stackContents.length;
+    renderBars(s);
+    renderResultRow(s);
+    renderStackVisual(s);
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  stepBtn.addEventListener('click', function() { stopPlay(); stepIdx++; if (stepIdx >= steps.length) stepIdx = steps.length - 1; renderStep(); });
+  resetBtn.addEventListener('click', function() { stopPlay(); stepIdx = 0; renderStep(); });
+
+  function togglePlay() {
+    if (isPlaying) stopPlay(); else startPlay();
+  }
+
+  function startPlay() {
+    isPlaying = true;
+    playBtn.textContent = 'Pause';
+    playBtn.classList.add('active');
+    var speed = parseInt(speedSlider.value, 10);
+    playTimer = setInterval(function() {
+      stepIdx++;
+      if (stepIdx >= steps.length) { stopPlay(); stepIdx = steps.length - 1; }
+      renderStep();
+    }, speed);
+  }
+
+  function stopPlay() {
+    isPlaying = false;
+    clearInterval(playTimer);
+    playBtn.textContent = 'Play';
+    playBtn.classList.remove('active');
+  }
+
+  document.getElementById('copy-btn').addEventListener('click', function() {
+    var code = document.getElementById('code-content').textContent;
+    navigator.clipboard.writeText(code).then(function() {
+      var btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('active');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('active'); }, 2000);
+    });
+  });
+
+  buildSteps();
+})();
+</script>
+</body>
+</html>

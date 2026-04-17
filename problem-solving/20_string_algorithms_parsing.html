@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>20 · String Algorithms + Parsing</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg-card:#161b22;--bg-card-hover:#1c2330;
+  --border:#30363d;--text:#e6edf3;--text-muted:#8b949e;
+  --accent:#67e8f9;--accent-dim:rgba(103,232,249,0.15);
+  --good:#4ade80;--bad:#f87171;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;background:var(--accent);z-index:1000;transform:scaleX(0);transform-origin:left center}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-links{display:flex;gap:0.75rem;align-items:center;flex-shrink:0}
+.nav-links a{color:var(--text-muted);text-decoration:none;font-size:0.78rem;padding:4px 10px;border:1px solid var(--border);border-radius:6px;transition:all 0.2s}
+.nav-links a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-spacer{flex:1}
+.nav-pager{display:flex;gap:0.5rem;align-items:center}
+.nav-pager a{color:var(--text-muted);text-decoration:none;font-size:0.78rem;padding:4px 12px;border:1px solid var(--border);border-radius:6px;transition:all 0.2s}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-anchors{display:flex;gap:0.5rem;align-items:center;margin-left:1rem}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.72rem;padding:3px 8px;border-radius:4px;transition:all 0.2s}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 60px}
+.hero{text-align:center;padding:60px 0 40px}
+.hero-badge{display:inline-block;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 16px;font-size:0.8rem;font-weight:600;margin-bottom:1.2rem;letter-spacing:0.05em}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:700;margin-bottom:0.8rem;line-height:1.2}
+.hero h1 span{color:var(--accent)}
+.hero p{color:var(--text-muted);font-size:1.05rem;max-width:680px;margin:0 auto 2rem}
+.use-chips{display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center}
+.chip{background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);padding:4px 14px;border-radius:20px;font-size:0.78rem;font-weight:500}
+section{margin-bottom:3.5rem;opacity:0;transform:translateY(30px);transition:opacity 0.5s ease,transform 0.5s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
+.card:hover{background:var(--bg-card-hover)}
+h2{font-size:1.4rem;font-weight:700;margin-bottom:1rem;color:var(--text)}
+h2 .accent{color:var(--accent)}
+h3{font-size:1rem;font-weight:600;margin-bottom:0.75rem;color:var(--text-muted)}
+.stepper-wrapper{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem}
+.stepper-controls{display:flex;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center}
+.btn{padding:7px 16px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:0.85rem;cursor:pointer;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+.btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+#step-info{font-size:0.82rem;color:var(--text-muted);margin-left:auto}
+.step-desc{font-size:0.88rem;color:var(--text-muted);margin-bottom:0.75rem;min-height:2.4em;padding:0.5rem 0.75rem;background:#0d1117;border-radius:6px;border-left:3px solid var(--accent)}
+#kmp-svg{width:100%;overflow:visible}
+.trace-panel{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:0.82rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem}
+.trace-item{background:var(--bg-card);padding:0.5rem 0.75rem;border-radius:6px;border:1px solid var(--border)}
+.trace-item .label{color:var(--text-muted);font-size:0.72rem;margin-bottom:2px}
+.trace-item .value{color:var(--accent);font-weight:600;font-size:0.9rem;word-break:break-all}
+.controls-row{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1.25rem}
+.control-group{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;flex:1;min-width:220px}
+.control-group label{display:block;color:var(--text-muted);font-size:0.8rem;margin-bottom:6px}
+select,input[type=number],input[type=text]{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-family:inherit;font-size:0.85rem;width:100%;outline:none;transition:border-color 0.2s}
+select:focus,input:focus{border-color:var(--accent)}
+.op-result{margin-top:0.75rem;padding:0.5rem 0.75rem;background:#0d1117;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--good);min-height:32px;line-height:1.5}
+pre{font-family:'JetBrains Mono',monospace;font-size:0.82rem;line-height:1.7;overflow-x:auto;background:#0d1117;padding:1.25rem;border-radius:8px;border:1px solid var(--border);position:relative}
+.copy-btn{position:absolute;top:8px;right:8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:0.75rem;font-family:inherit;transition:all 0.2s}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.1rem;transition:all 0.2s}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover);transform:translateY(-2px)}
+.problem-title{font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;color:var(--text)}
+.problem-lc{font-size:0.75rem;color:var(--accent);font-family:'JetBrains Mono',monospace;margin-bottom:0.5rem}
+.problem-desc{font-size:0.82rem;color:var(--text-muted);line-height:1.5}
+.staff-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:1.25rem}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;padding:1.25rem}
+.staff-q{font-weight:600;font-size:0.9rem;margin-bottom:0.6rem;color:var(--text)}
+.staff-a{font-size:0.83rem;color:var(--text-muted);line-height:1.55}
+.staff-a strong{color:var(--accent)}
+footer{border-top:1px solid var(--border);padding:2rem 1.5rem;text-align:center;color:var(--text-muted);font-size:0.78rem}
+.rk-hash-display{font-family:'JetBrains Mono',monospace;font-size:0.82rem;padding:0.75rem;background:#0d1117;border-radius:6px;border:1px solid var(--border);color:var(--good);min-height:40px;margin-top:0.6rem;line-height:1.6}
+.expr-display{font-family:'JetBrains Mono',monospace;font-size:0.85rem;padding:0.75rem;background:#0d1117;border-radius:6px;border:1px solid var(--border);color:var(--accent);min-height:40px;margin-top:0.6rem;line-height:1.6}
+.badge-hard{color:var(--bad);font-size:0.7rem;font-weight:700;border:1px solid var(--bad);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<nav>
+  <div class="nav-links">
+    <a href="../coding-concepts/00_index.html">Coding Index</a>
+    <a href="../system-design-concepts/00_index.html">SD Index</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#viz">KMP Stepper</a>
+    <a href="#controls">Controls</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+  <div class="nav-spacer"></div>
+  <div class="nav-pager">
+    <a href="19_bit_manipulation.html">← Prev</a>
+    <span style="color:var(--text-muted);font-size:0.78rem">20 / String Algorithms</span>
+    <a href="21_designish_lru_lfu_stream.html">Next →</a>
+  </div>
+</nav>
+
+<main>
+  <div class="hero">
+    <div class="hero-badge">Pattern #20</div>
+    <h1>String Algorithms <span>+ Parsing</span></h1>
+    <p>KMP for O(n+m) substring search via failure function. Rabin-Karp rolling hash. Expression evaluation via two-stack parsing. Bracket/nesting problems via stack.</p>
+    <div class="use-chips">
+      <span class="chip">KMP failure function</span>
+      <span class="chip">Rabin-Karp rolling hash</span>
+      <span class="chip">Two-stack expression eval</span>
+      <span class="chip">Bracket/nesting via stack</span>
+      <span class="chip">Sliding window + char freq</span>
+    </div>
+  </div>
+
+  <!-- KMP VISUALIZER -->
+  <section id="viz">
+    <h2>KMP <span class="accent">Stepper</span></h2>
+    <div class="stepper-wrapper">
+      <div class="stepper-controls">
+        <button class="btn primary" id="btn-play">▶ Play</button>
+        <button class="btn" id="btn-step">Step →</button>
+        <button class="btn" id="btn-reset">↺ Reset</button>
+        <span id="step-info">Step 0 / 0</span>
+      </div>
+      <div class="step-desc" id="step-desc">Press Play or Step to begin the KMP walkthrough.</div>
+      <svg id="kmp-svg" height="220"></svg>
+      <div class="trace-panel">
+        <div class="trace-item"><div class="label">text index i</div><div class="value" id="tr-i">—</div></div>
+        <div class="trace-item"><div class="label">pattern index j</div><div class="value" id="tr-j">—</div></div>
+        <div class="trace-item"><div class="label">failure[]</div><div class="value" id="tr-fail">—</div></div>
+        <div class="trace-item"><div class="label">last action</div><div class="value" id="tr-action">—</div></div>
+        <div class="trace-item"><div class="label">matches found</div><div class="value" id="tr-matches">0</div></div>
+        <div class="trace-item"><div class="label">text comparisons</div><div class="value" id="tr-cmps">0</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE CONTROLS -->
+  <section id="controls">
+    <h2>Interactive <span class="accent">Controls</span></h2>
+    <div class="controls-row">
+      <div class="control-group">
+        <label>Mode</label>
+        <select id="mode-select">
+          <option value="kmp">KMP Pattern Matching</option>
+          <option value="rk">Rabin-Karp Rolling Hash</option>
+          <option value="expr">Expression Evaluator</option>
+        </select>
+      </div>
+      <div class="control-group" id="ctrl-text-group">
+        <label id="ctrl-text-label">Text</label>
+        <input type="text" id="ctrl-text" value="aabaabaaa" maxlength="30">
+      </div>
+      <div class="control-group" id="ctrl-pattern-group">
+        <label id="ctrl-pattern-label">Pattern</label>
+        <input type="text" id="ctrl-pattern" value="aabaaa" maxlength="15">
+      </div>
+    </div>
+    <div class="card" style="margin-top:1rem" id="mode-result-card">
+      <h3 id="mode-result-title">Result</h3>
+      <div class="op-result" id="mode-result">Click "Run" to see results.</div>
+      <button class="btn primary" id="btn-run" style="margin-top:0.75rem">Run</button>
+    </div>
+  </section>
+
+  <!-- JAVA CODE -->
+  <section id="code">
+    <h2>Java <span class="accent">Code</span></h2>
+    <div class="card">
+      <pre id="java-code"><button class="copy-btn" onclick="copyCode()">Copy</button><span class="cm">// ─── KMP: Build Failure Function ─────────────────────────────────</span>
+<span class="tp">int</span>[] <span class="fn">buildFailure</span>(<span class="tp">String</span> p) {
+    <span class="tp">int</span> m = p.length();
+    <span class="tp">int</span>[] f = <span class="kw">new</span> <span class="tp">int</span>[m];
+    <span class="tp">int</span> k = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">1</span>; i &lt; m; i++) {
+        <span class="kw">while</span> (k > <span class="num">0</span> &amp;&amp; p.charAt(k) != p.charAt(i)) k = f[k - <span class="num">1</span>];
+        <span class="kw">if</span> (p.charAt(k) == p.charAt(i)) k++;
+        f[i] = k;
+    }
+    <span class="kw">return</span> f;
+}
+
+<span class="cm">// ─── KMP: Search — O(n + m), no text backtracking ────────────────</span>
+<span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; <span class="fn">kmpSearch</span>(<span class="tp">String</span> t, <span class="tp">String</span> p) {
+    <span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; res = <span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;();
+    <span class="tp">int</span>[] f = <span class="fn">buildFailure</span>(p);
+    <span class="tp">int</span> k = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; t.length(); i++) {
+        <span class="kw">while</span> (k > <span class="num">0</span> &amp;&amp; p.charAt(k) != t.charAt(i)) k = f[k - <span class="num">1</span>];
+        <span class="kw">if</span> (p.charAt(k) == t.charAt(i)) k++;
+        <span class="kw">if</span> (k == p.length()) {
+            res.add(i - k + <span class="num">1</span>);
+            k = f[k - <span class="num">1</span>];   <span class="cm">// continue searching for overlapping matches</span>
+        }
+    }
+    <span class="kw">return</span> res;
+}
+
+<span class="cm">// ─── Basic Calculator I (handles +, -, parentheses) ──────────────</span>
+<span class="kw">public int</span> <span class="fn">calculate</span>(<span class="tp">String</span> s) {
+    <span class="tp">ArrayDeque</span>&lt;<span class="tp">Integer</span>&gt; stack = <span class="kw">new</span> <span class="tp">ArrayDeque</span>&lt;&gt;();
+    <span class="tp">int</span> result = <span class="num">0</span>, num = <span class="num">0</span>, sign = <span class="num">1</span>;
+    <span class="kw">for</span> (<span class="tp">char</span> c : s.toCharArray()) {
+        <span class="kw">if</span> (<span class="tp">Character</span>.isDigit(c)) num = num * <span class="num">10</span> + (c - <span class="str">'0'</span>);
+        <span class="kw">else if</span> (c == <span class="str">'+'</span>) { result += sign * num; num = <span class="num">0</span>; sign = <span class="num">1</span>; }
+        <span class="kw">else if</span> (c == <span class="str">'-'</span>) { result += sign * num; num = <span class="num">0</span>; sign = <span class="num">-1</span>; }
+        <span class="kw">else if</span> (c == <span class="str">'('</span>) { stack.push(result); stack.push(sign); result = <span class="num">0</span>; sign = <span class="num">1</span>; }
+        <span class="kw">else if</span> (c == <span class="str">')'</span>) {
+            result += sign * num; num = <span class="num">0</span>;
+            result *= stack.pop();   <span class="cm">// sign before '('</span>
+            result += stack.pop();   <span class="cm">// result before '('</span>
+        }
+    }
+    <span class="kw">return</span> result + sign * num;
+}</pre>
+    </div>
+  </section>
+
+  <!-- PROBLEMS -->
+  <section id="problems">
+    <h2>Problem <span class="accent">Set</span></h2>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">Implement strStr</div>
+        <div class="problem-lc">LC 28 · Easy</div>
+        <div class="problem-desc">KMP or Z-function; O(n+m) — avoid naive O(n·m) brute force.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Repeated String Match</div>
+        <div class="problem-lc">LC 686 · Medium</div>
+        <div class="problem-desc">KMP on repeated string; minimum repetitions needed for pattern to appear.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Shortest Palindrome <span class="badge-hard">HARD</span></div>
+        <div class="problem-lc">LC 214 · Hard</div>
+        <div class="problem-desc">KMP failure on s+'#'+reverse(s); longest palindromic prefix = failure[last].</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Find All Anagrams</div>
+        <div class="problem-lc">LC 438 · Medium</div>
+        <div class="problem-desc">Fixed window + char freq comparison; slide and update counts in O(1).</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Decode Ways</div>
+        <div class="problem-lc">LC 91 · Medium</div>
+        <div class="problem-desc">DP with string parsing; '0' edge cases tricky — can only follow '1' or '2'.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Integer to Roman / Roman to Integer</div>
+        <div class="problem-lc">LC 12 · LC 13 · Easy/Medium</div>
+        <div class="problem-desc">Greedy descent through value table or HashMap parsing for subtractive pairs.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Basic Calculator I &amp; II</div>
+        <div class="problem-lc">LC 224 · LC 227 · Hard/Medium</div>
+        <div class="problem-desc">Two-stack: numbers + operators; handle parentheses and operator precedence.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Evaluate Reverse Polish Notation</div>
+        <div class="problem-lc">LC 150 · Medium</div>
+        <div class="problem-desc">Single stack; postfix evaluation — operand push, operator pops two.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Longest Valid Parentheses</div>
+        <div class="problem-lc">LC 32 · Hard</div>
+        <div class="problem-desc">DP or stack-based; track valid length — stack stores indices of unmatched '('.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Regular Expression Matching <span class="badge-hard">HARD</span></div>
+        <div class="problem-lc">LC 10 · Hard</div>
+        <div class="problem-desc">DP on (i,j); '*' matches 0 or more preceding — dp[i][j] has two cases for '*'.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Word Break</div>
+        <div class="problem-lc">LC 139 · Medium</div>
+        <div class="problem-desc">DP + HashSet; dp[i] = any valid split at i — check all j &lt; i with dp[j] true.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">Minimum Window Substring</div>
+        <div class="problem-lc">LC 76 · Hard</div>
+        <div class="problem-desc">Two-pointer + char maps; shrink left when all chars satisfied, track min window.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAFF ANGLES -->
+  <section id="staff">
+    <h2>Staff-Level <span class="accent">Angles</span></h2>
+    <div class="staff-cards">
+      <div class="staff-card">
+        <div class="staff-q">"KMP on 1 TB log files — how to parallelize?"</div>
+        <div class="staff-a">
+          <strong>Chunk with overlap:</strong> split the text into chunks; each worker receives an extra <em>pattern_length − 1</em> bytes at its right boundary so cross-boundary matches are not missed.<br><br>
+          <strong>Independent KMP per chunk:</strong> each worker runs a full KMP search on its slice in parallel; boundary matches get stitched by the coordinator.<br><br>
+          <strong>SIMD / GPU acceleration:</strong> vectorized character comparison with AVX-512 can process 64 bytes per cycle; GPU parallelism useful when the pattern set is large (multi-pattern Aho-Corasick on GPU shared memory).<br><br>
+          <strong>Streaming:</strong> for live logs, maintain a small sliding buffer at shard boundaries in Flink / Kafka Streams — emit only fully verified matches downstream.
+        </div>
+      </div>
+      <div class="staff-card">
+        <div class="staff-q">"Spreadsheet formula evaluator with 10 M cell references — parallelize dependency resolution?"</div>
+        <div class="staff-a">
+          <strong>Build DAG first:</strong> parse every formula into an expression tree (two-stack approach) and emit directed edges <em>dependency → dependent</em>. Cycle detection = circular reference error.<br><br>
+          <strong>Topological sort:</strong> Kahn's algorithm produces evaluation layers. Cells with in-degree 0 form layer 0 and can be evaluated immediately in parallel.<br><br>
+          <strong>Parallel layer execution:</strong> each layer is a data-parallel batch — dispatch to a thread pool or GPU kernel. Write results to a shared value store before advancing to the next layer.<br><br>
+          <strong>Cache-aware chunking:</strong> group cells by sheet or contiguous region to maximize L1/L2 cache reuse during formula evaluation; avoid cross-NUMA random reads for large value arrays.
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt &amp; Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers
+</footer>
+
+<script>
+// ── Scroll progress bar ──────────────────────────────────────────
+(function(){
+  const bar = document.getElementById('progress-bar');
+  window.addEventListener('scroll', function(){
+    const total = document.body.scrollHeight - window.innerHeight;
+    if(total <= 0) return;
+    bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+  });
+})();
+
+// ── IntersectionObserver for sections ───────────────────────────
+(function(){
+  const io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  },{threshold:0.25});
+  document.querySelectorAll('section').forEach(function(s){ io.observe(s); });
+})();
+
+// ── Copy code button ─────────────────────────────────────────────
+function copyCode(){
+  const pre = document.getElementById('java-code');
+  const text = pre.innerText || pre.textContent;
+  navigator.clipboard.writeText(text).then(function(){
+    const btn = pre.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(function(){ btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
+// ── KMP helpers ──────────────────────────────────────────────────
+function buildFailure(p){
+  const m = p.length, f = new Array(m).fill(0);
+  let k = 0;
+  for(let i = 1; i < m; i++){
+    while(k > 0 && p[k] !== p[i]) k = f[k-1];
+    if(p[k] === p[i]) k++;
+    f[i] = k;
+  }
+  return f;
+}
+
+function kmpSearch(t, p){
+  const res = [], f = buildFailure(p);
+  let k = 0;
+  for(let i = 0; i < t.length; i++){
+    while(k > 0 && p[k] !== t[i]) k = f[k-1];
+    if(p[k] === t[i]) k++;
+    if(k === p.length){ res.push(i - k + 1); k = f[k-1]; }
+  }
+  return res;
+}
+
+// ── Build KMP stepper steps ──────────────────────────────────────
+function buildSteps(text, pattern){
+  const f = buildFailure(pattern);
+  const steps = [];
+  // Phase 0: show failure function build
+  steps.push({
+    phase: 'failure',
+    desc: 'Step 0: Build failure[] for pattern "' + pattern + '".',
+    i: -1, j: -1, failure: f.slice(), matches: [], cmps: 0, action: 'init'
+  });
+  // Phase 1: KMP search
+  let k = 0, cmps = 0;
+  const matchList = [];
+  for(let i = 0; i < text.length; i++){
+    while(k > 0 && pattern[k] !== text[i]){
+      steps.push({
+        phase: 'search',
+        desc: 'Mismatch: text[' + i + ']="' + text[i] + '" ≠ pattern[' + k + ']="' + pattern[k] + '". Shift j via failure[' + (k-1) + ']=' + f[k-1] + '. i stays at ' + i + '.',
+        i: i, j: k, failure: f.slice(), matches: matchList.slice(), cmps: ++cmps, action: 'mismatch→shift'
+      });
+      k = f[k-1];
+    }
+    cmps++;
+    if(pattern[k] === text[i]){
+      steps.push({
+        phase: 'search',
+        desc: 'Match: text[' + i + ']="' + text[i] + '" = pattern[' + k + ']. Advance both i→' + (i+1) + ', j→' + (k+1) + '.',
+        i: i, j: k, failure: f.slice(), matches: matchList.slice(), cmps: cmps, action: 'match↑'
+      });
+      k++;
+    } else {
+      steps.push({
+        phase: 'search',
+        desc: 'Mismatch: text[' + i + ']="' + text[i] + '" ≠ pattern[' + k + ']. j=0, advance i→' + (i+1) + '.',
+        i: i, j: k, failure: f.slice(), matches: matchList.slice(), cmps: cmps, action: 'mismatch'
+      });
+    }
+    if(k === pattern.length){
+      matchList.push(i - k + 1);
+      steps.push({
+        phase: 'match',
+        desc: 'Full match found at index ' + (i - k + 1) + '! Reset j via failure[' + (k-1) + ']=' + f[k-1] + '.',
+        i: i, j: k-1, failure: f.slice(), matches: matchList.slice(), cmps: cmps, action: 'MATCH @' + (i-k+1)
+      });
+      k = f[k-1];
+    }
+  }
+  steps.push({
+    phase: 'done',
+    desc: 'Done. Found ' + matchList.length + ' match(es) at position(s): [' + matchList.join(', ') + ']. Total comparisons: ' + cmps + '.',
+    i: text.length, j: k, failure: f.slice(), matches: matchList.slice(), cmps: cmps, action: 'complete'
+  });
+  return steps;
+}
+
+// ── SVG rendering ────────────────────────────────────────────────
+const TEXT_DEFAULT = 'aabaabaaa';
+const PAT_DEFAULT  = 'aabaaa';
+
+let kmpText = TEXT_DEFAULT;
+let kmpPat  = PAT_DEFAULT;
+let steps   = buildSteps(kmpText, kmpPat);
+let stepIdx = 0;
+let playing = false;
+let playTimer = null;
+
+const CELL_W = 34, CELL_H = 34, CELL_R = 6;
+const ROW_TEXT_Y = 20;
+const ROW_PAT_Y  = 110;
+const FAIL_ROW_Y = 170;
+
+function renderStep(idx){
+  const svg = document.getElementById('kmp-svg');
+  const s = steps[idx];
+  const tn = kmpText.length;
+  const pm = kmpPat.length;
+  const W = Math.max(tn, pm + 2) * (CELL_W + 4) + 80;
+  svg.setAttribute('viewBox', '0 0 ' + W + ' 220');
+  svg.setAttribute('height', '220');
+
+  // Clear
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+
+  function makeRect(x, y, w, h, fill, stroke){
+    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',x); r.setAttribute('y',y);
+    r.setAttribute('width',w); r.setAttribute('height',h);
+    r.setAttribute('rx',CELL_R); r.setAttribute('ry',CELL_R);
+    r.setAttribute('fill',fill); r.setAttribute('stroke',stroke);
+    r.setAttribute('stroke-width','1.5');
+    return r;
+  }
+  function makeText(x, y, txt, color, size, anchor, weight){
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',x); t.setAttribute('y',y);
+    t.setAttribute('fill',color||'#e6edf3');
+    t.setAttribute('font-size',size||'14');
+    t.setAttribute('font-family','JetBrains Mono,monospace');
+    t.setAttribute('text-anchor',anchor||'middle');
+    t.setAttribute('dominant-baseline','central');
+    t.setAttribute('font-weight',weight||'400');
+    t.textContent = txt;
+    return t;
+  }
+
+  // Row labels
+  svg.appendChild(makeText(22, ROW_TEXT_Y + CELL_H/2, 'text', '#8b949e', '11', 'middle'));
+  svg.appendChild(makeText(22, ROW_PAT_Y  + CELL_H/2, 'pat',  '#8b949e', '11', 'middle'));
+  svg.appendChild(makeText(22, FAIL_ROW_Y + CELL_H/2, 'f[]',  '#8b949e', '11', 'middle'));
+
+  const xOff = 44;
+
+  // Draw text row
+  for(let ci = 0; ci < tn; ci++){
+    const cx = xOff + ci * (CELL_W + 4);
+    let fill = '#161b22', stroke = '#30363d';
+    if(s.phase !== 'failure' && ci === s.i) {
+      if(s.phase === 'match') fill = 'rgba(74,222,128,0.18)';
+      else fill = 'rgba(103,232,249,0.2)';
+      stroke = '#67e8f9';
+    }
+    // Highlight matched spans
+    if(s.matches && s.matches.length > 0){
+      for(const mstart of s.matches){
+        if(ci >= mstart && ci < mstart + pm){
+          fill = 'rgba(74,222,128,0.1)'; stroke = '#4ade80';
+        }
+      }
+    }
+    svg.appendChild(makeRect(cx, ROW_TEXT_Y, CELL_W, CELL_H, fill, stroke));
+    svg.appendChild(makeText(cx + CELL_W/2, ROW_TEXT_Y + CELL_H/2, kmpText[ci], '#e6edf3', '13'));
+    // index label
+    svg.appendChild(makeText(cx + CELL_W/2, ROW_TEXT_Y - 8, String(ci), '#8b949e', '10'));
+  }
+
+  // Draw pattern row — offset by i-j to align with text
+  for(let ci = 0; ci < pm; ci++){
+    const aligned = s.phase !== 'failure' && s.i >= 0
+      ? (s.i - s.j) + ci
+      : ci;
+    const cx = xOff + aligned * (CELL_W + 4);
+    let fill = '#161b22', stroke = '#30363d';
+    if(s.phase !== 'failure' && ci === s.j){
+      fill = s.action === 'mismatch→shift' || s.action === 'mismatch' ? 'rgba(248,113,113,0.2)' : 'rgba(103,232,249,0.2)';
+      stroke = s.action === 'mismatch→shift' || s.action === 'mismatch' ? '#f87171' : '#67e8f9';
+    }
+    if(s.phase === 'match' && ci <= s.j) {
+      fill = 'rgba(74,222,128,0.2)'; stroke = '#4ade80';
+    }
+    svg.appendChild(makeRect(cx, ROW_PAT_Y, CELL_W, CELL_H, fill, stroke));
+    svg.appendChild(makeText(cx + CELL_W/2, ROW_PAT_Y + CELL_H/2, kmpPat[ci], '#e6edf3', '13'));
+  }
+
+  // Draw failure array for pattern
+  for(let ci = 0; ci < pm; ci++){
+    const cx = xOff + ci * (CELL_W + 4);
+    svg.appendChild(makeRect(cx, FAIL_ROW_Y, CELL_W, CELL_H, '#0d1117', '#30363d'));
+    svg.appendChild(makeText(cx + CELL_W/2, FAIL_ROW_Y + CELL_H/2,
+      s.failure[ci] !== undefined ? String(s.failure[ci]) : '?', '#f2cc60', '12'));
+  }
+
+  // i pointer arrow
+  if(s.phase !== 'failure' && s.i >= 0 && s.i < tn){
+    const cx = xOff + s.i * (CELL_W + 4) + CELL_W/2;
+    const arr = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    const tip = ROW_TEXT_Y + CELL_H + 8;
+    arr.setAttribute('points', (cx)+','+(tip)+' '+(cx-5)+','+(tip+10)+' '+(cx+5)+','+(tip+10));
+    arr.setAttribute('fill','#67e8f9');
+    svg.appendChild(arr);
+    svg.appendChild(makeText(cx, tip + 18, 'i', '#67e8f9', '11'));
+  }
+
+  // j pointer arrow (pointing up into pattern row)
+  if(s.phase !== 'failure' && s.j >= 0 && s.j < pm){
+    const aligned = s.i >= 0 ? (s.i - s.j) + s.j : s.j;
+    const cx = xOff + aligned * (CELL_W + 4) + CELL_W/2;
+    const tip = ROW_PAT_Y - 8;
+    const arr2 = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    arr2.setAttribute('points', (cx)+','+(tip)+' '+(cx-5)+','+(tip-10)+' '+(cx+5)+','+(tip-10));
+    arr2.setAttribute('fill','#ffa657');
+    svg.appendChild(arr2);
+    svg.appendChild(makeText(cx, tip - 18, 'j', '#ffa657', '11'));
+  }
+
+  // Update trace
+  document.getElementById('tr-i').textContent     = s.i >= 0 ? String(s.i) : '—';
+  document.getElementById('tr-j').textContent     = s.j >= 0 ? String(s.j) : '—';
+  document.getElementById('tr-fail').textContent  = '[' + s.failure.join(',') + ']';
+  document.getElementById('tr-action').textContent= s.action;
+  document.getElementById('tr-matches').textContent = String(s.matches ? s.matches.length : 0);
+  document.getElementById('tr-cmps').textContent  = String(s.cmps);
+  document.getElementById('step-info').textContent = 'Step ' + (idx+1) + ' / ' + steps.length;
+  document.getElementById('step-desc').textContent = s.desc;
+}
+
+function resetStepper(){
+  clearInterval(playTimer); playing = false;
+  document.getElementById('btn-play').textContent = '▶ Play';
+  stepIdx = 0;
+  renderStep(0);
+}
+
+function stepForward(){
+  if(stepIdx < steps.length - 1){
+    stepIdx++;
+    renderStep(stepIdx);
+  } else {
+    clearInterval(playTimer); playing = false;
+    document.getElementById('btn-play').textContent = '▶ Play';
+  }
+}
+
+document.getElementById('btn-play').addEventListener('click', function(){
+  if(playing){
+    clearInterval(playTimer); playing = false;
+    this.textContent = '▶ Play';
+  } else {
+    playing = true;
+    this.textContent = '⏸ Pause';
+    playTimer = setInterval(function(){
+      if(stepIdx < steps.length - 1){ stepIdx++; renderStep(stepIdx); }
+      else { clearInterval(playTimer); playing = false; document.getElementById('btn-play').textContent = '▶ Play'; }
+    }, 700);
+  }
+});
+document.getElementById('btn-step').addEventListener('click', stepForward);
+document.getElementById('btn-reset').addEventListener('click', resetStepper);
+
+// Initial render
+renderStep(0);
+
+// ── Interactive Controls ─────────────────────────────────────────
+const modeSelect   = document.getElementById('mode-select');
+const ctrlText     = document.getElementById('ctrl-text');
+const ctrlPattern  = document.getElementById('ctrl-pattern');
+const ctrlTextLbl  = document.getElementById('ctrl-text-label');
+const ctrlPatLbl   = document.getElementById('ctrl-pattern-label');
+const modeResultTitle = document.getElementById('mode-result-title');
+const modeResult   = document.getElementById('mode-result');
+const patGroup     = document.getElementById('ctrl-pattern-group');
+
+function updateModeUI(){
+  const m = modeSelect.value;
+  if(m === 'kmp'){
+    ctrlTextLbl.textContent = 'Text';
+    ctrlPatLbl.textContent  = 'Pattern';
+    ctrlText.value    = 'aabaabaaa';
+    ctrlPattern.value = 'aabaaa';
+    patGroup.style.display = '';
+    modeResultTitle.textContent = 'KMP Match Results';
+  } else if(m === 'rk'){
+    ctrlTextLbl.textContent = 'Text';
+    ctrlPatLbl.textContent  = 'Pattern';
+    ctrlText.value    = 'abcabc';
+    ctrlPattern.value = 'abc';
+    patGroup.style.display = '';
+    modeResultTitle.textContent = 'Rabin-Karp Rolling Hash';
+  } else {
+    ctrlTextLbl.textContent = 'Expression';
+    ctrlText.value    = '(1+(4+5+2)-3)+(6+8)';
+    patGroup.style.display = 'none';
+    modeResultTitle.textContent = 'Expression Evaluation';
+  }
+  modeResult.textContent = 'Click "Run" to see results.';
+  modeResult.style.color = 'var(--good)';
+}
+modeSelect.addEventListener('change', updateModeUI);
+
+// Rabin-Karp simulation
+function rabinKarp(t, p){
+  const BASE = 31, MOD = 1e9 + 9;
+  const n = t.length, m = p.length;
+  if(m > n) return {matches:[], trace:[]};
+  const trace = [];
+
+  function charVal(c){ return c.charCodeAt(0) - 96; }
+  function hash(s, len){
+    let h = 0, pw = 1;
+    for(let i = 0; i < len; i++){ h = (h + charVal(s[i]) * pw) % MOD; pw = pw * BASE % MOD; }
+    return h;
+  }
+
+  let patHash = hash(p, m);
+  let winHash = hash(t, m);
+  let pw = 1;
+  for(let i = 0; i < m - 1; i++) pw = pw * BASE % MOD;
+
+  const matches = [];
+  trace.push('Pattern hash = ' + patHash);
+
+  for(let i = 0; i <= n - m; i++){
+    trace.push('Window [' + i + '..' + (i+m-1) + '] "' + t.slice(i,i+m) + '" hash=' + winHash + (winHash===patHash?' ✓':' ✗'));
+    if(winHash === patHash){
+      if(t.slice(i,i+m) === p){ matches.push(i); trace[trace.length-1] += ' → MATCH'; }
+      else { trace[trace.length-1] += ' → hash collision, verify fails'; }
+    }
+    if(i < n - m){
+      winHash = (winHash - charVal(t[i]) + MOD) % MOD;
+      winHash = winHash * BASE % MOD;
+      winHash = (winHash + charVal(t[i+m]) * pw) % MOD;
+    }
+  }
+  return {matches, trace};
+}
+
+// Basic Calculator
+function calcEval(s){
+  const stack = [];
+  let result = 0, num = 0, sign = 1;
+  const steps = [];
+  for(let ci = 0; ci < s.length; ci++){
+    const c = s[ci];
+    if(c >= '0' && c <= '9'){
+      num = num * 10 + (c.charCodeAt(0) - 48);
+    } else if(c === '+'){
+      result += sign * num;
+      steps.push('Apply sign ' + sign + ' × ' + num + ' → running=' + result);
+      num = 0; sign = 1;
+    } else if(c === '-'){
+      result += sign * num;
+      steps.push('Apply sign ' + sign + ' × ' + num + ' → running=' + result);
+      num = 0; sign = -1;
+    } else if(c === '('){
+      stack.push(result); stack.push(sign);
+      steps.push('Push (' + result + ', sign=' + sign + ') to stack. Reset.');
+      result = 0; sign = 1;
+    } else if(c === ')'){
+      result += sign * num; num = 0;
+      const prevSign = stack.pop();
+      const prevResult = stack.pop();
+      steps.push('Close paren: inner=' + result + ', prevSign=' + prevSign + ', prevResult=' + prevResult);
+      result = result * prevSign + prevResult;
+    }
+  }
+  result += sign * num;
+  steps.push('Final: + sign(' + sign + ')×' + num + ' = ' + result);
+  return {value: result, steps};
+}
+
+document.getElementById('btn-run').addEventListener('click', function(){
+  const m = modeSelect.value;
+  const t = ctrlText.value.trim();
+  const p = ctrlPattern.value.trim();
+
+  if(m === 'kmp'){
+    if(!p){ modeResult.textContent = 'Pattern cannot be empty.'; modeResult.style.color='var(--bad)'; return; }
+    const idxs = kmpSearch(t, p);
+    const fail = buildFailure(p);
+    modeResult.style.color = 'var(--good)';
+    modeResult.textContent =
+      'failure[]: [' + fail.join(', ') + ']\n' +
+      'Matches at: [' + idxs.join(', ') + ']\n' +
+      'Count: ' + idxs.length;
+    // Also update stepper with new inputs
+    kmpText = t; kmpPat = p;
+    steps = buildSteps(t, p);
+    stepIdx = 0;
+    renderStep(0);
+  } else if(m === 'rk'){
+    if(!p){ modeResult.textContent = 'Pattern cannot be empty.'; modeResult.style.color='var(--bad)'; return; }
+    const {matches, trace} = rabinKarp(t, p);
+    modeResult.style.color = 'var(--good)';
+    modeResult.textContent = trace.slice(0, 12).join('\n') + (trace.length > 12 ? '\n...' : '') + '\n\nMatches at: [' + matches.join(', ') + ']';
+  } else {
+    try {
+      const {value, steps} = calcEval(t);
+      modeResult.style.color = 'var(--good)';
+      modeResult.textContent = steps.slice(0, 10).join('\n') + '\n\nResult = ' + value;
+    } catch(e){
+      modeResult.style.color = 'var(--bad)';
+      modeResult.textContent = 'Error: ' + e.message;
+    }
+  }
+});
+
+// Animate hero on load
+anime({
+  targets: '.hero-badge, .hero h1, .hero p, .use-chips',
+  translateY: [20, 0],
+  opacity: [0, 1],
+  delay: anime.stagger(120),
+  duration: 600,
+  easing: 'easeOutQuad'
+});
+</script>
+</body>
+</html>

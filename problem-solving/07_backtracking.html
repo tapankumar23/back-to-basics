@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · Backtracking — DSA Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2330; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #34d399; --accent-dim: rgba(52,211,153,0.15);
+  --good: #4ade80; --bad: #f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-back{color:var(--text-muted);text-decoration:none;font-size:0.8rem;white-space:nowrap}
+.nav-back:hover{color:var(--accent)}
+.nav-pager{display:flex;align-items:center;gap:0.75rem;margin:0 auto;font-size:0.8rem}
+.nav-pager a{color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-pager span{color:var(--text);font-weight:600}
+.nav-anchors{display:flex;gap:0.5rem;margin-left:auto}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.75rem;padding:3px 8px;border-radius:4px}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 3rem}
+section{margin-bottom:4rem;opacity:0;transform:translateY(32px);transition:opacity 0.6s ease,transform 0.6s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.hero{text-align:center;padding:3rem 0 2rem;opacity:1!important;transform:none!important}
+.hero .pattern-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.5rem}
+.hero h1{font-size:3.5rem;font-weight:700;margin-bottom:0.75rem;background:linear-gradient(135deg,var(--accent),#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{color:var(--text-muted);font-size:1.1rem;max-width:640px;margin:0 auto}
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card:hover{background:var(--bg-card-hover)}
+.controls{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+select{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem}
+select:focus{outline:none;border-color:var(--accent)}
+#viz-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.trace-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.trace-row{display:flex;gap:1rem;margin-bottom:0.4rem;flex-wrap:wrap}
+.trace-key{color:var(--text-muted)}
+.trace-val{color:var(--accent);font-weight:600}
+.trace-invariant{color:#f59e0b;font-size:0.75rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)}
+.code-panel{position:relative}
+.code-panel pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7}
+.copy-btn{position:absolute;top:0.75rem;right:0.75rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-family:'Inter',sans-serif}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.875rem 1rem}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.problem-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:0.75rem;margin-bottom:0.25rem}
+.problem-name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}
+.problem-note{color:var(--text-muted);font-size:0.8rem}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.staff-card h3{color:#f59e0b;font-size:1rem;margin-bottom:0.75rem}
+.staff-card p{color:var(--text-muted);font-size:0.875rem;line-height:1.7}
+.staff-card .hint{color:var(--text);margin-top:0.5rem;font-size:0.875rem}
+footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border)}
+.viz-layout{display:grid;grid-template-columns:1fr 320px;gap:1.5rem}
+@media(max-width:800px){.viz-layout{grid-template-columns:1fr}}
+.decision-tree-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1rem;overflow:hidden}
+.decision-tree-panel h4{color:var(--text-muted);font-size:0.8rem;margin-bottom:0.75rem;font-weight:600}
+.step-desc{background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;padding:0.75rem 1rem;font-size:0.85rem;color:var(--text);margin-bottom:1rem;min-height:2.5rem}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+<nav>
+  <a class="nav-back" href="../coding-concepts/00_index.html">← Coding Concepts</a>
+  <a class="nav-back" href="../system-design-concepts/00_index.html">← System Design</a>
+  <div class="nav-pager">
+    <a href="06_heap_priority_queue.html">← Heap / PQ</a>
+    <span>07 · Backtracking</span>
+    <a href="08_mixed_must_do.html">Mixed Must-Do →</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="pattern-num">PATTERN 07</div>
+    <h1>Backtracking</h1>
+    <p class="tagline">Exhaustive search over combinatorial space with pruning. Choose → Explore → Unchoose. Three variants: subsets, permutations, constraint satisfaction.</p>
+  </section>
+
+  <!-- CONCEPT -->
+  <section id="concept">
+    <h2>Core Concept</h2>
+    <div class="card">
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.8;margin-bottom:1rem">
+        Backtracking explores a decision tree. At each node you <strong style="color:var(--accent)">choose</strong> a candidate, <strong style="color:var(--accent)">explore</strong> deeper, then <strong style="color:var(--accent)">unchoose</strong> (backtrack) to try the next option. Pruning cuts off branches that can never lead to a valid solution.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+          <div style="color:var(--accent);font-size:1.5rem;margin-bottom:0.5rem">⊆</div>
+          <div style="font-weight:600;margin-bottom:0.25rem">Subsets</div>
+          <div style="color:var(--text-muted);font-size:0.8rem">Include / Exclude each element. 2ⁿ total paths.</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+          <div style="color:#f59e0b;font-size:1.5rem;margin-bottom:0.5rem">π</div>
+          <div style="font-weight:600;margin-bottom:0.25rem">Permutations</div>
+          <div style="color:var(--text-muted);font-size:0.8rem">Arrange all elements. n! total paths.</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center">
+          <div style="color:#a78bfa;font-size:1.5rem;margin-bottom:0.5rem">♛</div>
+          <div style="font-weight:600;margin-bottom:0.25rem">Constraints</div>
+          <div style="color:var(--text-muted);font-size:0.8rem">Satisfaction: prune early on constraint violation.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:1.25rem">
+      <svg id="concept-svg" width="100%" height="200" viewBox="0 0 800 200"></svg>
+    </div>
+  </section>
+
+  <!-- STEPPER -->
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <div class="controls">
+      <label style="color:var(--text-muted);font-size:0.875rem">Board size:</label>
+      <select id="n-select">
+        <option value="4" selected>N = 4</option>
+        <option value="5">N = 5</option>
+        <option value="6">N = 6</option>
+      </select>
+      <label style="color:var(--text-muted);font-size:0.875rem;margin-left:1rem">Example:</label>
+      <button class="btn active" id="ex-queens" onclick="switchExample('queens')">N-Queens</button>
+      <button class="btn" id="ex-combo" onclick="switchExample('combo')">Combination Sum</button>
+      <button class="btn" id="ex-subsets" onclick="switchExample('subsets')">Subsets</button>
+    </div>
+    <div class="step-desc" id="step-desc">Press Play or Step to begin the visualization.</div>
+    <div class="controls">
+      <button class="btn primary" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" onclick="stepForward()">Step →</button>
+      <button class="btn" onclick="resetStepper()">↺ Reset</button>
+      <span style="color:var(--text-muted);font-size:0.8rem;margin-left:auto" id="step-counter">Step 0 / 0</span>
+    </div>
+    <div id="viz-container">
+      <div class="viz-layout">
+        <div>
+          <svg id="board-svg" width="100%" viewBox="0 0 360 360"></svg>
+        </div>
+        <div class="decision-tree-panel">
+          <h4>Decision Tree (partial)</h4>
+          <svg id="tree-svg" width="290" height="300"></svg>
+        </div>
+      </div>
+    </div>
+    <div class="trace-panel" id="trace-panel">
+      <div class="trace-row">
+        <span class="trace-key">row:</span><span class="trace-val" id="t-row">—</span>
+        <span class="trace-key">col tried:</span><span class="trace-val" id="t-col">—</span>
+        <span class="trace-key">valid:</span><span class="trace-val" id="t-valid">—</span>
+        <span class="trace-key">queens placed:</span><span class="trace-val" id="t-placed">0</span>
+      </div>
+      <div class="trace-invariant" id="t-invariant">Invariant: Each row has at most one queen; no two queens share a column or diagonal.</div>
+    </div>
+  </section>
+
+  <!-- JAVA CODE -->
+  <section id="code">
+    <h2>Java Templates</h2>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+      <pre id="java-code"><span class="cm">// ===== BACKTRACKING SKELETON =====</span>
+<span class="kw">void</span> <span class="fn">backtrack</span>(<span class="tp">int</span>[] candidates, <span class="tp">int</span> start, <span class="tp">int</span> target,
+               <span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; current, <span class="tp">List</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt;&gt; result) {
+    <span class="kw">if</span> (target == <span class="num">0</span>) { result.add(<span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;(current)); <span class="kw">return</span>; }
+    <span class="kw">for</span> (<span class="tp">int</span> i = start; i &lt; candidates.length; i++) {
+        <span class="kw">if</span> (candidates[i] &gt; target) <span class="kw">break</span>; <span class="cm">// pruning (requires sorted input)</span>
+        <span class="cm">// Skip duplicates at the same level (for Combination Sum II)</span>
+        <span class="kw">if</span> (i &gt; start &amp;&amp; candidates[i] == candidates[i-<span class="num">1</span>]) <span class="kw">continue</span>;
+        current.add(candidates[i]);
+        <span class="fn">backtrack</span>(candidates, i + <span class="num">1</span>, target - candidates[i], current, result);
+        current.remove(current.size() - <span class="num">1</span>);
+    }
+}
+
+<span class="cm">// ===== N-QUEENS =====</span>
+<span class="tp">List</span>&lt;<span class="tp">List</span>&lt;<span class="tp">String</span>&gt;&gt; <span class="fn">solveNQueens</span>(<span class="tp">int</span> n) {
+    <span class="tp">List</span>&lt;<span class="tp">List</span>&lt;<span class="tp">String</span>&gt;&gt; result = <span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;();
+    <span class="tp">char</span>[][] board = <span class="kw">new</span> <span class="tp">char</span>[n][n];
+    <span class="kw">for</span> (<span class="tp">char</span>[] row : board) <span class="tp">Arrays</span>.<span class="fn">fill</span>(row, <span class="str">'.'</span>);
+    <span class="fn">nqueens</span>(board, <span class="num">0</span>, result);
+    <span class="kw">return</span> result;
+}
+<span class="kw">void</span> <span class="fn">nqueens</span>(<span class="tp">char</span>[][] board, <span class="tp">int</span> row, <span class="tp">List</span>&lt;<span class="tp">List</span>&lt;<span class="tp">String</span>&gt;&gt; result) {
+    <span class="kw">if</span> (row == board.length) {
+        <span class="tp">List</span>&lt;<span class="tp">String</span>&gt; solution = <span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;();
+        <span class="kw">for</span> (<span class="tp">char</span>[] r : board) solution.add(<span class="kw">new</span> <span class="tp">String</span>(r));
+        result.add(solution);
+        <span class="kw">return</span>;
+    }
+    <span class="kw">for</span> (<span class="tp">int</span> col = <span class="num">0</span>; col &lt; board.length; col++) {
+        <span class="kw">if</span> (<span class="fn">isValid</span>(board, row, col)) {
+            board[row][col] = <span class="str">'Q'</span>;
+            <span class="fn">nqueens</span>(board, row + <span class="num">1</span>, result);
+            board[row][col] = <span class="str">'.'</span>;
+        }
+    }
+}
+
+<span class="cm">// ===== SUDOKU SOLVER =====</span>
+<span class="tp">boolean</span> <span class="fn">solveSudoku</span>(<span class="tp">char</span>[][] board) {
+    <span class="kw">for</span> (<span class="tp">int</span> r = <span class="num">0</span>; r &lt; <span class="num">9</span>; r++) {
+        <span class="kw">for</span> (<span class="tp">int</span> c = <span class="num">0</span>; c &lt; <span class="num">9</span>; c++) {
+            <span class="kw">if</span> (board[r][c] != <span class="str">'.'</span>) <span class="kw">continue</span>;
+            <span class="kw">for</span> (<span class="tp">char</span> d = <span class="str">'1'</span>; d &lt;= <span class="str">'9'</span>; d++) {
+                <span class="kw">if</span> (<span class="fn">isValidPlacement</span>(board, r, c, d)) {
+                    board[r][c] = d;
+                    <span class="kw">if</span> (<span class="fn">solveSudoku</span>(board)) <span class="kw">return true</span>;
+                    board[r][c] = <span class="str">'.'</span>;
+                }
+            }
+            <span class="kw">return false</span>; <span class="cm">// no digit worked</span>
+        }
+    }
+    <span class="kw">return true</span>; <span class="cm">// all cells filled</span>
+}</pre>
+    </div>
+  </section>
+
+  <!-- PROBLEMS -->
+  <section id="problems">
+    <h2>Canonical Problems</h2>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">LC 78</div>
+        <div class="problem-name">Subsets</div>
+        <div class="problem-note">Include/exclude each element; 2ⁿ subsets; no duplicates in input</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 90</div>
+        <div class="problem-name">Subsets II</div>
+        <div class="problem-note">Sort first, skip duplicates at same recursion level</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 46</div>
+        <div class="problem-name">Permutations</div>
+        <div class="problem-note">Swap-based, no duplicates in input; n! total permutations</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 47</div>
+        <div class="problem-name">Permutations II</div>
+        <div class="problem-note">Sort + skip if nums[i]==nums[i-1] and not used before</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 39</div>
+        <div class="problem-name">Combination Sum</div>
+        <div class="problem-note">Unbounded: can reuse elements; prune when sum exceeds target</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 40</div>
+        <div class="problem-name">Combination Sum II</div>
+        <div class="problem-note">Each element used once; sort + skip duplicates at same level</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 51</div>
+        <div class="problem-name">N-Queens</div>
+        <div class="problem-note">Constraint: no two queens share row/col/diagonal; bitset optimization</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 37</div>
+        <div class="problem-name">Sudoku Solver</div>
+        <div class="problem-note">HARD: constraint propagation + backtracking; box index = (r/3)*3+c/3</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 79</div>
+        <div class="problem-name">Word Search</div>
+        <div class="problem-note">DFS on grid, mark visited, unmark on backtrack</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">Classic</div>
+        <div class="problem-name">Rat in a Maze</div>
+        <div class="problem-note">4-directional DFS with visited grid; path tracking on backtrack</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAFF ANGLES -->
+  <section id="staff">
+    <h2>Staff / System Design Angles</h2>
+    <div class="staff-card">
+      <h3>Scale: N-Queens for N=1000</h3>
+      <p>N-Queens for N=1000 via exhaustive backtracking is infeasible — the search space is astronomically large. How do you find one valid solution quickly?</p>
+      <div class="hint">→ Constructive O(n) algorithms exist for N-Queens (place queens using modular arithmetic patterns). Constraint programming solvers (MiniZat, Gecode) use arc-consistency propagation. Las Vegas algorithms randomly restart from promising partial states. For combinatorial optimization at scale, branch-and-bound with good bounding functions prunes orders of magnitude of the tree.</div>
+    </div>
+    <div class="staff-card">
+      <h3>Parallel: Distributing Sudoku Solving</h3>
+      <p>Backtracking is naturally parallelizable at the top levels of the tree. How would you distribute Sudoku solving across 100 workers?</p>
+      <div class="hint">→ Enumerate all valid partial placements for the first 2–3 rows, distribute each subtree to a worker. Work-stealing: idle workers steal top-level nodes from busy workers' queues. Speculative execution of the most-constrained branches first (fail-fast heuristic). Branch-and-bound with shared upper bounds lets workers prune based on each other's findings. Store intermediate results in shared memory to avoid redundant exploration.</div>
+    </div>
+  </section>
+</main>
+
+<footer>Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt &amp; Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers</footer>
+
+<script>
+// ─── SCROLL PROGRESS ───────────────────────────────────────────────
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+});
+
+// ─── INTERSECTION OBSERVER ─────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// ─── CONCEPT SVG (tree illustration) ───────────────────────────────
+(function drawConceptTree() {
+  const svg = d3.select('#concept-svg');
+  const nodes = [
+    { id: 0, x: 400, y: 20, label: 'start', state: 'root' },
+    { id: 1, x: 160, y: 80, label: 'choose A', state: 'choose' },
+    { id: 2, x: 640, y: 80, label: 'skip A', state: 'skip' },
+    { id: 3, x: 80,  y: 150, label: 'choose B', state: 'choose' },
+    { id: 4, x: 240, y: 150, label: 'skip B', state: 'choose' },
+    { id: 5, x: 560, y: 150, label: 'choose B', state: 'choose' },
+    { id: 6, x: 720, y: 150, label: 'skip B', state: 'skip' },
+    { id: 7, x: 80,  y: 190, label: '✓ {A,B}', state: 'result' },
+    { id: 8, x: 240, y: 190, label: '✓ {A}', state: 'result' },
+    { id: 9, x: 560, y: 190, label: '✓ {B}', state: 'result' },
+    { id: 10,x: 720, y: 190, label: '✓ {}', state: 'result' },
+  ];
+  const edges = [[0,1],[0,2],[1,3],[1,4],[2,5],[2,6],[3,7],[4,8],[5,9],[6,10]];
+  const colorMap = { root:'#8b949e', choose:'#34d399', skip:'#f59e0b', result:'#a78bfa' };
+
+  edges.forEach(([s,t]) => {
+    svg.append('line')
+      .attr('x1', nodes[s].x).attr('y1', nodes[s].y+10)
+      .attr('x2', nodes[t].x).attr('y2', nodes[t].y-10)
+      .attr('stroke', '#30363d').attr('stroke-width', 1.5);
+  });
+  nodes.forEach(n => {
+    const g = svg.append('g').attr('transform', `translate(${n.x},${n.y})`);
+    g.append('rect').attr('x',-40).attr('y',-14).attr('width',80).attr('height',22)
+      .attr('rx',6).attr('fill','#161b22').attr('stroke', colorMap[n.state]).attr('stroke-width',1.5);
+    g.append('text').attr('text-anchor','middle').attr('dy','5px')
+      .attr('fill', colorMap[n.state]).attr('font-size','11px').attr('font-family','JetBrains Mono,monospace')
+      .text(n.label);
+  });
+})();
+
+// ─── STEPPER STATE ─────────────────────────────────────────────────
+let currentExample = 'queens';
+let stepIndex = 0;
+let steps = [];
+let playing = false;
+let playTimer = null;
+let boardN = 4;
+
+function switchExample(ex) {
+  currentExample = ex;
+  document.querySelectorAll('[id^=ex-]').forEach(b => b.classList.remove('active'));
+  document.getElementById('ex-' + ex).classList.add('active');
+  resetStepper();
+}
+
+document.getElementById('n-select').addEventListener('change', function() {
+  boardN = parseInt(this.value);
+  resetStepper();
+});
+
+// ─── N-QUEENS STEP GENERATION ──────────────────────────────────────
+function generateQueensSteps(n) {
+  const stps = [];
+  const board = Array.from({length:n}, () => Array(n).fill(0));
+  const queens = [];
+
+  function isValid(r, c) {
+    for (const [qr, qc] of queens) {
+      if (qc === c) return false;
+      if (Math.abs(qr - r) === Math.abs(qc - c)) return false;
+    }
+    return true;
+  }
+
+  function solve(row) {
+    if (row === n) {
+      stps.push({ type:'solution', queens:[...queens.map(q=>[...q])], row, col:null, valid:null, desc:`Solution found! All ${n} queens placed successfully.` });
+      return;
+    }
+    for (let col = 0; col < n; col++) {
+      const valid = isValid(row, col);
+      stps.push({ type: valid ? 'place' : 'invalid', queens: queens.map(q=>[...q]), row, col, valid, desc: valid ? `Row ${row}: try col ${col} → valid! Place queen.` : `Row ${row}: try col ${col} → conflict! Skip.` });
+      if (valid) {
+        queens.push([row, col]);
+        solve(row + 1);
+        const removed = queens.pop();
+        if (row < n - 1 || col < n - 1) {
+          stps.push({ type:'backtrack', queens: queens.map(q=>[...q]), row, col, valid:null, desc: `Backtrack from row ${row}, col ${col}.` });
+        }
+      }
+      if (stps.length > 120) return; // cap for performance
+    }
+  }
+
+  solve(0);
+  return stps;
+}
+
+// ─── COMBINATION SUM STEP GENERATION ──────────────────────────────
+function generateComboSteps() {
+  const candidates = [2, 3, 6, 7];
+  const target = 7;
+  const stps = [];
+  const current = [];
+
+  function bt(start, remaining) {
+    if (remaining === 0) {
+      stps.push({ type:'solution', current:[...current], start, remaining, candidates, target, desc:`Found combination: [${current.join(', ')}] sums to ${target}!` });
+      return;
+    }
+    for (let i = start; i < candidates.length; i++) {
+      if (candidates[i] > remaining) {
+        stps.push({ type:'prune', current:[...current], start, remaining, chosen: candidates[i], candidates, target, desc:`Prune: ${candidates[i]} > remaining ${remaining}. Stop.` });
+        break;
+      }
+      current.push(candidates[i]);
+      stps.push({ type:'choose', current:[...current], start:i, remaining: remaining - candidates[i], chosen: candidates[i], candidates, target, desc:`Choose ${candidates[i]}: current=[${current.join(',')}], remaining=${remaining - candidates[i]}` });
+      bt(i, remaining - candidates[i]);
+      current.pop();
+      stps.push({ type:'unchoose', current:[...current], start:i, remaining, chosen: candidates[i], candidates, target, desc:`Unchoose ${candidates[i]}: backtrack. current=[${current.join(',')}]` });
+      if (stps.length > 80) break;
+    }
+  }
+
+  bt(0, target);
+  return stps;
+}
+
+// ─── SUBSETS STEP GENERATION ───────────────────────────────────────
+function generateSubsetsSteps() {
+  const nums = [1, 2, 3];
+  const stps = [];
+  const current = [];
+
+  function bt(index) {
+    stps.push({ type:'record', current:[...current], index, nums, desc:`Record subset: [${current.join(', ')}]` });
+    if (index === nums.length) return;
+    for (let i = index; i < nums.length; i++) {
+      current.push(nums[i]);
+      stps.push({ type:'include', current:[...current], index:i+1, nums, desc:`Include ${nums[i]}: current=[${current.join(',')}], move to index ${i+1}` });
+      bt(i + 1);
+      current.pop();
+      stps.push({ type:'exclude', current:[...current], index:i+1, nums, desc:`Exclude ${nums[i]}: current=[${current.join(',')}]` });
+    }
+  }
+
+  bt(0);
+  return stps;
+}
+
+// ─── RENDER BOARD (N-Queens) ────────────────────────────────────────
+function renderBoard(step) {
+  const svg = d3.select('#board-svg');
+  svg.selectAll('*').remove();
+  const n = boardN;
+  const cellSize = Math.min(60, 340 / n);
+  const offset = (360 - n * cellSize) / 2;
+
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const fill = (r + c) % 2 === 0 ? '#1c2330' : '#161b22';
+      svg.append('rect')
+        .attr('x', offset + c * cellSize).attr('y', offset + r * cellSize)
+        .attr('width', cellSize).attr('height', cellSize)
+        .attr('fill', fill).attr('stroke', '#30363d').attr('stroke-width', 1);
+    }
+  }
+
+  if (!step) return;
+
+  // Highlight current attempt
+  if (step.row !== null && step.col !== null) {
+    const hlColor = step.valid === false ? 'rgba(248,113,113,0.3)' : step.valid === true ? 'rgba(52,211,153,0.3)' : 'rgba(52,211,153,0.15)';
+    svg.append('rect')
+      .attr('x', offset + step.col * cellSize).attr('y', offset + step.row * cellSize)
+      .attr('width', cellSize).attr('height', cellSize)
+      .attr('fill', hlColor);
+  }
+
+  // Draw placed queens
+  (step.queens || []).forEach(([qr, qc]) => {
+    const cx = offset + qc * cellSize + cellSize / 2;
+    const cy = offset + qr * cellSize + cellSize / 2;
+    svg.append('circle')
+      .attr('cx', cx).attr('cy', cy)
+      .attr('r', cellSize * 0.35)
+      .attr('fill', '#34d399').attr('stroke', '#0d1117').attr('stroke-width', 1.5);
+    svg.append('text')
+      .attr('x', cx).attr('y', cy + 5)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', Math.max(12, cellSize * 0.4) + 'px')
+      .attr('fill', '#0d1117').attr('font-weight', 'bold')
+      .text('Q');
+  });
+}
+
+// ─── RENDER COMBO/SUBSETS ───────────────────────────────────────────
+function renderCombo(step) {
+  const svg = d3.select('#board-svg');
+  svg.selectAll('*').remove();
+  if (!step) return;
+
+  const candidates = step.candidates || [1,2,3];
+  const target = step.target || 7;
+  const current = step.current || [];
+  const cw = 60, ch = 40, gap = 12;
+  const startX = 20;
+
+  // Draw candidates row
+  svg.append('text').attr('x', startX).attr('y', 30)
+    .attr('fill','#8b949e').attr('font-size','12px').attr('font-family','JetBrains Mono,monospace')
+    .text('candidates:');
+
+  candidates.forEach((v, i) => {
+    const x = startX + i * (cw + gap);
+    const inCurrent = current.includes(v);
+    svg.append('rect').attr('x',x).attr('y',40).attr('width',cw).attr('height',ch)
+      .attr('rx',6).attr('fill', inCurrent ? 'rgba(52,211,153,0.2)' : '#161b22')
+      .attr('stroke', inCurrent ? '#34d399' : '#30363d').attr('stroke-width',1.5);
+    svg.append('text').attr('x',x+cw/2).attr('y',64).attr('text-anchor','middle')
+      .attr('fill', inCurrent ? '#34d399' : '#e6edf3').attr('font-size','18px')
+      .attr('font-family','JetBrains Mono,monospace').attr('font-weight','600').text(v);
+  });
+
+  // Draw current selection
+  svg.append('text').attr('x', startX).attr('y', 130)
+    .attr('fill','#8b949e').attr('font-size','12px').attr('font-family','JetBrains Mono,monospace')
+    .text('current:');
+
+  current.forEach((v, i) => {
+    const x = startX + i * (cw + gap);
+    svg.append('rect').attr('x',x).attr('y',140).attr('width',cw).attr('height',ch)
+      .attr('rx',6).attr('fill','rgba(52,211,153,0.2)').attr('stroke','#34d399').attr('stroke-width',1.5);
+    svg.append('text').attr('x',x+cw/2).attr('y',164).attr('text-anchor','middle')
+      .attr('fill','#34d399').attr('font-size','18px')
+      .attr('font-family','JetBrains Mono,monospace').attr('font-weight','600').text(v);
+  });
+
+  const sumVal = current.reduce((a,b)=>a+b,0);
+  const remaining = step.remaining !== undefined ? step.remaining : target - sumVal;
+  svg.append('text').attr('x', startX).attr('y', 220)
+    .attr('fill','#8b949e').attr('font-size','12px').attr('font-family','JetBrains Mono,monospace')
+    .text(`sum = ${sumVal}  |  target = ${target}  |  remaining = ${remaining}`);
+
+  if (step.type === 'solution') {
+    svg.append('text').attr('x', startX).attr('y', 255)
+      .attr('fill','#34d399').attr('font-size','14px').attr('font-weight','600')
+      .attr('font-family','JetBrains Mono,monospace').text(`✓ Found: [${current.join(', ')}]`);
+  }
+}
+
+function renderSubsets(step) {
+  const svg = d3.select('#board-svg');
+  svg.selectAll('*').remove();
+  if (!step) return;
+
+  const nums = step.nums || [1,2,3];
+  const current = step.current || [];
+  const cw = 55, ch = 38, gap = 10;
+  const startX = 20;
+
+  svg.append('text').attr('x', startX).attr('y', 30)
+    .attr('fill','#8b949e').attr('font-size','12px').attr('font-family','JetBrains Mono,monospace')
+    .text('input array:');
+
+  nums.forEach((v, i) => {
+    const x = startX + i * (cw + gap);
+    const inCurrent = current.includes(v);
+    svg.append('rect').attr('x',x).attr('y',38).attr('width',cw).attr('height',ch)
+      .attr('rx',5).attr('fill', inCurrent ? 'rgba(52,211,153,0.2)' : '#161b22')
+      .attr('stroke', inCurrent ? '#34d399' : '#30363d').attr('stroke-width',1.5);
+    svg.append('text').attr('x',x+cw/2).attr('y',60).attr('text-anchor','middle')
+      .attr('fill', inCurrent ? '#34d399' : '#e6edf3').attr('font-size','18px')
+      .attr('font-family','JetBrains Mono,monospace').attr('font-weight','600').text(v);
+  });
+
+  svg.append('text').attr('x', startX).attr('y', 120)
+    .attr('fill','#8b949e').attr('font-size','12px').attr('font-family','JetBrains Mono,monospace')
+    .text('current subset:');
+
+  if (current.length === 0) {
+    svg.append('text').attr('x', startX).attr('y', 155)
+      .attr('fill','#8b949e').attr('font-size','14px').attr('font-family','JetBrains Mono,monospace')
+      .text('[ ]  (empty set)');
+  } else {
+    current.forEach((v, i) => {
+      const x = startX + i * (cw + gap);
+      svg.append('rect').attr('x',x).attr('y',128).attr('width',cw).attr('height',ch)
+        .attr('rx',5).attr('fill','rgba(52,211,153,0.2)').attr('stroke','#34d399').attr('stroke-width',1.5);
+      svg.append('text').attr('x',x+cw/2).attr('y',150).attr('text-anchor','middle')
+        .attr('fill','#34d399').attr('font-size','18px')
+        .attr('font-family','JetBrains Mono,monospace').attr('font-weight','600').text(v);
+    });
+  }
+
+  if (step.type === 'record') {
+    svg.append('text').attr('x', startX).attr('y', 210)
+      .attr('fill','#a78bfa').attr('font-size','13px').attr('font-family','JetBrains Mono,monospace')
+      .text(`✓ Recording subset: [${current.join(', ')}]`);
+  }
+}
+
+// ─── RENDER DECISION TREE ───────────────────────────────────────────
+function renderDecisionTree(stepIdx) {
+  const svg = d3.select('#tree-svg');
+  svg.selectAll('*').remove();
+  const visible = steps.slice(0, stepIdx + 1);
+  const w = 290, h = 300;
+
+  // Simple tree: show last 6 steps as nodes in a chain
+  const relevant = visible.filter(s => s.type === 'place' || s.type === 'invalid' || s.type === 'solution' || s.type === 'backtrack' || s.type === 'choose' || s.type === 'include' || s.type === 'record');
+  const show = relevant.slice(-7);
+
+  show.forEach((s, i) => {
+    const y = 20 + i * 38;
+    const x = 20 + (i % 3) * 10;
+    const colorMap = { place:'#34d399', invalid:'#f87171', solution:'#a78bfa', backtrack:'#f59e0b', choose:'#34d399', unchoose:'#f59e0b', include:'#34d399', exclude:'#f59e0b', record:'#a78bfa', prune:'#f87171' };
+    const color = colorMap[s.type] || '#8b949e';
+
+    if (i > 0) {
+      svg.append('line').attr('x1', 20 + ((i-1)%3)*10 + 50).attr('y1', 20 + (i-1)*38 + 10)
+        .attr('x2', x + 50).attr('y2', y - 10)
+        .attr('stroke','#30363d').attr('stroke-width',1);
+    }
+
+    svg.append('rect').attr('x', x).attr('y', y - 12).attr('width', 240).attr('height', 26)
+      .attr('rx', 5).attr('fill', i === show.length - 1 ? `rgba(${color === '#34d399' ? '52,211,153' : color === '#f87171' ? '248,113,113' : '167,139,250'},0.15)` : '#161b22')
+      .attr('stroke', color).attr('stroke-width', i === show.length - 1 ? 2 : 1);
+
+    svg.append('text').attr('x', x + 8).attr('y', y + 5)
+      .attr('fill', color).attr('font-size', '11px').attr('font-family', 'JetBrains Mono,monospace')
+      .text(s.desc.substring(0, 32));
+  });
+}
+
+// ─── STEPPER CORE ──────────────────────────────────────────────────
+function buildSteps() {
+  if (currentExample === 'queens') steps = generateQueensSteps(boardN);
+  else if (currentExample === 'combo') steps = generateComboSteps();
+  else steps = generateSubsetsSteps();
+  stepIndex = -1;
+}
+
+function applyStep(idx) {
+  if (idx < 0 || idx >= steps.length) return;
+  const step = steps[idx];
+  document.getElementById('step-desc').textContent = step.desc;
+  document.getElementById('step-counter').textContent = `Step ${idx + 1} / ${steps.length}`;
+
+  if (currentExample === 'queens') {
+    renderBoard(step);
+    document.getElementById('t-row').textContent = step.row !== null ? step.row : '—';
+    document.getElementById('t-col').textContent = step.col !== null ? step.col : '—';
+    document.getElementById('t-valid').textContent = step.valid !== null ? (step.valid ? 'Yes' : 'No') : step.type;
+    document.getElementById('t-placed').textContent = step.queens ? step.queens.length : 0;
+  } else if (currentExample === 'combo') {
+    renderCombo(step);
+    document.getElementById('t-row').textContent = step.start !== undefined ? step.start : '—';
+    document.getElementById('t-col').textContent = step.chosen !== undefined ? step.chosen : '—';
+    document.getElementById('t-valid').textContent = step.type;
+    document.getElementById('t-placed').textContent = step.current ? step.current.length : 0;
+  } else {
+    renderSubsets(step);
+    document.getElementById('t-row').textContent = step.index !== undefined ? step.index : '—';
+    document.getElementById('t-col').textContent = '—';
+    document.getElementById('t-valid').textContent = step.type;
+    document.getElementById('t-placed').textContent = step.current ? step.current.length : 0;
+  }
+
+  renderDecisionTree(idx);
+}
+
+function stepForward() {
+  if (steps.length === 0) buildSteps();
+  if (stepIndex < steps.length - 1) {
+    stepIndex++;
+    applyStep(stepIndex);
+  }
+}
+
+function resetStepper() {
+  clearInterval(playTimer);
+  playing = false;
+  document.getElementById('play-btn').textContent = '▶ Play';
+  buildSteps();
+  stepIndex = -1;
+  document.getElementById('step-desc').textContent = 'Press Play or Step to begin the visualization.';
+  document.getElementById('step-counter').textContent = `Step 0 / ${steps.length}`;
+  d3.select('#board-svg').selectAll('*').remove();
+  d3.select('#tree-svg').selectAll('*').remove();
+  document.getElementById('t-row').textContent = '—';
+  document.getElementById('t-col').textContent = '—';
+  document.getElementById('t-valid').textContent = '—';
+  document.getElementById('t-placed').textContent = '0';
+  if (currentExample === 'queens') renderBoard(null);
+}
+
+function togglePlay() {
+  if (playing) {
+    clearInterval(playTimer);
+    playing = false;
+    document.getElementById('play-btn').textContent = '▶ Play';
+  } else {
+    playing = true;
+    document.getElementById('play-btn').textContent = '⏸ Pause';
+    if (steps.length === 0) buildSteps();
+    playTimer = setInterval(() => {
+      if (stepIndex < steps.length - 1) {
+        stepIndex++;
+        applyStep(stepIndex);
+      } else {
+        clearInterval(playTimer);
+        playing = false;
+        document.getElementById('play-btn').textContent = '▶ Play';
+      }
+    }, 600);
+  }
+}
+
+// ─── COPY CODE ─────────────────────────────────────────────────────
+function copyCode() {
+  const text = document.getElementById('java-code').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// Init
+buildSteps();
+if (currentExample === 'queens') renderBoard(null);
+</script>
+</body>
+</html>

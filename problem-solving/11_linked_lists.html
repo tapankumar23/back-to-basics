@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11 · Linked Lists</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-card-hover:#1c2330;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--accent:#f97316;--accent-dim:rgba(249,115,22,0.15);--good:#4ade80;--bad:#f87171}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+#scroll-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:10px 20px;flex-wrap:wrap}
+nav a{color:var(--text-muted);text-decoration:none;font-size:13px;white-space:nowrap;transition:color .2s}
+nav a:hover{color:var(--accent)}
+.nav-sep{color:var(--border);font-size:12px}
+.nav-chapter{display:flex;gap:6px;margin-left:auto}
+.btn-nav{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;text-decoration:none;transition:all .2s}
+.btn-nav:hover{border-color:var(--accent);color:var(--accent)}
+.nav-anchors{display:flex;gap:6px;flex-wrap:wrap}
+.nav-anchors a{font-size:11px;color:var(--text-muted);text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent;transition:all .2s}
+.nav-anchors a:hover{border-color:var(--border);color:var(--text)}
+main{padding-top:70px;max-width:1100px;margin:0 auto;padding-left:20px;padding-right:20px}
+section{padding:60px 0}
+h1{font-size:2.4rem;font-weight:700;margin-bottom:12px}
+h2{font-size:1.5rem;font-weight:600;margin-bottom:20px;color:var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-bottom:12px}
+.accent{color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;transition:background .2s}
+.card:hover{background:var(--bg-card-hover)}
+.hero-tag{display:inline-block;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;margin-bottom:16px}
+.hero-desc{font-size:1.1rem;color:var(--text-muted);max-width:700px;line-height:1.8}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.stepper-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px}
+.stepper-controls{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:7px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.step-info{font-size:13px;color:var(--text-muted);margin-left:auto}
+.trace-panel{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;margin-top:16px}
+.trace-row{display:flex;gap:12px;align-items:center;margin-bottom:4px}
+.trace-key{color:var(--text-muted);min-width:130px}
+.trace-val{color:var(--accent);font-weight:600}
+.code-panel{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:20px;position:relative;overflow-x:auto}
+pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;white-space:pre-wrap}
+.copy-btn{position:absolute;top:12px;right:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;transition:all .2s}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problem-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.problem-list li{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px;transition:background .2s}
+.problem-list li:hover{background:var(--bg-card-hover)}
+.prob-num{color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;min-width:42px}
+.prob-body{flex:1}
+.prob-title{font-weight:600;margin-bottom:3px}
+.prob-desc{font-size:13px;color:var(--text-muted)}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--accent-dim);color:var(--accent);margin-left:8px;vertical-align:middle}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:18px 20px;margin-bottom:16px}
+.staff-q{font-weight:600;margin-bottom:8px}
+.staff-a{font-size:13px;color:var(--text-muted);line-height:1.7}
+.controls-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.select{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:7px;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer}
+.select:focus{outline:none;border-color:var(--accent)}
+label{font-size:13px;color:var(--text-muted)}
+footer{border-top:1px solid var(--border);padding:30px 20px;text-align:center;font-size:12px;color:var(--text-muted);margin-top:40px;max-width:1100px;margin-left:auto;margin-right:auto}
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;border:1px solid var(--border);color:var(--text-muted);background:var(--bg)}
+.pill.acc{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+svg text{font-family:'JetBrains Mono',monospace}
+.concept-svg-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#0d1117;padding:16px}
+.step-desc{font-size:13px;color:var(--text-muted);margin-top:12px;min-height:40px;line-height:1.7}
+.phase-badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;margin-left:8px}
+.phase1{background:rgba(249,115,22,0.2);color:var(--accent);border:1px solid var(--accent)}
+.phase2{background:rgba(74,222,128,0.2);color:var(--good);border:1px solid var(--good)}
+input[type=range]{accent-color:var(--accent);cursor:pointer}
+.interactive-svg-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#0d1117;padding:16px;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="scroll-bar"></div>
+
+<nav>
+  <a href="../coding-concepts/00_index.html">Coding Concepts</a>
+  <span class="nav-sep">|</span>
+  <a href="../system-design-concepts/00_index.html">System Design</a>
+  <span class="nav-sep">|</span>
+  <span style="color:var(--accent);font-weight:600;font-size:13px">11 · Linked Lists</span>
+  <div class="nav-anchors">
+    <a href="#hero">Intro</a>
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Floyd's</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff Q&amp;A</a>
+    <a href="#interactive">Interactive</a>
+  </div>
+  <div class="nav-chapter">
+    <a href="10_hashing_intervals_sweep_line.html" class="btn-nav">Prev</a>
+    <a href="12_trees_bst.html" class="btn-nav">Next</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-tag">Pattern 11 · Linked Lists</div>
+  <h1>11 · <span class="accent">Linked Lists</span></h1>
+  <p class="hero-desc">
+    Master in-place O(1)-space manipulation using three canonical tools:
+    <strong>dummy head</strong>, <strong>slow/fast pointers</strong>, and <strong>recursion</strong>.
+    Floyd's cycle detection is the signature algorithm — elegant, O(1) space, and the entry point
+    for a dozen interview problems.
+  </p>
+  <div class="pill-row">
+    <span class="pill acc">Dummy Head</span>
+    <span class="pill acc">Slow / Fast Pointers</span>
+    <span class="pill acc">Floyd's Cycle Detection</span>
+    <span class="pill">O(1) Extra Space</span>
+    <span class="pill">In-Place Reversal</span>
+    <span class="pill">Two-Pass to One-Pass</span>
+  </div>
+</section>
+
+<!-- CORE CONCEPT -->
+<section id="concept">
+  <h2>Core Concept</h2>
+  <div class="card">
+    <h3>Anatomy of a Linked List</h3>
+    <div class="concept-svg-wrap">
+      <svg id="concept-svg" width="720" height="160" viewBox="0 0 720 160" style="max-width:100%"></svg>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-top:12px">
+      Each node holds a <strong>value</strong> and a <strong>next</strong> pointer.
+      The last node's <code style="color:var(--accent)">next = null</code>.
+      A <strong>dummy/sentinel head</strong> simplifies edge cases when inserting at the front.
+    </p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Dummy Head Pattern</h3>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.8">
+        Create a fake node before the real head. Return <code style="color:var(--accent)">dummy.next</code> at the end.
+        Eliminates null-checks when stitching nodes onto an initially empty result list.
+        Used in: merge two lists, remove nth from end, partition list.
+      </p>
+      <div class="code-panel" style="margin-top:12px">
+        <pre><span class="tp">ListNode</span> dummy = <span class="kw">new</span> <span class="tp">ListNode</span>(<span class="num">0</span>);
+<span class="tp">ListNode</span> cur = dummy;
+<span class="cm">// stitch nodes onto cur.next</span>
+cur.next = someNode;
+cur = cur.next;
+<span class="kw">return</span> dummy.next;</pre>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Slow / Fast Pointer Pattern</h3>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.8">
+        Slow moves 1 step; fast moves 2 steps per iteration.
+        When fast reaches the end, slow is at the <strong>middle</strong>.
+        If fast ever equals slow (started apart), there is a <strong>cycle</strong>.
+        Used in: find middle, cycle detection, palindrome check.
+      </p>
+      <div class="code-panel" style="margin-top:12px">
+        <pre><span class="tp">ListNode</span> slow = head, fast = head;
+<span class="kw">while</span> (fast != <span class="kw">null</span> &amp;&amp; fast.next != <span class="kw">null</span>) {
+  slow = slow.next;
+  fast = fast.next.next;
+}
+<span class="cm">// slow is now at the middle</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FLOYD'S STEPPER -->
+<section id="stepper">
+  <h2>Floyd's Cycle Detection — Step-by-Step</h2>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
+    List: <strong>1 &rarr; 2 &rarr; 3 &rarr; 4 &rarr; 5 &rarr; (back to 3)</strong>.
+    Slow pointer (green) hops 1 node per step. Fast pointer (orange) hops 2 nodes per step.
+    <strong>Phase 1</strong>: advance until they meet inside the cycle.
+    <strong>Phase 2</strong>: reset slow to head; advance both 1 step per iteration until they meet — that node is the cycle entry.
+  </p>
+
+  <div class="stepper-wrap">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-weight:600">Floyd's Cycle Detection</span>
+      <span id="phase-badge" class="phase-badge phase1">Phase 1 — Detect</span>
+    </div>
+    <div class="concept-svg-wrap" style="padding:8px">
+      <svg id="floyd-svg" width="680" height="210" viewBox="0 0 680 210" style="max-width:100%"></svg>
+    </div>
+    <p id="step-desc" class="step-desc">Press Play or Step to begin.</p>
+    <div class="trace-panel">
+      <div class="trace-row"><span class="trace-key">Slow pointer</span><span id="tr-slow" class="trace-val">node 0 (val=1)</span></div>
+      <div class="trace-row"><span class="trace-key">Fast pointer</span><span id="tr-fast" class="trace-val">node 0 (val=1)</span></div>
+      <div class="trace-row"><span class="trace-key">Step count</span><span id="tr-steps" class="trace-val">0</span></div>
+      <div class="trace-row"><span class="trace-key">Meeting node</span><span id="tr-meet" class="trace-val">---</span></div>
+      <div class="trace-row"><span class="trace-key">Cycle start</span><span id="tr-cycle" class="trace-val">---</span></div>
+    </div>
+    <div class="stepper-controls">
+      <button class="btn" id="btn-play">Play</button>
+      <button class="btn" id="btn-step">Step</button>
+      <button class="btn" id="btn-reset">Reset</button>
+      <span class="step-info" id="step-counter">Step 0 / 0</span>
+    </div>
+  </div>
+</section>
+
+<!-- CODE PANEL -->
+<section id="code">
+  <h2>Java Implementation</h2>
+
+  <div class="card">
+    <h3>Reverse Linked List (Iterative + Recursive)</h3>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      <pre><span class="cm">// Iterative — O(n) time, O(1) space</span>
+<span class="kw">public</span> <span class="tp">ListNode</span> <span class="fn">reverseList</span>(<span class="tp">ListNode</span> head) {
+    <span class="tp">ListNode</span> p = <span class="kw">null</span>, c = head;
+    <span class="kw">while</span> (c != <span class="kw">null</span>) {
+        <span class="tp">ListNode</span> n = c.next;   <span class="cm">// 1. save next</span>
+        c.next = p;             <span class="cm">// 2. reverse link</span>
+        p = c;                  <span class="cm">// 3. advance prev</span>
+        c = n;                  <span class="cm">// 4. advance cur</span>
+    }
+    <span class="kw">return</span> p;                  <span class="cm">// new head</span>
+}
+
+<span class="cm">// Recursive — O(n) time, O(n) stack space</span>
+<span class="kw">public</span> <span class="tp">ListNode</span> <span class="fn">reverseListRec</span>(<span class="tp">ListNode</span> head) {
+    <span class="kw">if</span> (head == <span class="kw">null</span> || head.next == <span class="kw">null</span>) <span class="kw">return</span> head;
+    <span class="tp">ListNode</span> newHead = <span class="fn">reverseListRec</span>(head.next);
+    head.next.next = head;   <span class="cm">// wire successor back to us</span>
+    head.next = <span class="kw">null</span>;        <span class="cm">// break forward link</span>
+    <span class="kw">return</span> newHead;
+}</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Floyd's Cycle Detection — hasCycle &amp; detectCycle</h3>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      <pre><span class="cm">// LC 141 — O(n) time, O(1) space — no HashSet</span>
+<span class="kw">public boolean</span> <span class="fn">hasCycle</span>(<span class="tp">ListNode</span> h) {
+    <span class="tp">ListNode</span> s = h, f = h;
+    <span class="kw">while</span> (f != <span class="kw">null</span> &amp;&amp; f.next != <span class="kw">null</span>) {
+        s = s.next;
+        f = f.next.next;
+        <span class="kw">if</span> (s == f) <span class="kw">return true</span>;
+    }
+    <span class="kw">return false</span>;
+}
+
+<span class="cm">// LC 142 — find the exact cycle-entry node</span>
+<span class="cm">// Math: dist(head→entry) == dist(meet→entry going forward)</span>
+<span class="kw">public</span> <span class="tp">ListNode</span> <span class="fn">detectCycle</span>(<span class="tp">ListNode</span> h) {
+    <span class="tp">ListNode</span> s = h, f = h;
+    <span class="kw">while</span> (f != <span class="kw">null</span> &amp;&amp; f.next != <span class="kw">null</span>) {
+        s = s.next;
+        f = f.next.next;
+        <span class="kw">if</span> (s == f) {
+            s = h;                  <span class="cm">// reset slow to head</span>
+            <span class="kw">while</span> (s != f) {      <span class="cm">// both advance 1 step</span>
+                s = s.next;
+                f = f.next;
+            }
+            <span class="kw">return</span> s;            <span class="cm">// cycle start node</span>
+        }
+    }
+    <span class="kw">return null</span>;
+}</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Remove Nth Node From End — Single Pass</h3>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+      <pre><span class="cm">// LC 19 — dummy head + two pointers (n+1) apart</span>
+<span class="kw">public</span> <span class="tp">ListNode</span> <span class="fn">removeNthFromEnd</span>(<span class="tp">ListNode</span> head, <span class="kw">int</span> n) {
+    <span class="tp">ListNode</span> dummy = <span class="kw">new</span> <span class="tp">ListNode</span>(<span class="num">0</span>);
+    dummy.next = head;
+    <span class="tp">ListNode</span> fast = dummy, slow = dummy;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt;= n; i++) fast = fast.next; <span class="cm">// n+1 gap</span>
+    <span class="kw">while</span> (fast != <span class="kw">null</span>) {
+        slow = slow.next;
+        fast = fast.next;
+    }
+    slow.next = slow.next.next;  <span class="cm">// unlink target node</span>
+    <span class="kw">return</span> dummy.next;
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEMS -->
+<section id="problems">
+  <h2>Problem Set</h2>
+  <ul class="problem-list">
+    <li>
+      <span class="prob-num">206</span>
+      <div class="prob-body">
+        <div class="prob-title">Reverse Linked List <span class="tag">Easy</span></div>
+        <div class="prob-desc">Iterative (prev/cur/next triple swap) or recursive (recurse to tail, wire back). Iterative is O(1) space; recursive is O(n) stack.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">92</span>
+      <div class="prob-body">
+        <div class="prob-title">Reverse Linked List II <span class="tag">Medium</span></div>
+        <div class="prob-desc">Reverse only between positions m and n in a single pass. Anchor the node just before position m with a dummy head to avoid null checks.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">141</span>
+      <div class="prob-body">
+        <div class="prob-title">Linked List Cycle <span class="tag">Easy</span></div>
+        <div class="prob-desc">Floyd's slow/fast: if they ever meet, a cycle exists. O(1) space — no HashSet needed at all.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">142</span>
+      <div class="prob-body">
+        <div class="prob-title">Linked List Cycle II <span class="tag">Medium</span></div>
+        <div class="prob-desc">After phase-1 meeting point, reset slow to head; advance both 1 step per iteration — they meet exactly at the cycle entry node.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">876</span>
+      <div class="prob-body">
+        <div class="prob-title">Middle of Linked List <span class="tag">Easy</span></div>
+        <div class="prob-desc">Slow/fast: when fast reaches null, slow is at the middle. For even length lists this returns the second middle node.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">21</span>
+      <div class="prob-body">
+        <div class="prob-title">Merge Two Sorted Lists <span class="tag">Easy</span></div>
+        <div class="prob-desc">Dummy head plus pointer stitching: always attach the smaller current node, then advance that list's pointer. Append remaining tail at end.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">23</span>
+      <div class="prob-body">
+        <div class="prob-title">Merge K Sorted Lists <span class="tag">Hard</span></div>
+        <div class="prob-desc">Min-heap of (value, listIndex) for O(N log k); alternatively divide-and-conquer merging pairs achieves the same complexity with no heap overhead.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">19</span>
+      <div class="prob-body">
+        <div class="prob-title">Remove Nth From End <span class="tag">Medium</span></div>
+        <div class="prob-desc">Gap of n+1 between fast and slow (both starting from dummy). When fast becomes null, slow.next is the target — unlink with slow.next = slow.next.next.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">160</span>
+      <div class="prob-body">
+        <div class="prob-title">Intersection of Two Lists <span class="tag">Easy</span></div>
+        <div class="prob-desc">After reaching the end of one list, switch that pointer to the other list's head. Both pointers walk equal total distance and meet at the intersection or null.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">234</span>
+      <div class="prob-body">
+        <div class="prob-title">Palindrome Linked List <span class="tag">Easy</span></div>
+        <div class="prob-desc">Find middle with slow/fast, reverse the second half in-place, compare both halves. Optionally restore the list after comparison.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">138</span>
+      <div class="prob-body">
+        <div class="prob-title">Copy List with Random Pointer <span class="tag">Medium</span></div>
+        <div class="prob-desc">HashMap old-to-new in two passes; or interleave cloned nodes (A then A' then B then B'), wire randoms, then split — achieves O(1) extra space.</div>
+      </div>
+    </li>
+    <li>
+      <span class="prob-num">146</span>
+      <div class="prob-body">
+        <div class="prob-title">LRU Cache <span class="tag">Medium</span></div>
+        <div class="prob-desc">Doubly linked list (most-recent at tail) plus HashMap of key-to-node. O(1) get/put — the classic design interview sub-problem.</div>
+      </div>
+    </li>
+  </ul>
+</section>
+
+<!-- STAFF Q&A -->
+<section id="staff">
+  <h2>Staff / System-Design Angles</h2>
+
+  <div class="staff-card">
+    <div class="staff-q">"LRU cache — 100 million entries at 64 bytes/node = 6 GB on-heap. How do you reduce the memory footprint?"</div>
+    <div class="staff-a">
+      <strong>Off-heap storage:</strong> use sun.misc.Unsafe or libraries like Chronicle Map / EHCache to allocate node memory outside the JVM heap, eliminating GC pressure entirely.
+      <br><br>
+      <strong>Arena allocators:</strong> pre-allocate a fixed slab and hand out fixed-size slots. Eliminates per-object header overhead (~16 bytes on JVM) and improves cache locality significantly.
+      <br><br>
+      <strong>Struct-of-arrays (SoA):</strong> store keys[], values[], prev[], next[] as parallel primitive arrays instead of pointer-rich objects. Reduces per-entry overhead from ~64 B to ~24 B and is SIMD-friendly.
+      <br><br>
+      <strong>Compression + tiering:</strong> apply varint encoding for keys; use value compression (Snappy) for large payloads. Hot set lives in DRAM, warm set spills to SSD (RocksDB or similar).
+    </div>
+  </div>
+
+  <div class="staff-card">
+    <div class="staff-q">"90% of our LRU latency is lock contention. How do you fix it?"</div>
+    <div class="staff-a">
+      <strong>Sharded LRU:</strong> partition by key.hashCode() % N into N independent LRU instances, each with its own lock. N=64 shards typically cuts contention by ~64x in practice.
+      <br><br>
+      <strong>Caffeine / W-TinyLFU:</strong> Caffeine uses a lock-free ring buffer for access recording; a background thread drains and reorders the eviction policy. Sub-microsecond get latency with near-optimal hit rate.
+      <br><br>
+      <strong>CAS / lock-free operations:</strong> AtomicReference plus compare-and-swap for pointer updates. Works well when write contention is moderate; degrades under very high write load.
+      <br><br>
+      <strong>Async access recording:</strong> reads do a best-effort async bump via a bounded queue. A missed bump degrades eviction quality slightly but never breaks correctness — a practical trade-off at very high throughput.
+    </div>
+  </div>
+</section>
+
+<!-- INTERACTIVE -->
+<section id="interactive">
+  <h2>Interactive Visualizer</h2>
+  <div class="card">
+    <div class="controls-row">
+      <label>Mode:</label>
+      <select class="select" id="vis-mode">
+        <option value="cycle">Cycle Detection</option>
+        <option value="reverse">Reverse</option>
+        <option value="merge">Merge Two Lists</option>
+      </select>
+      <label style="margin-left:12px">List length:</label>
+      <input type="range" id="len-slider" min="5" max="10" value="6" style="width:120px">
+      <span id="len-val" style="color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:13px">6</span>
+      <button class="btn" id="vis-run" style="margin-left:auto">Run Animation</button>
+    </div>
+    <div class="interactive-svg-wrap">
+      <svg id="vis-svg" width="700" height="185" viewBox="0 0 700 185" style="max-width:100%"></svg>
+    </div>
+    <p id="vis-desc" style="font-size:13px;color:var(--text-muted);margin-top:12px;min-height:36px">Select a mode and press Run Animation.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt &amp; Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers
+</footer>
+
+<script>
+/* ─── Scroll progress bar ─── */
+(function(){
+  var bar = document.getElementById('scroll-bar');
+  window.addEventListener('scroll', function(){
+    var total = document.documentElement.scrollHeight - window.innerHeight;
+    if (total <= 0) return;
+    bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+  });
+})();
+
+/* ─── Copy button ─── */
+function copyCode(btn) {
+  var pre = btn.nextElementSibling;
+  navigator.clipboard.writeText(pre.innerText).then(function(){
+    btn.textContent = 'copied!';
+    setTimeout(function(){ btn.textContent = 'copy'; }, 1500);
+  });
+}
+
+/* ─── IntersectionObserver fade-in ─── */
+(function(){
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting) {
+        anime({ targets: e.target, opacity: [0, 1], translateY: [24, 0], duration: 500, easing: 'easeOutCubic' });
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.25 });
+  document.querySelectorAll('section').forEach(function(s){
+    s.style.opacity = '0';
+    obs.observe(s);
+  });
+})();
+
+/* ─── Arrowhead defs helper ─── */
+function ensureArrowDefs(svgSel) {
+  var defs = svgSel.select('defs');
+  if (defs.empty()) defs = svgSel.append('defs');
+  if (defs.select('#arr').empty()) {
+    defs.append('marker').attr('id','arr').attr('markerWidth',6).attr('markerHeight',6)
+      .attr('refX',5).attr('refY',3).attr('orient','auto')
+      .append('path').attr('d','M0,0 L0,6 L6,3 z').attr('fill','#30363d');
+  }
+  if (defs.select('#arr-o').empty()) {
+    defs.append('marker').attr('id','arr-o').attr('markerWidth',6).attr('markerHeight',6)
+      .attr('refX',5).attr('refY',3).attr('orient','auto')
+      .append('path').attr('d','M0,0 L0,6 L6,3 z').attr('fill','#f97316');
+  }
+  if (defs.select('#arr-g').empty()) {
+    defs.append('marker').attr('id','arr-g').attr('markerWidth',6).attr('markerHeight',6)
+      .attr('refX',5).attr('refY',3).attr('orient','auto')
+      .append('path').attr('d','M0,0 L0,6 L6,3 z').attr('fill','#4ade80');
+  }
+  if (defs.select('#arr-y').empty()) {
+    defs.append('marker').attr('id','arr-y').attr('markerWidth',6).attr('markerHeight',6)
+      .attr('refX',5).attr('refY',3).attr('orient','auto')
+      .append('path').attr('d','M0,0 L0,6 L6,3 z').attr('fill','#facc15');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   CONCEPT SVG
+═══════════════════════════════════════════ */
+(function drawConcept(){
+  var svg = d3.select('#concept-svg');
+  ensureArrowDefs(svg);
+  var nodes = [
+    { val:'1', x:80  },
+    { val:'2', x:200 },
+    { val:'3', x:320 },
+    { val:'4', x:440 },
+    { val:'5', x:560 }
+  ];
+  var R = 28, nodeY = 80;
+
+  // Dummy sentinel
+  svg.append('rect').attr('x',10).attr('y',62).attr('width',36).attr('height',36)
+    .attr('rx',6).attr('fill','#1c2330').attr('stroke','#30363d');
+  svg.append('text').attr('x',28).attr('y',83).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',9).text('dummy');
+  svg.append('line').attr('x1',46).attr('y1',80).attr('x2',48).attr('y2',80)
+    .attr('stroke','#30363d').attr('stroke-width',1.5).attr('marker-end','url(#arr)');
+
+  nodes.forEach(function(n, i){
+    if (i < nodes.length - 1) {
+      svg.append('line')
+        .attr('x1', n.x + R).attr('y1', nodeY)
+        .attr('x2', nodes[i+1].x - R - 4).attr('y2', nodeY)
+        .attr('stroke','#30363d').attr('stroke-width',1.5)
+        .attr('marker-end','url(#arr)');
+    }
+    svg.append('circle').attr('cx', n.x).attr('cy', nodeY).attr('r', R)
+      .attr('fill','#161b22').attr('stroke','#f97316').attr('stroke-width',2);
+    svg.append('text').attr('x', n.x).attr('y', nodeY + 5)
+      .attr('text-anchor','middle').attr('fill','#e6edf3')
+      .attr('font-size',14).attr('font-weight','600').text(n.val);
+  });
+
+  // null terminus
+  svg.append('rect').attr('x',615).attr('y',64).attr('width',52).attr('height',32)
+    .attr('rx',8).attr('fill','#0d1117').attr('stroke','#30363d').attr('stroke-dasharray','4,2');
+  svg.append('text').attr('x',641).attr('y',84).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',12).text('null');
+  svg.append('line').attr('x1',560+R).attr('y1',80).attr('x2',613).attr('y2',80)
+    .attr('stroke','#30363d').attr('stroke-width',1.5).attr('marker-end','url(#arr)');
+
+  // Labels
+  svg.append('text').attr('x',80).attr('y',128).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',10).text('.val = 1');
+  svg.append('text').attr('x',80).attr('y',142).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',10).text('.next ---->');
+  svg.append('text').attr('x',560).attr('y',128).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',10).text('tail.next = null');
+})();
+
+/* ═══════════════════════════════════════════
+   FLOYD'S CYCLE DETECTION STEPPER
+   List: 0=1, 1=2, 2=3, 3=4, 4=5; nextIdx[4]=2 (cycle 5->3)
+═══════════════════════════════════════════ */
+(function floydStepper(){
+  var nodeVals = [1, 2, 3, 4, 5];
+  var nextIdx  = [1, 2, 3, 4, 2]; // node index 4 (val=5) -> index 2 (val=3)
+  var N = nodeVals.length;
+  var R = 26, nodeY = 80;
+  var startX = 70, spacing = 112;
+  var nx = function(i){ return startX + i * spacing; };
+
+  /* Build all steps up-front */
+  var steps = (function(){
+    var list = [];
+    var slow = 0, fast = 0, sc = 0, meetNode = null;
+
+    list.push({ slow:0, fast:0, sc:0, meet:null, cs:null, phase:1, done:false,
+      desc:'Initial state. Both S and F start at node 0 (val=1). Press Step to advance.' });
+
+    // Phase 1
+    while (true) {
+      slow = nextIdx[slow];
+      fast = nextIdx[nextIdx[fast]];
+      sc++;
+      var met = (slow === fast);
+      list.push({ slow:slow, fast:fast, sc:sc,
+        meet: met ? slow : null, cs:null, phase:1, done:false,
+        desc: met
+          ? 'Meeting point! S and F both at node ' + slow + ' (val=' + nodeVals[slow] + ') after ' + sc + ' step(s). Phase 1 complete — cycle confirmed.'
+          : 'Step ' + sc + ': S moves to node ' + slow + ' (val=' + nodeVals[slow] + '), F jumps to node ' + fast + ' (val=' + nodeVals[fast] + ').'
+      });
+      if (met) { meetNode = slow; break; }
+      if (sc > 20) break;
+    }
+
+    // Phase 2: reset slow to head
+    slow = 0;
+    var p2 = 0;
+    list.push({ slow:0, fast:meetNode, sc:sc, meet:meetNode, cs:null, phase:2, done:false,
+      desc:'Phase 2: reset S to head (node 0, val=1). F stays at meeting node ' + meetNode + ' (val=' + nodeVals[meetNode] + '). Advance both one step at a time.' });
+
+    while (slow !== fast) {
+      slow = nextIdx[slow];
+      fast = nextIdx[fast];
+      p2++;
+      var done = (slow === fast);
+      list.push({ slow:slow, fast:fast, sc:sc + p2,
+        meet:meetNode, cs: done ? slow : null, phase:2, done:done,
+        desc: done
+          ? 'Cycle entry found! Both pointers meet at node ' + slow + ' (val=' + nodeVals[slow] + '). This is where the cycle begins.'
+          : 'Phase 2 step ' + p2 + ': S at node ' + slow + ' (val=' + nodeVals[slow] + '), F at node ' + fast + ' (val=' + nodeVals[fast] + ').'
+      });
+      if (done) break;
+    }
+    return list;
+  })();
+
+  var currentStep = 0;
+  var playTimer = null;
+  var svg = d3.select('#floyd-svg');
+
+  function drawBase() {
+    svg.selectAll('*').remove();
+    ensureArrowDefs(svg);
+
+    // Cycle arc from node 4 back to node 2
+    var x4 = nx(4), x2 = nx(2);
+    svg.append('path')
+      .attr('d', 'M ' + x4 + ' ' + (nodeY+R) + ' Q ' + ((x4+x2)/2) + ' 170 ' + x2 + ' ' + (nodeY+R))
+      .attr('fill','none').attr('stroke','#30363d').attr('stroke-width',1.5)
+      .attr('marker-end','url(#arr)');
+    svg.append('text').attr('x',(x4+x2)/2).attr('y',196)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',10)
+      .text('cycle: node 4 (val=5) back to node 2 (val=3)');
+
+    // Forward arrows
+    for (var i = 0; i < N-1; i++) {
+      svg.append('line')
+        .attr('x1', nx(i)+R).attr('y1', nodeY)
+        .attr('x2', nx(i+1)-R-4).attr('y2', nodeY)
+        .attr('stroke','#30363d').attr('stroke-width',1.5)
+        .attr('marker-end','url(#arr)');
+    }
+
+    // Node circles
+    nodeVals.forEach(function(v, i){
+      svg.append('circle').attr('cx', nx(i)).attr('cy', nodeY).attr('r', R)
+        .attr('fill','#161b22').attr('stroke','#30363d').attr('stroke-width',2)
+        .attr('id','fn-'+i);
+      svg.append('text').attr('x', nx(i)).attr('y', nodeY+5)
+        .attr('text-anchor','middle').attr('fill','#e6edf3')
+        .attr('font-size',14).attr('font-weight','600').text(v);
+    });
+
+    // Pointer labels (hidden initially)
+    svg.append('text').attr('id','slow-lbl').attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',11).attr('font-weight','700').attr('opacity',0).text('S');
+    svg.append('text').attr('id','fast-lbl').attr('text-anchor','middle')
+      .attr('fill','#f97316').attr('font-size',11).attr('font-weight','700').attr('opacity',0).text('F');
+  }
+
+  function applyStep(idx) {
+    var st = steps[idx];
+    var total = steps.length - 1;
+
+    // Reset strokes
+    nodeVals.forEach(function(_, i){
+      d3.select('#fn-'+i).attr('stroke','#30363d').attr('stroke-width',2);
+    });
+
+    // Color slow (green)
+    d3.select('#fn-'+st.slow).attr('stroke','#4ade80').attr('stroke-width',3);
+    // Color fast (orange) — yellow if same as slow
+    var fastColor = (st.slow === st.fast) ? '#facc15' : '#f97316';
+    d3.select('#fn-'+st.fast).attr('stroke', fastColor).attr('stroke-width',3);
+
+    // Move labels
+    d3.select('#slow-lbl').attr('x', nx(st.slow)).attr('y', nodeY - R - 6).attr('opacity',1);
+    d3.select('#fast-lbl').attr('x', nx(st.fast)).attr('y', nodeY - R - 19).attr('opacity',1);
+
+    // Trace panel
+    document.getElementById('tr-slow').textContent = 'node ' + st.slow + ' (val=' + nodeVals[st.slow] + ')';
+    document.getElementById('tr-fast').textContent = 'node ' + st.fast + ' (val=' + nodeVals[st.fast] + ')';
+    document.getElementById('tr-steps').textContent = st.sc;
+    document.getElementById('tr-meet').textContent = st.meet !== null
+      ? 'node ' + st.meet + ' (val=' + nodeVals[st.meet] + ')' : '---';
+    document.getElementById('tr-cycle').textContent = st.cs !== null
+      ? 'node ' + st.cs + ' (val=' + nodeVals[st.cs] + ')' : '---';
+
+    // Phase badge
+    var badge = document.getElementById('phase-badge');
+    if (st.done) {
+      badge.textContent = 'Complete';
+      badge.className = 'phase-badge phase2';
+    } else if (st.phase === 2) {
+      badge.textContent = 'Phase 2 - Find Entry';
+      badge.className = 'phase-badge phase2';
+    } else {
+      badge.textContent = 'Phase 1 - Detect';
+      badge.className = 'phase-badge phase1';
+    }
+
+    document.getElementById('step-desc').textContent = st.desc;
+    document.getElementById('step-counter').textContent = 'Step ' + idx + ' / ' + total;
+  }
+
+  drawBase();
+  applyStep(0);
+
+  function stopPlay() {
+    clearInterval(playTimer);
+    playTimer = null;
+    document.getElementById('btn-play').textContent = 'Play';
+    document.getElementById('btn-play').classList.remove('active');
+  }
+
+  document.getElementById('btn-step').onclick = function(){
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      applyStep(currentStep);
+    }
+  };
+
+  document.getElementById('btn-reset').onclick = function(){
+    stopPlay();
+    currentStep = 0;
+    drawBase();
+    applyStep(0);
+  };
+
+  document.getElementById('btn-play').onclick = function(){
+    if (playTimer) { stopPlay(); return; }
+    document.getElementById('btn-play').textContent = 'Pause';
+    document.getElementById('btn-play').classList.add('active');
+    playTimer = setInterval(function(){
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        applyStep(currentStep);
+      } else {
+        stopPlay();
+      }
+    }, 900);
+  };
+})();
+
+/* ═══════════════════════════════════════════
+   INTERACTIVE VISUALIZER
+═══════════════════════════════════════════ */
+(function interactiveVis(){
+  var slider   = document.getElementById('len-slider');
+  var lenValEl = document.getElementById('len-val');
+  var modeEl   = document.getElementById('vis-mode');
+  var runBtn   = document.getElementById('vis-run');
+  var visDesc  = document.getElementById('vis-desc');
+  var visSvg   = d3.select('#vis-svg');
+  var activeTimer = null;
+  var W = 700, R = 22;
+
+  slider.addEventListener('input', function(){ lenValEl.textContent = slider.value; });
+
+  function nx(i, len){
+    var spacing = Math.min(88, (W - 60) / Math.max(len, 1));
+    return 44 + i * spacing;
+  }
+
+  function clearTimer(){
+    if (activeTimer) { clearInterval(activeTimer); activeTimer = null; }
+  }
+
+  /* ── Cycle Detection ── */
+  function runCycle(len){
+    clearTimer();
+    visSvg.selectAll('*').remove();
+    ensureArrowDefs(visSvg);
+    var vals = [];
+    for (var i = 0; i < len; i++) vals.push(i + 1);
+    var nxt = [];
+    for (var i = 0; i < len; i++) nxt.push(i + 1 < len ? i + 1 : Math.floor(len / 2));
+    var cycleBack = Math.floor(len / 2);
+    var nodeY = 68;
+
+    // Draw cycle arc
+    var xL = nx(len-1, len), xC = nx(cycleBack, len);
+    visSvg.append('path')
+      .attr('d', 'M ' + xL + ' ' + (nodeY+R) + ' Q ' + ((xL+xC)/2) + ' 148 ' + xC + ' ' + (nodeY+R))
+      .attr('fill','none').attr('stroke','#30363d').attr('stroke-width',1.5)
+      .attr('marker-end','url(#arr)');
+    visSvg.append('text').attr('x',(xL+xC)/2).attr('y',170)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',9)
+      .text('cycle back to node ' + (cycleBack+1));
+
+    // Arrows + circles
+    for (var i = 0; i < len; i++){
+      if (i < len - 1){
+        visSvg.append('line')
+          .attr('x1', nx(i,len)+R).attr('y1', nodeY)
+          .attr('x2', nx(i+1,len)-R-3).attr('y2', nodeY)
+          .attr('stroke','#30363d').attr('stroke-width',1.5).attr('marker-end','url(#arr)');
+      }
+      visSvg.append('circle').attr('cx', nx(i,len)).attr('cy', nodeY).attr('r', R)
+        .attr('fill','#161b22').attr('stroke','#30363d').attr('stroke-width',2).attr('id','vi-'+i);
+      visSvg.append('text').attr('x', nx(i,len)).attr('y', nodeY+5)
+        .attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',13).text(vals[i]);
+    }
+    // pointer labels
+    visSvg.append('text').attr('id','vS').attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',10).attr('font-weight','700').attr('opacity',0).text('S');
+    visSvg.append('text').attr('id','vF').attr('text-anchor','middle')
+      .attr('fill','#f97316').attr('font-size',10).attr('font-weight','700').attr('opacity',0).text('F');
+
+    visDesc.textContent = 'S (green) = 1 step, F (orange) = 2 steps. Watch for meeting point.';
+
+    var slow = 0, fast = 0, step = 0, met = false;
+    activeTimer = setInterval(function(){
+      if (met) { clearTimer(); return; }
+      slow = nxt[slow];
+      fast = nxt[nxt[fast]];
+      step++;
+      for (var i = 0; i < len; i++) d3.select('#vi-'+i).attr('stroke','#30363d').attr('stroke-width',2);
+      met = (slow === fast);
+      d3.select('#vi-'+slow).attr('stroke', met ? '#facc15' : '#4ade80').attr('stroke-width',3);
+      if (!met) d3.select('#vi-'+fast).attr('stroke','#f97316').attr('stroke-width',3);
+      d3.select('#vS').attr('x', nx(slow,len)).attr('y', nodeY-R-5).attr('opacity',1);
+      d3.select('#vF').attr('x', nx(fast,len)).attr('y', nodeY-R-16).attr('opacity',1);
+      if (met) {
+        visDesc.textContent = 'Step ' + step + ': S and F meet at node ' + (slow+1) + ' (val=' + vals[slow] + '). Cycle detected! (gold = both pointers)';
+      } else {
+        visDesc.textContent = 'Step ' + step + ': S at node ' + (slow+1) + ', F at node ' + (fast+1) + '.';
+      }
+    }, 700);
+  }
+
+  /* ── Reverse ── */
+  function runReverse(len){
+    clearTimer();
+    visSvg.selectAll('*').remove();
+    ensureArrowDefs(visSvg);
+    var vals = [];
+    for (var i = 0; i < len; i++) vals.push(i + 1);
+    var nodeY = 90;
+
+    for (var i = 0; i < len; i++){
+      if (i < len-1){
+        visSvg.append('line')
+          .attr('x1', nx(i,len)+R).attr('y1', nodeY)
+          .attr('x2', nx(i+1,len)-R-3).attr('y2', nodeY)
+          .attr('stroke','#30363d').attr('stroke-width',1.5).attr('marker-end','url(#arr)')
+          .attr('id','vl-'+i);
+      }
+      visSvg.append('circle').attr('cx', nx(i,len)).attr('cy', nodeY).attr('r', R)
+        .attr('fill','#161b22').attr('stroke','#30363d').attr('stroke-width',2).attr('id','vi-'+i);
+      visSvg.append('text').attr('x', nx(i,len)).attr('y', nodeY+5)
+        .attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',13).text(vals[i]);
+    }
+
+    visDesc.textContent = 'Reversing: prev=null (green), cur=head (orange). Each step flips cur.next = prev.';
+
+    var prev = -1, cur = 0, step = 0;
+    activeTimer = setInterval(function(){
+      if (cur >= len) {
+        clearTimer();
+        // Redraw reversed arrows
+        visSvg.selectAll('line').remove();
+        ensureArrowDefs(visSvg);
+        for (var i = len-1; i > 0; i--){
+          visSvg.append('line')
+            .attr('x1', nx(i,len)-R).attr('y1', nodeY)
+            .attr('x2', nx(i-1,len)+R+3).attr('y2', nodeY)
+            .attr('stroke','#f97316').attr('stroke-width',1.5).attr('marker-end','url(#arr-o)');
+        }
+        for (var i = 0; i < len; i++) d3.select('#vi-'+i).attr('stroke','#4ade80').attr('stroke-width',2);
+        visDesc.textContent = 'Done. All links reversed (orange arrows). New head = node ' + len + ' (val=' + vals[len-1] + ').';
+        return;
+      }
+      step++;
+      for (var i = 0; i < len; i++) d3.select('#vi-'+i).attr('stroke','#30363d').attr('stroke-width',2);
+      if (prev >= 0) d3.select('#vi-'+prev).attr('stroke','#4ade80').attr('stroke-width',3);
+      d3.select('#vi-'+cur).attr('stroke','#f97316').attr('stroke-width',3);
+      visDesc.textContent = 'Step ' + step + ': cur=node ' + (cur+1) + ' (val=' + vals[cur] + '). Flip .next to prev' + (prev >= 0 ? ' (node '+(prev+1)+')' : '=null') + '.';
+      prev = cur;
+      cur++;
+    }, 650);
+  }
+
+  /* ── Merge Two Sorted Lists ── */
+  function runMerge(len){
+    clearTimer();
+    visSvg.selectAll('*').remove();
+    ensureArrowDefs(visSvg);
+    var halfA = Math.ceil(len / 2);
+    var halfB = len - halfA;
+    var valsA = [], valsB = [];
+    for (var i = 0; i < halfA; i++) valsA.push(i * 2 + 1);
+    for (var i = 0; i < halfB; i++) valsB.push(i * 2 + 2);
+    var merged = valsA.concat(valsB).sort(function(a,b){ return a-b; });
+    var spacingA = Math.min(80, (W/2 - 40) / Math.max(halfA,1));
+    var spacingB = Math.min(80, (W/2 - 40) / Math.max(halfB,1));
+
+    // List A (y=45)
+    visSvg.append('text').attr('x',4).attr('y',50).attr('fill','#4ade80').attr('font-size',10).text('A:');
+    for (var i = 0; i < halfA; i++){
+      var x = 30 + i * spacingA;
+      if (i < halfA-1){
+        visSvg.append('line').attr('x1',x+R-2).attr('y1',45).attr('x2',30+(i+1)*spacingA-R+2-3).attr('y2',45)
+          .attr('stroke','#30363d').attr('stroke-width',1.5).attr('marker-end','url(#arr)');
+      }
+      visSvg.append('circle').attr('cx',x).attr('cy',45).attr('r',R-4)
+        .attr('fill','#161b22').attr('stroke','#4ade80').attr('stroke-width',2).attr('id','va-'+i);
+      visSvg.append('text').attr('x',x).attr('y',49).attr('text-anchor','middle')
+        .attr('fill','#e6edf3').attr('font-size',11).text(valsA[i]);
+    }
+
+    // List B (y=105)
+    visSvg.append('text').attr('x',4).attr('y',110).attr('fill','#f97316').attr('font-size',10).text('B:');
+    for (var i = 0; i < halfB; i++){
+      var x = 30 + i * spacingB;
+      if (i < halfB-1){
+        visSvg.append('line').attr('x1',x+R-2).attr('y1',105).attr('x2',30+(i+1)*spacingB-R+2-3).attr('y2',105)
+          .attr('stroke','#30363d').attr('stroke-width',1.5).attr('marker-end','url(#arr)');
+      }
+      visSvg.append('circle').attr('cx',x).attr('cy',105).attr('r',R-4)
+        .attr('fill','#161b22').attr('stroke','#f97316').attr('stroke-width',2).attr('id','vb-'+i);
+      visSvg.append('text').attr('x',x).attr('y',109).attr('text-anchor','middle')
+        .attr('fill','#e6edf3').attr('font-size',11).text(valsB[i]);
+    }
+
+    visDesc.textContent = 'A=[' + valsA + '] B=[' + valsB + ']. Merging with dummy head. Merged=[' + merged + ']';
+
+    // Animate merged row appearing one node at a time
+    var mSpacing = Math.min(65, (W - 40) / Math.max(merged.length, 1));
+    visSvg.append('text').attr('x',4).attr('y',170).attr('fill','#facc15').attr('font-size',10).text('M:');
+    var mi = 0;
+    activeTimer = setInterval(function(){
+      if (mi >= merged.length) { clearTimer(); return; }
+      var x = 30 + mi * mSpacing;
+      visSvg.append('circle').attr('cx',x).attr('cy',165).attr('r',R-6)
+        .attr('fill','#161b22').attr('stroke','#facc15').attr('stroke-width',2)
+        .attr('opacity',0).transition().duration(250).attr('opacity',1);
+      visSvg.append('text').attr('x',x).attr('y',169).attr('text-anchor','middle')
+        .attr('fill','#e6edf3').attr('font-size',10)
+        .attr('opacity',0).transition().duration(250).attr('opacity',1).text(merged[mi]);
+      if (mi > 0){
+        visSvg.append('line')
+          .attr('x1', 30+(mi-1)*mSpacing + R-6).attr('y1',165)
+          .attr('x2', x - R+6-3).attr('y2',165)
+          .attr('stroke','#facc15').attr('stroke-width',1.5).attr('marker-end','url(#arr-y)')
+          .attr('opacity',0).transition().duration(200).attr('opacity',1);
+      }
+      mi++;
+    }, 280);
+  }
+
+  runBtn.onclick = function(){
+    var mode = modeEl.value;
+    var len = parseInt(slider.value, 10);
+    if (mode === 'cycle') runCycle(len);
+    else if (mode === 'reverse') runReverse(len);
+    else runMerge(len);
+  };
+
+  // Draw initial view
+  runCycle(6);
+})();
+</script>
+</body>
+</html>

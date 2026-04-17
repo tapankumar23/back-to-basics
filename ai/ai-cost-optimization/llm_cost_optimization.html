@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Cost Optimization: Systems Thinking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2330;
+    --border: #21262d;
+    --border2: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --dim: #484f58;
+    --blue: #378ADD;
+    --blue-dim: #0d1e35;
+    --blue-border: #185FA5;
+    --green: #1D9E75;
+    --green-dim: #0a2018;
+    --green-bright: #5DCAA5;
+    --green-border: #0F6E56;
+    --red: #a32d2d;
+    --red-dim: #2d1515;
+    --red-bright: #f09595;
+    --red-border: #7a2020;
+    --amber: #BA7517;
+    --amber-dim: #251800;
+    --amber-bright: #EF9F27;
+    --purple: #7F77DD;
+    --purple-dim: #1a1730;
+    --purple-bright: #AFA9EC;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  /* Progress bar */
+  #progress {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--green);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 100;
+  }
+
+  /* Nav */
+  nav {
+    position: fixed;
+    top: 2px; left: 0; right: 0;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 clamp(16px, 3vw, 48px);
+    background: rgba(13,17,23,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 0.5px solid var(--border2);
+    z-index: 99;
+  }
+
+  .nav-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  .nav-counter {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+  }
+
+  .dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border2);
+    cursor: pointer;
+    transition: background 0.3s, transform 0.3s;
+  }
+
+  .dot.active { background: var(--green); transform: scale(1.4); }
+
+  /* Stage */
+  .stage {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    padding: 84px clamp(16px, 4vw, 72px) 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Scene */
+  .scene {
+    position: absolute;
+    inset: 84px clamp(16px, 4vw, 72px) 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+  }
+
+  .scene.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .scene.exit-up {
+    opacity: 0;
+    transform: translateY(-16px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+
+  /* Scene label */
+  .scene-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* Headline */
+  .headline {
+    font-size: clamp(30px, 3.2vw, 44px);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+
+  .sub {
+    font-size: clamp(14px, 1.35vw, 18px);
+    color: var(--muted);
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  /* Overlay badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-top: 20px;
+    align-self: flex-start;
+  }
+
+  .badge.bad { background: var(--red-dim); color: var(--red-bright); border: 0.5px solid var(--red-border); }
+  .badge.good { background: var(--green-dim); color: var(--green-bright); border: 0.5px solid var(--green-border); }
+  .badge.info { background: var(--blue-dim); color: #85B7EB; border: 0.5px solid var(--blue-border); }
+
+  /* Card */
+  .card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+
+  /* Cost display */
+  .cost-big {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: clamp(48px, 5vw, 72px);
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  /* Bar */
+  .bar-wrap {
+    height: 8px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 4px 0;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .bar-fill.grown { transform: scaleX(1); }
+
+  /* Anim helpers */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideRight {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes strikethrough {
+    from { text-decoration-color: transparent; }
+    to   { text-decoration-color: var(--red-bright); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes countDown {
+    from { content: "$8,000"; }
+    to   { content: "$1,800"; }
+  }
+  @keyframes widthAnim {
+    from { width: 100%; }
+  }
+
+  .anim-1 { animation: fadeUp 0.5s 0.1s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .anim-2 { animation: fadeUp 0.5s 0.25s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .anim-3 { animation: fadeUp 0.5s 0.4s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .anim-4 { animation: fadeUp 0.5s 0.6s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .anim-5 { animation: fadeUp 0.5s 0.8s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .anim-6 { animation: fadeUp 0.5s 1.0s both cubic-bezier(0.16, 1, 0.3, 1); }
+
+  .slide-1 { animation: slideRight 0.4s 0.1s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .slide-2 { animation: slideRight 0.4s 0.25s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .slide-3 { animation: slideRight 0.4s 0.4s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .slide-4 { animation: slideRight 0.4s 0.55s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .slide-5 { animation: slideRight 0.4s 0.7s both cubic-bezier(0.16, 1, 0.3, 1); }
+  .slide-6 { animation: slideRight 0.4s 0.85s both cubic-bezier(0.16, 1, 0.3, 1); }
+
+  .pop-1 { animation: popIn 0.5s 0.1s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .pop-2 { animation: popIn 0.5s 0.3s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .pop-3 { animation: popIn 0.5s 0.5s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .pop-4 { animation: popIn 0.5s 0.7s both cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  /* Footer nav */
+  footer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: rgba(13,17,23,0.9);
+    backdrop-filter: blur(12px);
+    border-top: 0.5px solid var(--border2);
+    z-index: 99;
+  }
+
+  .btn {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 0.5px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--bg2); color: var(--text); }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.3; pointer-events: none; }
+  .btn.primary {
+    background: var(--green-dim);
+    border-color: var(--green-border);
+    color: var(--green-bright);
+  }
+  .btn.primary:hover { background: #0e3023; }
+
+  /* Tag */
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 0.5px solid;
+  }
+
+  /* Row */
+  .row { display: flex; align-items: center; gap: 12px; }
+  .col { display: flex; flex-direction: column; gap: 6px; }
+
+  /* Divider */
+  .divider { height: 0.5px; background: var(--border); margin: 16px 0; }
+
+  .arch-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: stretch;
+  width: 100%;
+  max-width: none;
+  }
+
+  @media (max-width: 860px) {
+    .arch-compare { grid-template-columns: 1fr; }
+  }
+
+  .arch-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0) 40%), var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 14px;
+    padding: 14px 14px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arch-card::before {
+    content: "";
+    position: absolute;
+    inset: -40% -40%;
+    background: radial-gradient(circle at 20% 15%, rgba(29,158,117,0.16), transparent 40%),
+                radial-gradient(circle at 80% 10%, rgba(55,138,221,0.14), transparent 38%),
+                radial-gradient(circle at 50% 90%, rgba(127,119,221,0.12), transparent 42%);
+    filter: blur(14px);
+    opacity: 0.9;
+    pointer-events: none;
+  }
+
+  .arch-card.before::before {
+    background: radial-gradient(circle at 18% 18%, rgba(163,45,45,0.22), transparent 42%),
+                radial-gradient(circle at 84% 14%, rgba(186,117,23,0.16), transparent 42%),
+                radial-gradient(circle at 56% 86%, rgba(216,90,48,0.14), transparent 44%);
+  }
+
+  .arch-head {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .arch-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .arch-kicker {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .arch-kpi {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border2);
+    background: rgba(13,17,23,0.35);
+    white-space: nowrap;
+  }
+
+  .arch-flow {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1;
+  }
+
+  .arch-step {
+    display: grid;
+    grid-template-columns: 14px 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .arch-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border2);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset;
+    animation: archPulse 3.2s var(--d) infinite cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .arch-node {
+    border-radius: 10px;
+    border: 0.5px solid var(--border2);
+    background: rgba(22,27,34,0.7);
+    padding: 10px 12px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    animation: archGlow 3.2s var(--d) infinite cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .arch-node b {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .arch-node span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  .arch-arrow {
+    position: relative;
+    height: 12px;
+    margin-left: 12px;
+    overflow: hidden;
+  }
+
+  .arch-arrow::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 5px;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(48,54,61,0.0), rgba(48,54,61,1), rgba(48,54,61,0.0));
+    opacity: 0.65;
+  }
+
+  .arch-arrow::after {
+    content: "";
+    position: absolute;
+    left: -40%;
+    top: 4px;
+    width: 40%;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(93,202,165,0.75), transparent);
+    animation: archDash 3.2s var(--d) infinite cubic-bezier(0.16, 1, 0.3, 1);
+    opacity: 0.95;
+  }
+
+  .arch-card.before .arch-arrow::after {
+    background: linear-gradient(90deg, transparent, rgba(240,149,149,0.75), transparent);
+  }
+
+  .arch-card.before .arch-dot { background: var(--red-bright); }
+  .arch-card.before .arch-node { border-color: rgba(122,32,32,0.6); }
+
+  .arch-lanes {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .lane {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 0.5px solid var(--border2);
+    background: rgba(22,27,34,0.55);
+    animation: laneGlow 3.2s var(--d) infinite cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .lane .pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 0.5px solid;
+    white-space: nowrap;
+  }
+
+  .lane .desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.35;
+    flex: 1;
+  }
+
+  .lane .metric {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  .arch-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border2);
+    background: rgba(13,17,23,0.35);
+    color: var(--muted);
+    animation: chipPop 3.2s var(--d) infinite cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes archDash {
+    0% { transform: translateX(0%); opacity: 0; }
+    14% { opacity: 1; }
+    60% { opacity: 1; }
+    100% { transform: translateX(320%); opacity: 0; }
+  }
+
+  @keyframes archGlow {
+    0%, 20% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: translateY(0); }
+    32% { box-shadow: 0 0 0 1px rgba(93,202,165,0.18), 0 12px 24px rgba(0,0,0,0.22); transform: translateY(-1px); }
+    56% { box-shadow: 0 0 0 1px rgba(93,202,165,0.10), 0 10px 18px rgba(0,0,0,0.20); }
+    100% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: translateY(0); }
+  }
+
+  @keyframes laneGlow {
+    0%, 24% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: translateY(0); }
+    36% { box-shadow: 0 0 0 1px rgba(133,183,235,0.16), 0 12px 24px rgba(0,0,0,0.22); transform: translateY(-1px); }
+    100% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: translateY(0); }
+  }
+
+  @keyframes archPulse {
+    0%, 22% { transform: scale(1); opacity: 0.55; }
+    34% { transform: scale(1.25); opacity: 1; }
+    56% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 0.55; }
+  }
+
+  @keyframes chipPop {
+    0%, 28% { transform: translateY(0); opacity: 0.72; }
+    40% { transform: translateY(-1px); opacity: 1; }
+    100% { transform: translateY(0); opacity: 0.72; }
+  }
+
+  .flowboard {
+    width: 100%;
+    max-width: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  @media (max-width: 980px) {
+    .flowboard { grid-template-columns: 1fr; }
+  }
+
+  .flowpane {
+    background:
+      radial-gradient(circle at 18% 16%, rgba(55,138,221,0.12), transparent 42%),
+      radial-gradient(circle at 84% 12%, rgba(29,158,117,0.12), transparent 40%),
+      radial-gradient(circle at 50% 92%, rgba(127,119,221,0.10), transparent 46%),
+      var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: 16px;
+    padding: 16px 16px 14px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .flowpane.before {
+    background:
+      radial-gradient(circle at 16% 14%, rgba(163,45,45,0.18), transparent 44%),
+      radial-gradient(circle at 84% 14%, rgba(186,117,23,0.12), transparent 44%),
+      radial-gradient(circle at 50% 92%, rgba(216,90,48,0.10), transparent 48%),
+      var(--bg2);
+  }
+
+  .flowhead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .flowtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .flowsub {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.35;
+    margin-top: 2px;
+  }
+
+  .flowkpi {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border2);
+    background: rgba(13,17,23,0.35);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .flowkpi.bad { border-color: rgba(122,32,32,0.6); color: var(--red-bright); background: rgba(45,21,21,0.55); }
+  .flowkpi.good { border-color: rgba(15,110,86,0.7); color: var(--green-bright); background: rgba(10,32,24,0.55); }
+
+  .flowlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .legenditem {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 0.5px solid var(--border2);
+    background: rgba(13,17,23,0.35);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .legendshape {
+    width: 14px;
+    height: 10px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.06);
+    border: 0.5px solid rgba(255,255,255,0.10);
+  }
+
+  .legendshape.cyl {
+    border-radius: 999px;
+    height: 9px;
+  }
+
+  .legendshape.hex {
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+    transform: rotate(30deg);
+  }
+
+  .flowsvg {
+    width: 100%;
+    height: clamp(480px, 64vh, 760px);
+    display: block;
+    border-radius: 12px;
+    background: rgba(13,17,23,0.35);
+    border: 0.5px solid rgba(48,54,61,0.75);
+    flex: 1;
+  }
+
+  #scene-7 {
+  inset: 72px clamp(8px, 1.1vw, 18px) 96px;
+    justify-content: flex-start;
+  gap: clamp(10px, 1.4vh, 18px);
+  }
+
+#scene-7 .headline {
+  margin-bottom: 6px;
+  max-width: 12ch;
+}
+
+#scene-7 .sub {
+  margin-bottom: 8px;
+  max-width: none;
+  width: min(100%, 1440px);
+}
+
+#scene-7 .arch-compare {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  gap: clamp(12px, 1.4vw, 22px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+#scene-7 .arch-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: clamp(14px, 1vw, 18px);
+}
+
+#scene-7 .arch-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+#scene-7 .arch-head > div:first-child {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+#scene-7 .arch-kicker {
+  max-width: none;
+}
+
+#scene-7 .arch-kpi {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+#scene-7 .arch-svg {
+  height: clamp(500px, 62vh, 780px);
+  min-height: 0;
+}
+
+#scene-7 .arch-legend {
+  margin-top: 12px;
+}
+
+#scene-7 .badge {
+  margin-top: 4px;
+}
+
+@media (max-width: 1180px) {
+  #scene-7 {
+    inset: 80px clamp(12px, 2vw, 28px) 96px;
+  }
+
+  #scene-7 .arch-compare {
+    grid-template-columns: 1fr;
+  }
+
+  #scene-7 .arch-kicker {
+    max-width: none;
+  }
+
+  #scene-7 .arch-svg {
+    height: clamp(420px, 48vh, 620px);
+  }
+}
+
+  .flow-node {
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,0.28));
+  }
+
+  .flow-node rect,
+  .flow-node path,
+  .flow-node polygon,
+  .flow-node ellipse {
+    stroke: rgba(255,255,255,0.12);
+    stroke-width: 1;
+  }
+
+  .flow-node .t1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    fill: var(--muted);
+  }
+
+  .flow-node .t2 {
+    font-family: 'Syne', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--text);
+  }
+
+  .flow-node .t3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    fill: var(--dim);
+  }
+
+  .flow-path {
+    fill: none;
+    stroke: rgba(230,237,243,0.18);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 6 10;
+    animation: flowDash 3.4s linear infinite;
+  }
+
+  .flow-path.hot {
+    stroke: rgba(240,149,149,0.55);
+    stroke-dasharray: 10 12;
+    animation-duration: 2.4s;
+  }
+
+  .flow-path.cool {
+    stroke: rgba(93,202,165,0.55);
+    stroke-dasharray: 10 12;
+    animation-duration: 2.6s;
+  }
+
+  .flow-path.info {
+    stroke: rgba(133,183,235,0.55);
+    stroke-dasharray: 10 12;
+    animation-duration: 2.6s;
+  }
+
+  .flow-path.purple {
+    stroke: rgba(175,169,236,0.55);
+    stroke-dasharray: 10 12;
+    animation-duration: 2.8s;
+  }
+
+  .flow-path.ctrl {
+    stroke: rgba(230,237,243,0.14);
+    stroke-dasharray: 2 10;
+    animation-duration: 5.2s;
+  }
+
+  .flow-lane {
+    fill: rgba(13,17,23,0.22);
+    stroke: rgba(48,54,61,0.50);
+    stroke-width: 1;
+  }
+
+  .flow-lane.dashed {
+    stroke-dasharray: 6 8;
+  }
+
+  .flow-lane-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    fill: rgba(139,148,158,0.86);
+  }
+
+  .flow-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    fill: rgba(139,148,158,0.70);
+  }
+
+  @keyframes flowDash {
+    to { stroke-dashoffset: -200; }
+  }
+
+  .arch-svg {
+    width: 100%;
+  height: clamp(460px, 58vh, 720px);
+    display: block;
+    border-radius: 12px;
+    background: rgba(13,17,23,0.30);
+    border: 0.5px solid rgba(48,54,61,0.70);
+    flex: 1;
+  }
+
+  .anode {
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.30));
+  }
+
+  .anode rect,
+  .anode path,
+  .anode polygon,
+  .anode ellipse {
+    stroke: rgba(255,255,255,0.10);
+    stroke-width: 1;
+  }
+
+  .ctrl-node rect,
+  .ctrl-node path {
+    stroke: rgba(255,255,255,0.10);
+    stroke-width: 1;
+  }
+
+  .al-t {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+  }
+
+  .al-n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    fill: rgba(139,148,158,0.70);
+  }
+
+  .ab-t {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    fill: rgba(139,148,158,0.90);
+  }
+
+  .ab-s {
+    font-family: 'Syne', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--text);
+  }
+
+  .ab-n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    fill: rgba(139,148,158,0.60);
+  }
+
+  .ac-t {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    fill: rgba(93,202,165,0.90);
+  }
+
+  .ac-s {
+    font-family: 'Syne', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: rgba(133,183,235,0.95);
+  }
+
+  .ac-n {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    fill: rgba(139,148,158,0.65);
+  }
+
+  .arch-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .anode.small rect { filter: none; }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<nav>
+  <div class="nav-title">LLM cost optimization</div>
+  <div class="dots" id="navDots"></div>
+  <div class="nav-counter" id="navCounter">1 / 9</div>
+</nav>
+
+<div class="stage" id="stage">
+
+  <!-- Scene 1: The Wrong Approach -->
+  <div class="scene visible" id="scene-0">
+    <div class="scene-label">scene 01 — the wrong approach</div>
+    <div class="headline" style="color: var(--red-bright);">$8,000<span style="color:var(--dim)">/mo</span></div>
+    <div class="sub">"Just use a cheaper model. That'll fix it."</div>
+    <div class="card anim-1" style="max-width: 720px;">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">cost dashboard</div>
+      <div class="row" style="margin-bottom:8px;">
+        <div style="flex:1;font-size:13px;color:var(--muted);">current model</div>
+        <div class="tag" style="color:#85B7EB;border-color:var(--blue-border);background:var(--blue-dim);">gpt-4o</div>
+      </div>
+      <div class="bar-wrap"><div class="bar-fill grown" id="bar-s1" style="width:100%;background:var(--red);transform:scaleX(1);"></div></div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;color:var(--red-bright);margin:8px 0;">$8,000</div>
+    </div>
+    <div class="card anim-2" id="swap-result" style="max-width:720px;margin-top:12px;border-color:var(--border);">
+      <div style="font-size:11px;color:var(--dim);margin-bottom:12px;font-family:'IBM Plex Mono',monospace;">after model swap → gpt-3.5-turbo</div>
+      <div class="bar-wrap">
+        <div class="bar-fill" id="bar-s1b" style="width:87.5%;background:var(--amber);"></div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-top:8px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;color:var(--amber-bright);">$7,000</div>
+        <div style="font-size:12px;color:var(--dim);">— 12.5% reduction. barely noticeable.</div>
+      </div>
+    </div>
+    <div class="badge bad anim-3">model swap ≠ real optimization</div>
+  </div>
+
+  <!-- Scene 2: Cost Breakdown -->
+  <div class="scene" id="scene-1">
+    <div class="scene-label">scene 02 — where money actually goes</div>
+    <div class="headline">Break it down first.</div>
+    <div class="sub">The model is only one piece of a larger cost structure.</div>
+    <div class="col" id="scene2Breakdown" style="gap:8px;max-width:760px;">
+      
+    </div>
+    <div class="badge good anim-6">first: understand where money goes</div>
+  </div>
+
+  <!-- Scene 3: Embedding Waste -->
+  <div class="scene" id="scene-2">
+    <div class="scene-label">scene 03 — embedding waste</div>
+    <div class="headline">You're embedding garbage.</div>
+    <div class="sub">Headers, footers, page numbers — all tokenized. None of it helps retrieval.</div>
+    <div style="display:flex;gap:20px;align-items:flex-start;max-width:860px;">
+      <div class="col" style="flex:1;gap:4px;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-family:'IBM Plex Mono',monospace;">document chunks being embedded</div>
+        <div id="scene3Chunks"></div>
+        <!--
+        
+        -->
+      </div>
+      <div class="col" style="min-width:110px;padding-top:28px;gap:8px;">
+        <div class="card pop-3" style="text-align:center;padding:12px;">
+          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;">tokens before</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--red-bright);">1,840</div>
+        </div>
+        <div style="text-align:center;font-size:18px;color:var(--dim);animation:fadeUp .4s .9s both;">↓</div>
+        <div class="card pop-4" style="text-align:center;padding:12px;">
+          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;">after cleanup</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;color:var(--green-bright);">1,104</div>
+          <div style="font-size:10px;color:var(--green);margin-top:2px;">−40%</div>
+        </div>
+      </div>
+    </div>
+    <div class="badge bad">40% of tokens = useless metadata</div>
+  </div>
+
+  <!-- Scene 4: Query Classification -->
+  <div class="scene" id="scene-3">
+    <div class="scene-label">scene 04 — query classification</div>
+    <div class="headline">Route before you reason.</div>
+    <div class="sub">Not every query deserves a full RAG pipeline. Most don't.</div>
+    <div class="col" id="scene4Routes" style="gap:10px;max-width:760px;">
+      
+    </div>
+    <div class="badge info">not every query needs intelligence</div>
+  </div>
+
+  <!-- Scene 5: Context Optimization -->
+  <div class="scene" id="scene-4">
+    <div class="scene-label">scene 05 — context window bloat</div>
+    <div class="headline">You're sending too much.</div>
+    <div class="sub">10 retrieved docs when 3 would do — and the model performs better with less noise.</div>
+    <div style="display:flex;gap:24px;align-items:flex-start;justify-content:center;max-width:860px;">
+      <div class="col anim-1" style="align-items:center;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:8px;font-family:'IBM Plex Mono',monospace;">before</div>
+        <div class="col" id="scene5Before" style="gap:3px;"></div>
+        <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--red-bright);">8,200 tokens</div>
+        <div style="font-size:11px;color:var(--dim);">10 chunks</div>
+      </div>
+      <div style="padding-top:60px;font-size:22px;color:var(--dim);">→</div>
+      <div class="col anim-2" style="align-items:center;">
+        <div style="font-size:11px;color:var(--dim);margin-bottom:8px;font-family:'IBM Plex Mono',monospace;">after reranking</div>
+        <div class="col" id="scene5After" style="gap:3px;"></div>
+        <div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--green-bright);">2,460 tokens</div>
+        <div style="font-size:11px;color:var(--green);">−70%</div>
+      </div>
+    </div>
+    <div class="badge good">less context = lower cost, often better accuracy</div>
+  </div>
+
+  <!-- Scene 6: Response Control -->
+  <div class="scene" id="scene-5">
+    <div class="scene-label">scene 06 — response size control</div>
+    <div class="headline">Stop asking for essays.</div>
+    <div class="sub">Use structured prompting to match output length to the actual task.</div>
+    <div class="col" id="scene6Responses" style="gap:8px;max-width:760px;">
+      
+    </div>
+    <div class="badge info">match output size to the actual task</div>
+  </div>
+
+  <!-- Scene 7: Caching -->
+  <div class="scene" id="scene-6">
+    <div class="scene-label">scene 07 — semantic caching</div>
+    <div class="headline">Cache the answer, not just the string.</div>
+    <div class="sub">Semantically similar queries can share cached responses. Most support queries repeat.</div>
+    <div class="col" id="scene7Cache" style="gap:8px;max-width:760px;">
+      
+      <div class="card anim-6" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:12px;color:var(--muted);">cache hit rate 75% → avg cost per query</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--green-bright);">$0.0102 <span style="color:var(--dim);font-size:11px;">(was $0.038)</span></div>
+      </div>
+    </div>
+    <div class="badge good">don't recompute what you already know</div>
+  </div>
+
+  <!-- Scene 8: Final Impact -->
+  <div class="scene" id="scene-7">
+    <div class="scene-label">scene 08 — before vs after architecture</div>
+    <div class="sub">Cost drops when you reduce calls, tokens, and retries — and it stays down with budgets, reliability controls, and evaluation gates.</div>
+    <div class="arch-compare">
+      <div class="arch-card before">
+        <div class="arch-head">
+          <div>
+            <div class="arch-title">Before</div>
+            <div class="arch-kicker">single expensive path, weak controls</div>
+          </div>
+          <div class="arch-kpi bad">calls↑ tokens↑ retries↑</div>
+        </div>
+        <svg class="arch-svg" viewBox="0 0 480 360" role="img" aria-label="Before: one expensive default path, no routing, unbounded retrieval, no cost controls">
+          <defs>
+            <linearGradient id="ag-b" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="rgba(240,149,149,0.85)"/>
+              <stop offset="1" stop-color="rgba(186,117,23,0.75)"/>
+            </linearGradient>
+            <marker id="ag-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,1 L7,3.5 L0,6 Z" fill="rgba(240,149,149,0.8)"/>
+            </marker>
+          </defs>
+
+          <rect x="8" y="8" width="464" height="344" rx="14" fill="rgba(45,21,21,0.22)" stroke="rgba(122,32,32,0.35)" stroke-width="1"/>
+
+          <rect x="20" y="20" width="440" height="56" rx="10" fill="rgba(163,45,45,0.18)" stroke="rgba(163,45,45,0.45)" stroke-width="1" stroke-dasharray="2 7"/>
+          <text x="24" y="16" class="al-t" fill="rgba(240,149,149,0.9)">Request Path</text>
+
+          <rect x="20" y="88" width="440" height="52" rx="10" fill="rgba(45,21,21,0.15)" stroke="rgba(186,117,23,0.30)" stroke-width="1" stroke-dasharray="2 7"/>
+          <text x="24" y="84" class="al-t" fill="rgba(186,117,23,0.8)">Control Plane (absent)</text>
+
+          <rect x="20" y="152" width="440" height="192" rx="10" fill="rgba(45,21,21,0.20)" stroke="rgba(122,32,32,0.30)" stroke-width="1" stroke-dasharray="2 7"/>
+          <text x="24" y="148" class="al-t" fill="rgba(240,149,149,0.80)">Failure Loop</text>
+
+          <g class="anode" transform="translate(24,30)">
+            <rect width="96" height="48" rx="10" fill="rgba(13,17,23,0.92)" stroke="rgba(240,149,149,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">CLIENT</text>
+            <text x="12" y="36" class="ab-s">User</text>
+          </g>
+
+          <path d="M120 54 H188" stroke="rgba(240,149,149,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-arrow)"/>
+
+          <g class="anode" transform="translate(188,28)">
+            <rect width="110" height="52" rx="10" fill="rgba(22,27,34,0.92)" stroke="rgba(186,117,23,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">EDGE</text>
+            <text x="12" y="34" class="ab-s">Gateway</text>
+            <text x="12" y="46" class="ab-n">basic auth</text>
+          </g>
+
+          <path d="M298 54 H330" stroke="rgba(240,149,149,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-arrow)"/>
+
+          <g class="anode" transform="translate(330,22)">
+            <rect width="140" height="64" rx="10" fill="url(#ag-b)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+            <text x="12" y="20" class="ab-t">APP</text>
+            <text x="12" y="38" class="ab-s">Orchestrator</text>
+            <text x="12" y="54" class="ab-n">no routing · no budgets</text>
+          </g>
+
+          <path d="M400 86 V156" stroke="rgba(240,149,149,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-arrow)"/>
+
+          <g class="anode" transform="translate(330,162)">
+            <rect width="140" height="54" rx="10" fill="rgba(45,21,21,0.92)" stroke="rgba(122,32,32,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">RAG</text>
+            <text x="12" y="34" class="ab-s">Retrieval</text>
+            <text x="12" y="48" class="ab-n">unbounded top-k</text>
+          </g>
+
+          <g class="anode" transform="translate(330,226)">
+            <rect width="140" height="54" rx="10" fill="rgba(45,21,21,0.92)" stroke="rgba(122,32,32,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">LLM</text>
+            <text x="12" y="34" class="ab-s">One Default Model</text>
+            <text x="12" y="48" class="ab-n">no caps · verbose output</text>
+          </g>
+
+          <path d="M400 280 V316" stroke="rgba(240,149,149,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-arrow)"/>
+
+          <g class="anode" transform="translate(330,316)">
+            <rect width="140" height="24" rx="8" fill="rgba(45,21,21,0.92)" stroke="rgba(122,32,32,0.5)" stroke-width="1"/>
+            <text x="12" y="17" class="ab-s">Retries &amp; Cascades</text>
+          </g>
+
+          <g class="anode" transform="translate(20,162)">
+            <rect width="300" height="60" rx="10" fill="rgba(22,27,34,0.92)" stroke="rgba(186,117,23,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">SYMPTOMS</text>
+            <text x="12" y="36" class="ab-n">• tools not idempotent · duplicated calls</text>
+            <text x="12" y="52" class="ab-n">• retry storms (429/5xx) · cascading failures</text>
+          </g>
+        </svg>
+        <div class="arch-legend">
+          <div class="legenditem"><span class="legendshape"></span>service</div>
+          <div class="legenditem"><span class="legendshape cyl"></span>cache / db</div>
+          <div class="legenditem"><span class="legendshape hex"></span>policy / gate</div>
+        </div>
+      </div>
+
+      <div class="arch-card after">
+        <div class="arch-head">
+          <div>
+            <div class="arch-title">After</div>
+            <div class="arch-kicker">cheap routing, bounded context, reuse, safe fallbacks</div>
+          </div>
+          <div class="arch-kpi good">calls↓ tokens↓ retries↓</div>
+        </div>
+        <svg class="arch-svg" viewBox="0 0 480 360" role="img" aria-label="After: routed execution with cost guardrails, caching, bounded retrieval, tiered models, and reliability controls">
+          <defs>
+            <linearGradient id="ag-g" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="rgba(93,202,165,0.85)"/>
+              <stop offset="1" stop-color="rgba(133,183,235,0.78)"/>
+            </linearGradient>
+            <marker id="ag-g-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,1 L7,3.5 L0,6 Z" fill="rgba(93,202,165,0.85)"/>
+            </marker>
+            <marker id="ag-i-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,1 L7,3.5 L0,6 Z" fill="rgba(133,183,235,0.80)"/>
+            </marker>
+            <marker id="ag-p-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,1 L7,3.5 L0,6 Z" fill="rgba(175,169,236,0.80)"/>
+            </marker>
+            <filter id="glow-g">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <rect x="8" y="8" width="464" height="344" rx="14" fill="rgba(10,32,24,0.22)" stroke="rgba(15,110,86,0.35)" stroke-width="1"/>
+
+          <rect x="20" y="16" width="440" height="62" rx="10" fill="rgba(29,158,117,0.12)" stroke="rgba(29,158,117,0.40)" stroke-width="1.5" stroke-dasharray="2 7"/>
+          <text x="24" y="12" class="al-t" fill="rgba(93,202,165,0.95)">Control Plane</text>
+
+          <rect x="20" y="90" width="440" height="262" rx="10" fill="rgba(22,27,34,0.25)" stroke="rgba(48,54,61,0.6)" stroke-width="1" stroke-dasharray="2 7"/>
+          <text x="24" y="86" class="al-t" fill="rgba(133,183,235,0.85)">Data Plane</text>
+
+          <g class="ctrl-node" transform="translate(22,16)">
+            <rect width="100" height="62" rx="10" fill="rgba(22,27,34,0.96)" stroke="rgba(29,158,117,0.55)" stroke-width="1.5"/>
+            <text x="10" y="20" class="ac-t">FINOPS</text>
+            <text x="10" y="38" class="ac-s">Attribution</text>
+            <text x="10" y="54" class="ac-n">route · tenant · model</text>
+          </g>
+
+          <g class="ctrl-node" transform="translate(130,16)">
+            <rect width="100" height="62" rx="10" fill="rgba(22,27,34,0.96)" stroke="rgba(29,158,117,0.55)" stroke-width="1.5"/>
+            <text x="10" y="20" class="ac-t">EVAL</text>
+            <text x="10" y="38" class="ac-s">Golden Sets</text>
+            <text x="10" y="54" class="ac-n">canary · non-regression</text>
+          </g>
+
+          <g class="ctrl-node" transform="translate(238,16)">
+            <rect width="100" height="62" rx="10" fill="rgba(22,27,34,0.96)" stroke="rgba(29,158,117,0.55)" stroke-width="1.5"/>
+            <text x="10" y="20" class="ac-t">RELIABILITY</text>
+            <text x="10" y="38" class="ac-s">Controls</text>
+            <text x="10" y="54" class="ac-n">breakers · idempotency</text>
+          </g>
+
+          <path d="M348 47 V90" stroke="rgba(93,202,165,0.65)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-g-arrow)"/>
+          <path d="M348 47 V90" stroke="rgba(133,183,235,0.65)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-i-arrow)" opacity="0.5"/>
+
+          <g class="anode" transform="translate(24,98)">
+            <rect width="90" height="48" rx="10" fill="rgba(13,17,23,0.92)" stroke="rgba(93,202,165,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">CLIENT</text>
+            <text x="12" y="36" class="ab-s">User</text>
+          </g>
+
+          <path d="M114 122 H156" stroke="rgba(93,202,165,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-g-arrow)"/>
+
+          <g class="anode" transform="translate(156,118)">
+            <rect width="110" height="52" rx="10" fill="rgba(22,27,34,0.92)" stroke="rgba(133,183,235,0.5)" stroke-width="1"/>
+            <text x="12" y="18" class="ab-t">EDGE</text>
+            <text x="12" y="34" class="ab-s">Gateway</text>
+            <text x="12" y="46" class="ab-n">WAF · rate limit</text>
+          </g>
+
+          <path d="M266 144 H288" stroke="rgba(93,202,165,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-g-arrow)"/>
+
+          <g class="anode" transform="translate(288,140)">
+            <polygon points="0,26 40,0 80,26 40,52" fill="rgba(10,32,24,0.96)" stroke="rgba(93,202,165,0.7)" stroke-width="1.5" filter="url(#glow-g)"/>
+            <text x="14" y="22" class="ab-t" fill="rgba(93,202,165,0.95)">POLICY</text>
+            <text x="14" y="40" class="ab-s" fill="rgba(133,183,235,0.9)">Budget</text>
+          </g>
+
+          <path d="M368 166 H386" stroke="rgba(93,202,165,0.7)" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ag-g-arrow)"/>
+
+          <g class="anode" transform="translate(386,136)">
+            <rect width="108" height="52" rx="10" fill="url(#ag-g)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+            <text x="10" y="18" class="ab-t">ROUTE</text>
+            <text x="10" y="34" class="ab-s">Router</text>
+            <text x="10" y="46" class="ab-n">cheap + measurable</text>
+          </g>
+
+          <path d="M440 100 V136" stroke="rgba(133,183,235,0.6)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#ag-i-arrow)" opacity="0.7"/>
+          <path d="M440 120 V136" stroke="rgba(175,169,236,0.6)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#ag-p-arrow)" opacity="0.7"/>
+
+          <g class="anode small" transform="translate(386,94)">
+            <rect width="108" height="38" rx="8" fill="rgba(10,32,24,0.92)" stroke="rgba(93,202,165,0.40)" stroke-width="1"/>
+            <text x="10" y="16" class="ab-t" fill="rgba(93,202,165,0.85)">TRIVIAL</text>
+            <text x="10" y="30" class="ab-s" fill="rgba(93,202,165,0.65)">Static</text>
+          </g>
+
+          <g class="anode small" transform="translate(386,136)">
+            <rect width="108" height="38" rx="8" fill="rgba(13,30,53,0.92)" stroke="rgba(133,183,235,0.40)" stroke-width="1"/>
+            <text x="10" y="16" class="ab-t" fill="rgba(133,183,235,0.85)">DETERMINISTIC</text>
+            <text x="10" y="30" class="ab-s" fill="rgba(133,183,235,0.65)">Tools/DB</text>
+          </g>
+
+          <g class="anode" transform="translate(386,196)">
+            <ellipse cx="54" cy="8" rx="48" ry="8" fill="rgba(10,32,24,0.96)"/>
+            <rect x="6" y="8" width="96" height="38" rx="10" fill="rgba(10,32,24,0.96)" stroke="rgba(93,202,165,0.45)" stroke-width="1"/>
+            <ellipse cx="54" cy="46" rx="48" ry="8" fill="rgba(10,32,24,0.96)"/>
+            <text x="14" y="26" class="ab-t">CACHE</text>
+            <text x="14" y="42" class="ab-s">Semantic</text>
+          </g>
+
+          <path d="M440 216 V280" stroke="rgba(93,202,165,0.6)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#ag-g-arrow)"/>
+
+          <g class="anode" transform="translate(386,244)">
+            <rect width="108" height="50" rx="10" fill="rgba(26,23,48,0.96)" stroke="rgba(175,169,236,0.50)" stroke-width="1"/>
+            <text x="10" y="18" class="ab-t">CONTEXTUAL</text>
+            <text x="10" y="34" class="ab-s">Budgeted RAG</text>
+            <text x="10" y="46" class="ab-n">dedup · rerank · cap</text>
+          </g>
+
+          <g class="anode" transform="translate(386,304)">
+            <rect width="108" height="22" rx="8" fill="rgba(26,23,48,0.92)" stroke="rgba(175,169,236,0.40)" stroke-width="1"/>
+            <text x="10" y="16" class="ab-s">LLM (tiered)</text>
+          </g>
+        </svg>
+        <div class="arch-legend">
+          <div class="legenditem"><span class="legendshape"></span>service</div>
+          <div class="legenditem"><span class="legendshape cyl"></span>cache / db</div>
+          <div class="legenditem"><span class="legendshape hex"></span>policy / gate</div>
+        </div>
+      </div>
+    </div>
+    <div class="badge good">optimize architecture first — then tier models</div>
+  </div>
+
+  <!-- Scene 9: Model Tiering + Final -->
+  <div class="scene" id="scene-8">
+    <div class="scene-label">scene 09 — model tiering (the final layer)</div>
+    <div class="headline" style="color:var(--green-bright);">Now optimize models.</div>
+    <div class="sub">After your architecture is right, intelligently route to the cheapest capable model.</div>
+    <div class="col" id="scene9Tiering" style="gap:8px;max-width:760px;">
+      
+    </div>
+    <div class="card anim-5" style="max-width:760px;margin-top:10px;border-color:var(--green-border);background:var(--green-dim);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:12px;color:var(--green);">final monthly cost</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:24px;color:var(--green-bright);font-weight:500;">$1,800</div>
+      </div>
+      <div class="bar-wrap" style="height:6px;"><div class="bar-fill" style="width:22.5%;background:var(--green);transform:scaleX(1);transform-origin:left;animation:barGrow 0.8s 0.9s both cubic-bezier(0.16,1,0.3,1);"></div></div>
+      <div style="font-size:11px;color:var(--dim);margin-top:6px;text-align:right;">−78% from $8,000 baseline</div>
+    </div>
+    <div style="margin-top:20px;padding:14px 18px;border:0.5px solid var(--border2);border-radius:8px;background:var(--bg2);animation:fadeUp 0.5s 1.4s both;max-width:760px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-bottom:8px;letter-spacing:.06em;">THE SEQUENCE THAT WORKS</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted);">
+        <span style="color:var(--text);">Measure</span><span style="color:var(--dim);">→</span>
+        <span style="color:var(--text);">Route</span><span style="color:var(--dim);">→</span>
+        <span style="color:var(--text);">Tokens</span><span style="color:var(--dim);">→</span>
+        <span style="color:var(--text);">Cache</span><span style="color:var(--dim);">→</span>
+        <span style="color:var(--text);">Reliability</span><span style="color:var(--dim);">→</span>
+        <span style="color:var(--green-bright);">Tier models</span>
+      </div>
+    </div>
+    <div class="badge good anim-6">40–70% savings come from system design — not model swaps</div>
+  </div>
+
+</div>
+
+<footer>
+  <button class="btn" id="prevBtn" onclick="go(-1)" disabled>← prev</button>
+  <div class="dots" id="footerDots"></div>
+  <button class="btn primary" id="nextBtn" onclick="go(1)">next →</button>
+</footer>
+
+<style>
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+</style>
+
+<script>
+const TOTAL = 9;
+let cur = 0;
+
+function updateProgress() {
+  const ratio = (cur + 1) / TOTAL;
+  document.getElementById('progress').style.transform = 'scaleX(' + ratio + ')';
+}
+
+function hydrateSceneTemplates() {
+  const scene2 = document.getElementById('scene2Breakdown');
+  if (scene2) {
+    scene2.innerHTML = [
+      { label: 'LLM calls', pct: 42, col: '#378ADD', delay: '0.1s', cost: '$3,360' },
+      { label: 'Embeddings', pct: 22, col: '#1D9E75', delay: '0.25s', cost: '$1,760' },
+      { label: 'Vector DB', pct: 14, col: '#7F77DD', delay: '0.4s', cost: '$1,120' },
+      { label: 'Infrastructure', pct: 12, col: '#BA7517', delay: '0.55s', cost: '$960' },
+      { label: 'Retries / errors', pct: 6, col: '#D85A30', delay: '0.7s', cost: '$480' },
+      { label: 'Other', pct: 4, col: '#5F5E5A', delay: '0.85s', cost: '$320' }
+    ].map(b => `
+      <div style="animation:slideRight 0.4s ${b.delay} both cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+          <div style="font-size:13px;color:var(--text);">${b.label}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);">${b.pct}% · ${b.cost}</div>
+        </div>
+        <div class="bar-wrap" style="height:10px;">
+          <div class="bar-fill cost-bar" data-w="${b.pct}" style="width:${b.pct}%;background:${b.col};"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const scene3 = document.getElementById('scene3Chunks');
+  if (scene3) {
+    scene3.innerHTML = [
+      { t: 'Page header — Company Inc.', waste: true, delay: '0.1s' },
+      { t: 'Page footer — Confidential', waste: true, delay: '0.2s' },
+      { t: 'Page numbers: 1, 2, 3...', waste: true, delay: '0.3s' },
+      { t: '"Hi, thanks for reading"', waste: true, delay: '0.4s' },
+      { t: 'Actual policy content', waste: false, delay: '0.55s' },
+      { t: 'Key facts and figures', waste: false, delay: '0.65s' },
+      { t: 'Definitions and terms', waste: false, delay: '0.75s' }
+    ].map(r => `
+      <div style="animation:slideRight 0.4s ${r.delay} both cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;background:${r.waste ? 'var(--red-dim)' : 'var(--green-dim)'};border:0.5px solid ${r.waste ? 'var(--red-border)' : 'var(--green-border)'};">
+          <div style="width:7px;height:7px;border-radius:50%;background:${r.waste ? 'var(--red-bright)' : 'var(--green-bright)'};flex-shrink:0;"></div>
+          <div style="font-size:12px;color:${r.waste ? 'var(--red-bright)' : 'var(--green-bright)'};">${r.t}</div>
+          ${r.waste ? "<div style=\"margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--red);\"> waste</div>" : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const scene4 = document.getElementById('scene4Routes');
+  if (scene4) {
+    scene4.innerHTML = [
+      { q: '"hey, how are you?"', lane: 'greeting', dest: 'static response', col: '#1D9E75', tc: 'var(--green-bright)', bc: 'var(--green-dim)', bord: 'var(--green-border)', cost: '$0.0001', delay: '0.15s' },
+      { q: '"what is my account number?"', lane: 'lookup', dest: 'database only', col: '#378ADD', tc: '#85B7EB', bc: 'var(--blue-dim)', bord: 'var(--blue-border)', cost: '$0.002', delay: '0.35s' },
+      { q: '"explain my invoice breakdown"', lane: 'contextual', dest: 'retrieval + LLM (budgeted)', col: '#7F77DD', tc: 'var(--purple-bright)', bc: 'var(--purple-dim)', bord: '#534AB7', cost: '$0.042', delay: '0.55s' },
+      { q: '"change my bank account"', lane: 'high-risk', dest: 'policy gate + tools + audit', col: '#EF9F27', tc: 'var(--amber-bright)', bc: 'rgba(37,24,0,0.55)', bord: 'var(--border2)', cost: '$0.006', delay: '0.75s' }
+    ].map(r => `
+      <div style="animation:slideRight 0.5s ${r.delay} both cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);width:185px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex-shrink:0;">${r.q}</div>
+          <div style="font-size:16px;color:var(--dim);">→</div>
+          <div style="flex:1;padding:8px 12px;border-radius:6px;background:${r.bc};border:0.5px solid ${r.bord};">
+            <div style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">${r.lane}</div>
+            <div style="font-size:12px;font-weight:500;color:${r.tc};">${r.dest}</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:${r.col};min-width:52px;text-align:right;">${r.cost}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const before = document.getElementById('scene5Before');
+  const after = document.getElementById('scene5After');
+  if (before) {
+    before.innerHTML = Array.from({ length: 10 }, (_, i) => `
+      <div style="width:120px;height:12px;border-radius:2px;background:${i < 3 ? 'var(--bg3)' : 'var(--bg2)'};border:0.5px solid ${i < 3 ? 'var(--border2)' : 'var(--border)'};animation:slideRight 0.3s ${(i * 0.05 + 0.1).toFixed(2)}s both;"></div>
+    `).join('');
+  }
+  if (after) {
+    after.innerHTML = Array.from({ length: 3 }, (_, i) => `
+      <div style="width:120px;height:12px;border-radius:2px;background:var(--green-dim);border:0.5px solid var(--green-border);animation:popIn 0.4s ${(i * 0.1 + 0.5).toFixed(1)}s both cubic-bezier(0.34,1.56,0.64,1);"></div>
+    `).join('');
+  }
+
+  const scene6 = document.getElementById('scene6Responses');
+  if (scene6) {
+    scene6.innerHTML = [
+      { label: 'classification task', example: 'positive / negative / neutral', tokens: 3, col: '#1D9E75', delay: '0.1s' },
+      { label: 'direct answer', example: '"yes, 30-day return policy"', tokens: 12, col: '#378ADD', delay: '0.25s' },
+      { label: 'short explanation', example: 'step-by-step, 3 sentences', tokens: 80, col: '#7F77DD', delay: '0.4s' },
+      { label: 'full reasoning trace', example: 'with sources and caveats', tokens: 400, col: '#D85A30', delay: '0.55s' }
+    ].map(r => `
+      <div style="animation:slideRight 0.4s ${r.delay} both cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:12px;color:var(--muted);width:140px;flex-shrink:0;">${r.label}</div>
+          <div style="flex:1;height:18px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${Math.min(100, (r.tokens / 400) * 100)}%;background:${r.col};border-radius:3px;animation:barGrow 0.6s ${r.delay} both cubic-bezier(0.16,1,0.3,1);transform-origin:left;"></div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);min-width:60px;text-align:right;">${r.tokens} tokens</div>
+        </div>
+        <div style="font-size:11px;color:var(--dim);margin-left:150px;">${r.example}</div>
+      </div>
+    `).join('');
+  }
+
+  const scene7 = document.getElementById('scene7Cache');
+  if (scene7) {
+    scene7.innerHTML = [
+      { q: '"how do I reset my password?"', hit: false, label: 'cache miss → LLM', cost: '$0.038', delay: '0.1s' },
+      { q: '"steps to reset my password"', hit: true, label: 'cache hit', cost: '$0.0002', delay: '0.35s' },
+      { q: '"forgot password, help"', hit: true, label: 'cache hit', cost: '$0.0002', delay: '0.55s' },
+      { q: '"password reset not working"', hit: true, label: 'cache hit', cost: '$0.0002', delay: '0.75s' }
+    ].map(r => `
+      <div style="animation:slideRight 0.4s ${r.delay} both cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;background:${r.hit ? 'var(--green-dim)' : 'var(--bg2)'};border:0.5px solid ${r.hit ? 'var(--green-border)' : 'var(--border2)'};">
+          <div style="font-size:14px;color:${r.hit ? 'var(--green-bright)' : 'var(--blue)'};min-width:16px;">${r.hit ? '⚡' : '→'}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${r.q}</div>
+          <div class="tag" style="color:${r.hit ? 'var(--green-bright)' : 'var(--muted)'};border-color:${r.hit ? 'var(--green-border)' : 'var(--border2)'};background:transparent;white-space:nowrap;">${r.label}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:${r.hit ? 'var(--green)' : 'var(--red-bright)'};min-width:52px;text-align:right;">${r.cost}</div>
+        </div>
+      </div>
+    `).join('') + `
+      <div class="card anim-6" style="margin-top:4px;display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:12px;color:var(--muted);">cache hit rate 75% → avg cost per query</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--green-bright);">$0.0102 <span style="color:var(--dim);font-size:11px;">(was $0.038)</span></div>
+      </div>
+    `;
+  }
+
+  const scene9 = document.getElementById('scene9Tiering');
+  if (scene9) {
+    scene9.innerHTML = [
+      { model: 'claude-haiku / gpt-3.5', use: 'greetings, simple lookups, classification', pct: '65%', col: 'var(--green)', tc: 'var(--green-bright)', delay: '0.1s' },
+      { model: 'claude-sonnet / gpt-4o-mini', use: 'explanations, form filling, summaries', pct: '25%', col: 'var(--blue)', tc: '#85B7EB', delay: '0.35s' },
+      { model: 'claude-opus / o1', use: 'complex reasoning, edge cases only', pct: '10%', col: 'var(--purple)', tc: 'var(--purple-bright)', delay: '0.6s' }
+    ].map(r => `
+      <div style="animation:slideRight 0.5s ${r.delay} both cubic-bezier(0.16,1,0.3,1);">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:var(--bg2);border:0.5px solid var(--border2);">
+          <div style="width:10px;height:10px;border-radius:50%;background:${r.col};flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:500;color:${r.tc};">${r.model}</div>
+            <div style="font-size:11px;color:var(--dim);margin-top:1px;">${r.use}</div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:${r.col};">${r.pct}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function renderDots() {
+  const html = Array.from({length: TOTAL}, (_, i) =>
+    `<div class="dot${i === cur ? ' active' : ''}" onclick="goTo(${i})" title="Scene ${i+1}"></div>`
+  ).join('');
+  document.getElementById('navDots').innerHTML = html;
+  document.getElementById('footerDots').innerHTML = html;
+  document.getElementById('navCounter').textContent = `${cur + 1} / ${TOTAL}`;
+}
+
+function goTo(n) {
+  if (n < 0 || n >= TOTAL) return;
+  const prev = document.getElementById(`scene-${cur}`);
+  prev.classList.remove('visible');
+  prev.classList.add('exit-up');
+  setTimeout(() => prev.classList.remove('exit-up'), 400);
+
+  cur = n;
+  const next = document.getElementById(`scene-${cur}`);
+  next.classList.add('visible');
+
+  document.getElementById('prevBtn').disabled = cur === 0;
+  const nb = document.getElementById('nextBtn');
+  nb.textContent = cur === TOTAL - 1 ? 'restart ↺' : 'next →';
+  nb.onclick = cur === TOTAL - 1 ? () => goTo(0) : () => go(1);
+
+  updateProgress();
+  renderDots();
+
+  setTimeout(() => {
+    document.querySelectorAll(`#scene-${cur} .bar-fill`).forEach(b => b.classList.add('grown'));
+  }, 50);
+}
+
+function go(d) {
+  goTo(cur + d);
+}
+
+hydrateSceneTemplates();
+renderDots();
+updateProgress();
+
+document.getElementById('nextBtn').onclick = () => go(1);
+document.getElementById('prevBtn').onclick = () => go(-1);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') go(1);
+  if (e.key === 'ArrowLeft') go(-1);
+});
+</script>
+</body>
+</html>

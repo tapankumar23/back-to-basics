@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 - Heap / Priority Queue — Problem Solving Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-card-hover: #1c2330;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #fb923c;
+  --accent-dim: rgba(251,146,60,0.15);
+  --good: #4ade80;
+  --bad: #f87171;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+#scroll-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;backdrop-filter:blur(12px);background:rgba(13,17,23,0.85);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+nav a{color:var(--text-muted);text-decoration:none;font-size:.85rem;transition:color .2s;white-space:nowrap}
+nav a:hover{color:var(--accent)}
+.nav-divider{color:var(--border);user-select:none}
+.nav-chapter{display:flex;align-items:center;gap:.5rem;margin-left:auto}
+.nav-chapter a{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:.2rem .6rem;font-size:.8rem}
+.nav-chapter span{color:var(--text-muted);font-size:.8rem}
+.nav-anchors{display:flex;gap:.5rem;flex-wrap:wrap}
+.nav-anchors a{font-size:.75rem;color:var(--text-muted);padding:.15rem .5rem;border-radius:4px;border:1px solid transparent}
+.nav-anchors a:hover{border-color:var(--accent);color:var(--accent)}
+main{padding-top:72px;max-width:1100px;margin:0 auto;padding-left:1.5rem;padding-right:1.5rem}
+section{padding:3rem 0;border-bottom:1px solid var(--border)}
+section:last-child{border-bottom:none}
+h1{font-size:2.8rem;font-weight:700;line-height:1.2}
+h2{font-size:1.6rem;font-weight:600;margin-bottom:1.2rem;color:var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-bottom:.8rem;color:var(--text)}
+p{color:var(--text-muted);margin-bottom:.8rem}
+.tag{display:inline-block;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:.2rem .8rem;font-size:.8rem;font-weight:600;letter-spacing:.04em}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;transition:border-color .2s}
+.card:hover{border-color:var(--accent)}
+.concept-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem}
+@media(max-width:800px){.concept-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.concept-grid{grid-template-columns:1fr}}
+.concept-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;text-align:center;opacity:0;transform:translateY(30px);transition:border-color .2s}
+.concept-card:hover{border-color:var(--accent)}
+.concept-card .icon{font-size:1.8rem;margin-bottom:.6rem}
+.concept-card h4{font-size:.9rem;font-weight:600;margin-bottom:.4rem;color:var(--accent)}
+.concept-card p{font-size:.78rem;color:var(--text-muted);margin:0}
+.stepper-controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-size:.85rem;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent);color:#0d1117;border-color:var(--accent)}
+.toggle-group{display:flex;gap:.4rem}
+.toggle-group .btn{padding:.3rem .8rem;font-size:.8rem}
+select{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:.4rem .8rem;border-radius:6px;font-size:.85rem;font-family:'Inter',sans-serif;cursor:pointer}
+select:focus{outline:none;border-color:var(--accent)}
+.stepper-layout{display:grid;grid-template-columns:1fr 320px;gap:1.5rem}
+@media(max-width:900px){.stepper-layout{grid-template-columns:1fr}}
+.viz-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem;min-height:340px;overflow:auto;position:relative}
+.trace-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.trace-box h4{font-size:.85rem;font-weight:600;color:var(--accent);margin-bottom:.8rem;text-transform:uppercase;letter-spacing:.06em}
+.trace-row{display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.trace-row:last-child{border-bottom:none}
+.trace-label{color:var(--text-muted)}
+.trace-val{color:var(--text);font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.78rem}
+.heap-array-box{margin-top:1rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.6rem .8rem;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:.2rem;align-items:center;min-height:2.4rem}
+.heap-cell{display:inline-block;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:.15rem .4rem;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.82rem;transition:background .2s,border-color .2s,color .2s}
+.heap-cell.hi{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.op-msg{font-size:.85rem;color:var(--text);font-style:italic;padding:.5rem .8rem;background:var(--bg);border-radius:6px;border-left:3px solid var(--accent);margin-top:.8rem}
+/* CODE PANEL */
+.code-panel{background:#0d1117;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.5rem}
+.code-header{background:var(--bg-card);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+.code-header span{font-size:.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+pre{padding:1.2rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.7}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+/* PROBLEMS */
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.5rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem;opacity:0;transform:translateY(20px);transition:border-color .2s}
+.problem-card:hover{border-color:var(--accent)}
+.problem-title{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.2rem}
+.problem-note{font-size:.76rem;color:var(--text-muted)}
+.complexity-badge{display:inline-block;font-size:.7rem;font-family:'JetBrains Mono',monospace;background:var(--accent-dim);color:var(--accent);border-radius:4px;padding:.1rem .4rem;margin-top:.25rem}
+.difficulty-hard{color:var(--bad);font-size:.72rem;font-weight:600}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:1.2rem;margin-bottom:1rem}
+.staff-q{font-size:.9rem;color:var(--text);font-style:italic;margin-bottom:.5rem}
+.staff-a{font-size:.82rem;color:var(--text-muted);line-height:1.7}
+.hero-subtitle{font-size:1.1rem;color:var(--text-muted);margin:1rem 0 1.5rem;max-width:660px}
+.hero-meta{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+.meta-pill{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:.3rem .9rem;font-size:.82rem;color:var(--text-muted)}
+.meta-pill strong{color:var(--text)}
+.section-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.4rem}
+.live-heap-wrap{display:flex;flex-direction:column;gap:1rem}
+.live-controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+.live-viz{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem;min-height:200px}
+footer{text-align:center;padding:2rem 1.5rem;color:var(--text-muted);font-size:.78rem;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div id="scroll-bar"></div>
+
+<nav>
+  <a href="../coding-concepts/00_index.html">&#8592; Coding</a>
+  <span style="color:var(--border);user-select:none">|</span>
+  <a href="../system-design-concepts/00_index.html">&#8592; System Design</a>
+  <span style="color:var(--border);user-select:none">|</span>
+  <div class="nav-anchors">
+    <a href="#hero">Hero</a>
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+    <a href="#interactive">Interactive</a>
+  </div>
+  <div class="nav-chapter">
+    <a href="05_dynamic_programming.html">Prev</a>
+    <span style="color:var(--text-muted);font-size:.8rem">06 Heap / PQ</span>
+    <a href="07_backtracking.html">Next</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ====================================================
+       HERO
+  ===================================================== -->
+  <section id="hero">
+    <div style="margin-bottom:.6rem"><span class="tag">Pattern 06</span></div>
+    <h1 style="color:var(--accent)">Heap / Priority Queue</h1>
+    <p class="hero-subtitle">
+      Use when you need <strong style="color:var(--text)">repeated min/max access</strong>, Top-K elements,
+      merging K sorted sequences, or a streaming median. Java's
+      <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">PriorityQueue</code>
+      is a min-heap; pass <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">Comparator.reverseOrder()</code>
+      for max-heap.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-pill"><strong>Signal</strong> &#8212; "K-th largest/smallest", "top K", "merge K sorted"</div>
+      <div class="meta-pill"><strong>Complexity</strong> &#8212; Insert O(log n) &middot; Peek O(1) &middot; Poll O(log n)</div>
+      <div class="meta-pill"><strong>Two-heap trick</strong> &#8212; streaming median in O(log n)</div>
+    </div>
+  </section>
+
+  <!-- ====================================================
+       CORE CONCEPT
+  ===================================================== -->
+  <section id="concept">
+    <h2>Core Concepts</h2>
+    <p>
+      A binary heap is a <strong style="color:var(--text)">complete binary tree</strong> stored as an array.
+      For node at index <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">i</code>:
+      parent = <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">(i-1)/2</code>,
+      left child = <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">2i+1</code>,
+      right child = <code style="font-family:'JetBrains Mono',monospace;color:var(--accent)">2i+2</code>.
+      Min-heap invariant: every parent &le; its children.
+    </p>
+
+    <div style="margin-top:1.5rem">
+      <div id="d3-heap-container" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+          <span style="font-size:.85rem;color:var(--text-muted)">Binary Heap &#8212; click toggle to switch type</span>
+          <div class="toggle-group">
+            <button class="btn active" id="heap-type-min" onclick="toggleHeapType('min')">Min-Heap</button>
+            <button class="btn" id="heap-type-max" onclick="toggleHeapType('max')">Max-Heap</button>
+          </div>
+        </div>
+        <svg id="d3-heap-svg" style="width:100%;overflow:visible;display:block"></svg>
+        <div id="heap-array-display" style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-muted);margin-top:.6rem;text-align:center;padding:.3rem"></div>
+      </div>
+    </div>
+
+    <div class="concept-grid">
+      <div class="concept-card" id="cc1">
+        <div class="icon">&#127942;</div>
+        <h4>Top-K</h4>
+        <p>Keep min-heap of size k. If new element &gt; peek, poll then offer. O(n log k).</p>
+      </div>
+      <div class="concept-card" id="cc2">
+        <div class="icon">&#128256;</div>
+        <h4>Merge K Sorted</h4>
+        <p>Push each list head into min-heap. Poll smallest, push its next. O(n log k).</p>
+      </div>
+      <div class="concept-card" id="cc3">
+        <div class="icon">&#128202;</div>
+        <h4>Streaming Median</h4>
+        <p>Max-heap for lower half, min-heap for upper half. Balance sizes. Median from tops.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:1.5rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card" id="heap-rule1" style="opacity:0;transform:translateY(20px)">
+        <h3>Sift-Up (Insert)</h3>
+        <p>Add element at the next leaf position. Compare with parent. If smaller (min-heap), swap. Repeat up to root. Max O(log n) swaps.</p>
+      </div>
+      <div class="card" id="heap-rule2" style="opacity:0;transform:translateY(20px)">
+        <h3>Sift-Down (Poll)</h3>
+        <p>Swap root with last element. Remove last. Compare new root with smaller child. Swap if needed. Repeat downward. Max O(log n) swaps.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================
+       STEPPER
+  ===================================================== -->
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <p>
+      Insert <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">[5, 3, 8, 1, 9, 2, 7]</code>
+      into a min-heap one by one (sift-up), then poll three times (sift-down).
+      Watch each swap highlighted in the tree and array.
+    </p>
+    <div class="stepper-controls">
+      <button class="btn primary" id="play-btn">Play</button>
+      <button class="btn" id="step-btn">Step</button>
+      <button class="btn" id="reset-btn">Reset</button>
+      <span id="step-counter" style="color:var(--text-muted);font-size:.82rem;margin-left:.5rem">Step 0 / 0</span>
+    </div>
+    <div class="stepper-layout">
+      <div class="viz-box" id="stepper-viz">
+        <svg id="stepper-svg" style="width:100%;overflow:visible;display:block"></svg>
+      </div>
+      <div>
+        <div class="trace-box">
+          <h4>Trace</h4>
+          <div class="trace-row">
+            <span class="trace-label">Operation</span>
+            <span class="trace-val" id="tr-op">&#8212;</span>
+          </div>
+          <div class="trace-row">
+            <span class="trace-label">Phase</span>
+            <span class="trace-val" id="tr-phase">&#8212;</span>
+          </div>
+          <div class="trace-row">
+            <span class="trace-label">Comparing</span>
+            <span class="trace-val" id="tr-compare">&#8212;</span>
+          </div>
+          <div class="trace-row">
+            <span class="trace-label">Swap Count</span>
+            <span class="trace-val" id="tr-swaps">0</span>
+          </div>
+          <div class="trace-row">
+            <span class="trace-label">Heap Size</span>
+            <span class="trace-val" id="tr-size">0</span>
+          </div>
+          <div class="op-msg" id="tr-msg">Press Play or Step to begin.</div>
+          <div style="margin-top:.8rem">
+            <div class="section-label">Heap Array</div>
+            <div class="heap-array-box" id="heap-arr-display"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================
+       CODE PANEL
+  ===================================================== -->
+  <section id="code">
+    <h2>Java Templates</h2>
+
+    <div class="code-panel">
+      <div class="code-header">
+        <span>KthLargest.java &#8212; Fixed Window (min-heap size k)</span>
+        <button class="btn" id="copy-kth" onclick="copyCode('code-kth','copy-kth')">Copy</button>
+      </div>
+      <pre id="code-kth"><span class="cm">// KTH LARGEST — min-heap keeps the k largest seen so far</span>
+<span class="kw">public int</span> <span class="fn">findKthLargest</span>(<span class="tp">int</span>[] nums, <span class="tp">int</span> k) {
+    <span class="tp">PriorityQueue</span>&lt;<span class="tp">Integer</span>&gt; minH = <span class="kw">new</span> <span class="fn">PriorityQueue</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="tp">int</span> n : nums) {
+        minH.<span class="fn">offer</span>(n);
+        <span class="kw">if</span> (minH.<span class="fn">size</span>() &gt; k) minH.<span class="fn">poll</span>();
+    }
+    <span class="kw">return</span> minH.<span class="fn">peek</span>();
+}
+<span class="cm">// Time O(n log k)  Space O(k)</span></pre>
+    </div>
+
+    <div class="code-panel">
+      <div class="code-header">
+        <span>MergeKLists.java &#8212; Variable Window</span>
+        <button class="btn" id="copy-merge" onclick="copyCode('code-merge','copy-merge')">Copy</button>
+      </div>
+      <pre id="code-merge"><span class="cm">// MERGE K SORTED LISTS — min-heap on node value</span>
+<span class="kw">public</span> <span class="tp">ListNode</span> <span class="fn">mergeKLists</span>(<span class="tp">ListNode</span>[] lists) {
+    <span class="tp">PriorityQueue</span>&lt;<span class="tp">ListNode</span>&gt; pq = <span class="kw">new</span> <span class="fn">PriorityQueue</span>&lt;&gt;(
+        (a, b) -&gt; <span class="tp">Integer</span>.<span class="fn">compare</span>(a.val, b.val)
+    );
+    <span class="kw">for</span> (<span class="tp">ListNode</span> h : lists) <span class="kw">if</span> (h != <span class="kw">null</span>) pq.<span class="fn">offer</span>(h);
+    <span class="tp">ListNode</span> dummy = <span class="kw">new</span> <span class="fn">ListNode</span>(<span class="num">0</span>), cur = dummy;
+    <span class="kw">while</span> (!pq.<span class="fn">isEmpty</span>()) {
+        cur.next = pq.<span class="fn">poll</span>();
+        cur = cur.next;
+        <span class="kw">if</span> (cur.next != <span class="kw">null</span>) pq.<span class="fn">offer</span>(cur.next);
+    }
+    <span class="kw">return</span> dummy.next;
+}
+<span class="cm">// Time O(n log k)  Space O(k)  where n = total nodes, k = list count</span></pre>
+    </div>
+
+    <div class="code-panel">
+      <div class="code-header">
+        <span>MedianFinder.java &#8212; Two-Heap Trick (HARD)</span>
+        <button class="btn" id="copy-median" onclick="copyCode('code-median','copy-median')">Copy</button>
+      </div>
+      <pre id="code-median"><span class="cm">// FIND MEDIAN FROM DATA STREAM — two balanced heaps</span>
+<span class="kw">class</span> <span class="tp">MedianFinder</span> {
+    <span class="cm">// lo = max-heap  (lower half)</span>
+    <span class="tp">PriorityQueue</span>&lt;<span class="tp">Integer</span>&gt; lo = <span class="kw">new</span> <span class="fn">PriorityQueue</span>&lt;&gt;(<span class="tp">Comparator</span>.<span class="fn">reverseOrder</span>());
+    <span class="cm">// hi = min-heap  (upper half)</span>
+    <span class="tp">PriorityQueue</span>&lt;<span class="tp">Integer</span>&gt; hi = <span class="kw">new</span> <span class="fn">PriorityQueue</span>&lt;&gt;();
+
+    <span class="kw">public void</span> <span class="fn">addNum</span>(<span class="tp">int</span> n) {
+        lo.<span class="fn">offer</span>(n);             <span class="cm">// push to lower half</span>
+        hi.<span class="fn">offer</span>(lo.<span class="fn">poll</span>());      <span class="cm">// ensure max(lo) &lt;= min(hi)</span>
+        <span class="cm">// keep lo.size() &gt;= hi.size()</span>
+        <span class="kw">if</span> (lo.<span class="fn">size</span>() &lt; hi.<span class="fn">size</span>()) lo.<span class="fn">offer</span>(hi.<span class="fn">poll</span>());
+    }
+
+    <span class="kw">public double</span> <span class="fn">findMedian</span>() {
+        <span class="kw">return</span> lo.<span class="fn">size</span>() &gt; hi.<span class="fn">size</span>()
+            ? lo.<span class="fn">peek</span>()
+            : (lo.<span class="fn">peek</span>() + hi.<span class="fn">peek</span>()) / <span class="num">2.0</span>;
+    }
+}
+<span class="cm">// NOTE: Use Integer.compare(a, b) NOT (a - b) — avoids int overflow!</span>
+<span class="cm">// Time addNum O(log n)  findMedian O(1)  Space O(n)</span></pre>
+    </div>
+  </section>
+
+  <!-- ====================================================
+       PROBLEMS
+  ===================================================== -->
+  <section id="problems">
+    <h2>Problem Library</h2>
+    <div class="problems-grid">
+
+      <div class="problem-card" id="pc1">
+        <div class="problem-title">LC 215 &middot; Kth Largest Element in an Array</div>
+        <div class="problem-note">Min-heap of size k. Offer each element; when size &gt; k, poll. Answer is peek().</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(k) space</div>
+      </div>
+
+      <div class="problem-card" id="pc2">
+        <div class="problem-title">LC 973 &middot; K Closest Points to Origin</div>
+        <div class="problem-note">Max-heap keyed by x&#178;+y&#178;. Keep size &le; k; poll when oversized.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(k) space</div>
+      </div>
+
+      <div class="problem-card" id="pc3">
+        <div class="problem-title">LC 347 &middot; Top K Frequent Elements</div>
+        <div class="problem-note">Build frequency map, then min-heap on frequency of size k.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(n) space</div>
+      </div>
+
+      <div class="problem-card" id="pc4">
+        <div class="problem-title">Sort a K-Sorted (Nearly Sorted) Array</div>
+        <div class="problem-note">Slide a min-heap window of size k+1 across the array. Each poll gives next output element.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(k) space</div>
+      </div>
+
+      <div class="problem-card" id="pc5">
+        <div class="problem-title">LC 23 &middot; Merge K Sorted Lists</div>
+        <div class="problem-note">Min-heap on node.val. Poll smallest, advance that list's pointer, offer next node.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(k) space</div>
+      </div>
+
+      <div class="problem-card" id="pc6">
+        <div class="problem-title">LC 295 &middot; Find Median from Data Stream <span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Max-heap (lower half) + min-heap (upper half). Balance sizes after each insert.</div>
+        <div class="complexity-badge">O(log n) insert &middot; O(1) median</div>
+      </div>
+
+      <div class="problem-card" id="pc7">
+        <div class="problem-title">Connect Ropes with Minimum Cost (Huffman)</div>
+        <div class="problem-note">Greedily merge two smallest ropes. Min-heap. Cost = sum of all intermediate merges.</div>
+        <div class="complexity-badge">O(n log n) time &middot; O(n) space</div>
+      </div>
+
+      <div class="problem-card" id="pc8">
+        <div class="problem-title">LC 767 &middot; Reorganize String</div>
+        <div class="problem-note">Max-heap by char frequency. Always place most-frequent remaining char that wasn't last placed.</div>
+        <div class="complexity-badge">O(n log k) time &middot; k = distinct chars</div>
+      </div>
+
+      <div class="problem-card" id="pc9">
+        <div class="problem-title">LC 621 &middot; Task Scheduler</div>
+        <div class="problem-note">Max-heap on task frequency. Greedily fill cooldown window; idle if not enough tasks.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(k) space</div>
+      </div>
+
+      <div class="problem-card" id="pc10">
+        <div class="problem-title">LC 658 &middot; Find K Closest Elements in Sorted Array</div>
+        <div class="problem-note">Binary search for insertion point; two-pointer expand or max-heap of size k by |x - val|.</div>
+        <div class="complexity-badge">O(log n + k) time</div>
+      </div>
+
+      <div class="problem-card" id="pc11">
+        <div class="problem-title">LC 451 &middot; Sort Characters By Frequency</div>
+        <div class="problem-note">Frequency map + max-heap. Poll and append char repeated count times to result string.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(n) space</div>
+      </div>
+
+      <div class="problem-card" id="pc12">
+        <div class="problem-title">LC 632 &middot; Smallest Range Covering K Lists <span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Min-heap of (val, listIdx, elemIdx). Track current max. Advance min-list pointer each step.</div>
+        <div class="complexity-badge">O(n log k) time &middot; O(k) space</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ====================================================
+       STAFF ANGLES
+  ===================================================== -->
+  <section id="staff">
+    <h2>Staff Engineer Angles</h2>
+
+    <div class="staff-card" id="sa1" style="opacity:0;transform:translateY(20px)">
+      <div class="staff-q">"How do you compute a real-time median of an infinite data stream with O(k) memory &#8212; not O(n)?"</div>
+      <div class="staff-a">
+        The two-heap approach is O(n) memory. For truly memory-bounded streaming:<br><br>
+        <strong style="color:var(--text)">t-digest</strong> &#8212; mergeable sketch that approximates quantiles with configurable accuracy.
+        Merge-friendly; used in Prometheus and Elasticsearch.<br><br>
+        <strong style="color:var(--text)">Greenwald-Khanna (GK) sketch</strong> &#8212; O(1/&#949; &middot; log(&#949;n)) space;
+        provable (&epsilon;, &delta;)-quantile guarantee. Ordered list of summary tuples.<br><br>
+        <strong style="color:var(--text)">Reservoir sampling</strong> &#8212; uniform random sample of size k from stream;
+        empirical median from sample. Bias-free for uniform streams, skewed for heavy-tailed distributions.
+      </div>
+    </div>
+
+    <div class="staff-card" id="sa2" style="opacity:0;transform:translateY(20px)">
+      <div class="staff-q">"How do you merge K=10,000 sorted files, each with 1B records, at exabyte scale?"</div>
+      <div class="staff-a">
+        A single in-memory min-heap of 10,000 cursors is feasible (tiny RAM). The bottleneck is I/O:<br><br>
+        <strong style="color:var(--text)">Multi-pass external merge sort</strong> &#8212; if each file fits on one machine,
+        stream-merge in passes. Classic MapReduce merge phase.<br><br>
+        <strong style="color:var(--text)">Polyphase merge sort</strong> &#8212; minimises tape/disk seeks by distributing initial runs
+        across more than 2 drives. Optimal for sequential storage media.<br><br>
+        <strong style="color:var(--text)">Parallel merge tree</strong> &#8212; binary tree of merge workers; each worker merges two
+        streams and forwards. Pipeline depth = log&#8322;(K). Scales horizontally with network bandwidth as the new constraint.
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================================================
+       INTERACTIVE PLAYGROUND
+  ===================================================== -->
+  <section id="interactive">
+    <h2>Interactive Playground</h2>
+    <p>Toggle between min-heap and max-heap. Insert a random value or poll the root. The tree redraws after each operation.</p>
+    <div class="live-heap-wrap">
+      <div class="live-controls">
+        <div class="toggle-group">
+          <button class="btn active" id="live-min-btn" onclick="setLiveHeapType('min')">Min-Heap</button>
+          <button class="btn" id="live-max-btn" onclick="setLiveHeapType('max')">Max-Heap</button>
+        </div>
+        <button class="btn primary" onclick="liveInsertRandom()">Insert Random</button>
+        <button class="btn" onclick="livePoll()">Poll Root</button>
+        <button class="btn" onclick="liveReset()">Reset</button>
+        <span id="live-status" style="font-size:.82rem;color:var(--text-muted);margin-left:.4rem"></span>
+      </div>
+      <div class="live-viz">
+        <svg id="live-heap-svg" style="width:100%;overflow:visible;display:block"></svg>
+        <div id="live-array-display" style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text-muted);margin-top:.6rem;text-align:center;padding:.4rem"></div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Clean Code &#8212; Robert C. Martin &nbsp;&middot;&nbsp; The Pragmatic Programmer &#8212; Hunt &amp; Thomas &nbsp;&middot;&nbsp; Refactoring &#8212; Martin Fowler &nbsp;&middot;&nbsp; Working Effectively with Legacy Code &#8212; Michael Feathers
+</footer>
+
+<script>
+/* ================================================================
+   SCROLL PROGRESS BAR
+================================================================ */
+(function() {
+  var bar = document.getElementById('scroll-bar');
+  window.addEventListener('scroll', function() {
+    var total = document.documentElement.scrollHeight - window.innerHeight;
+    if (total <= 0) return;
+    bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+  });
+})();
+
+/* ================================================================
+   COPY CODE
+================================================================ */
+function copyCode(preId, btnId) {
+  var el = document.getElementById(preId);
+  var btn = document.getElementById(btnId);
+  if (!el || !btn) return;
+  navigator.clipboard.writeText(el.innerText).then(function() {
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  });
+}
+
+/* ================================================================
+   HEAP UTILITIES
+================================================================ */
+function parentIdx(i) { return Math.floor((i - 1) / 2); }
+function leftIdx(i)   { return 2 * i + 1; }
+function rightIdx(i)  { return 2 * i + 2; }
+
+function siftUp(h, i, isMin) {
+  while (i > 0) {
+    var p = parentIdx(i);
+    var shouldSwap = isMin ? h[i] < h[p] : h[i] > h[p];
+    if (shouldSwap) {
+      var t = h[i]; h[i] = h[p]; h[p] = t;
+      i = p;
+    } else {
+      break;
+    }
+  }
+}
+
+function siftDown(h, i, n, isMin) {
+  while (true) {
+    var best = i;
+    var l = leftIdx(i);
+    var r = rightIdx(i);
+    if (l < n) {
+      var lBetter = isMin ? h[l] < h[best] : h[l] > h[best];
+      if (lBetter) best = l;
+    }
+    if (r < n) {
+      var rBetter = isMin ? h[r] < h[best] : h[r] > h[best];
+      if (rBetter) best = r;
+    }
+    if (best === i) break;
+    var t = h[i]; h[i] = h[best]; h[best] = t;
+    i = best;
+  }
+}
+
+/* ================================================================
+   D3 HEAP TREE RENDERER
+   Draws SVG nodes + edges for a heap array.
+   highlightSet: Set of indices to accent-color.
+================================================================ */
+function renderHeapTree(containerId, svgId, heapArr, highlightSet) {
+  var svg = d3.select('#' + svgId);
+  svg.selectAll('*').remove();
+
+  if (!heapArr || heapArr.length === 0) {
+    svg.attr('height', 60);
+    svg.append('text')
+      .attr('x', 20).attr('y', 30)
+      .attr('fill', '#8b949e').attr('font-size', '13px')
+      .text('(heap is empty)');
+    return;
+  }
+
+  var container = document.getElementById(containerId);
+  var W = (container ? container.clientWidth : 700) - 24;
+  var n = heapArr.length;
+  var levels = Math.floor(Math.log2(n)) + 1;
+  var H = Math.max(160, levels * 80 + 50);
+  svg.attr('height', H);
+
+  // Compute pixel positions for each node
+  var positions = heapArr.map(function(val, i) {
+    var depth = Math.floor(Math.log2(i + 1));
+    var levelStart = Math.pow(2, depth) - 1;
+    var levelCount = Math.pow(2, depth);
+    var posInLevel = i - levelStart;
+    var x = W * (posInLevel + 0.5) / levelCount;
+    var y = depth * 76 + 38;
+    return { x: x, y: y, val: val, idx: i };
+  });
+
+  // Edges
+  var edgeG = svg.append('g');
+  for (var i = 1; i < n; i++) {
+    var p = parentIdx(i);
+    edgeG.append('line')
+      .attr('x1', positions[p].x).attr('y1', positions[p].y)
+      .attr('x2', positions[i].x).attr('y2', positions[i].y)
+      .attr('stroke', '#30363d')
+      .attr('stroke-width', 1.5);
+  }
+
+  // Nodes
+  var nodeG = svg.append('g');
+  positions.forEach(function(d) {
+    var isHi = highlightSet && highlightSet.has(d.idx);
+    var g = nodeG.append('g').attr('transform', 'translate(' + d.x + ',' + d.y + ')');
+    g.append('circle')
+      .attr('r', 22)
+      .attr('fill', isHi ? 'rgba(251,146,60,0.22)' : '#0d1117')
+      .attr('stroke', isHi ? '#fb923c' : '#30363d')
+      .attr('stroke-width', isHi ? 2.2 : 1.5);
+    g.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('fill', isHi ? '#fb923c' : '#e6edf3')
+      .attr('font-family', "'JetBrains Mono', monospace")
+      .attr('font-size', '14px')
+      .attr('font-weight', '700')
+      .text(String(d.val));
+    g.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('y', 32)
+      .attr('fill', '#8b949e')
+      .attr('font-size', '9px')
+      .text('[' + d.idx + ']');
+  });
+}
+
+/* ================================================================
+   STATIC D3 HEAP (CONCEPT SECTION)
+================================================================ */
+var d3IsMin = true;
+var minHeapData = [1, 3, 2, 5, 9, 7, 8];
+var maxHeapData = [9, 5, 8, 3, 1, 7, 2];
+
+function toggleHeapType(type) {
+  d3IsMin = (type === 'min');
+  document.getElementById('heap-type-min').className = 'btn' + (d3IsMin ? ' active' : '');
+  document.getElementById('heap-type-max').className = 'btn' + (!d3IsMin ? ' active' : '');
+  var data = d3IsMin ? minHeapData : maxHeapData;
+  renderHeapTree('d3-heap-container', 'd3-heap-svg', data, null);
+  document.getElementById('heap-array-display').textContent =
+    (d3IsMin ? 'Min-Heap' : 'Max-Heap') + ' array: [' + data.join(', ') + ']';
+}
+
+/* ================================================================
+   STEPPER
+================================================================ */
+var STEPPER_INPUT = [5, 3, 8, 1, 9, 2, 7];
+var stepperSteps = [];
+var stepperPos = -1;
+var stepperTimer = null;
+var stepperRunning = false;
+
+function buildSteps() {
+  var steps = [];
+  var heap = [];
+  var swaps = 0;
+
+  function snap(heap, hi, op, phase, compare, msg) {
+    steps.push({
+      heap: heap.slice(),
+      hi: hi ? new Set(Array.from(hi)) : new Set(),
+      op: op,
+      phase: phase,
+      compare: compare,
+      swaps: swaps,
+      msg: msg
+    });
+  }
+
+  // INSERT PHASE
+  STEPPER_INPUT.forEach(function(val) {
+    heap.push(val);
+    var ni = heap.length - 1;
+    snap(heap, new Set([ni]),
+      'Insert ' + val,
+      'Place at index ' + ni,
+      '—',
+      'Add ' + val + ' at next leaf position (index ' + ni + ').'
+    );
+
+    var i = ni;
+    while (i > 0) {
+      var p = parentIdx(i);
+      snap(heap, new Set([i, p]),
+        'Insert ' + val + ' — sift-up',
+        'Compare with parent',
+        'heap[' + i + ']=' + heap[i] + ' vs heap[' + p + ']=' + heap[p],
+        'Compare child ' + heap[i] + ' at [' + i + '] with parent ' + heap[p] + ' at [' + p + '].'
+      );
+      if (heap[i] < heap[p]) {
+        var t = heap[i]; heap[i] = heap[p]; heap[p] = t;
+        swaps++;
+        snap(heap, new Set([i, p]),
+          'Insert ' + val + ' — sift-up',
+          'Swap',
+          'Swapped positions [' + i + '] and [' + p + ']',
+          'Child ' + heap[p] + ' < parent ' + heap[i] + ' after swap. Continue up.'
+        );
+        i = p;
+      } else {
+        snap(heap, new Set([i]),
+          'Insert ' + val + ' — sift-up',
+          'Heap property satisfied',
+          heap[i] + ' >= parent ' + heap[p],
+          heap[i] + ' >= parent ' + heap[p] + '. Stop sifting up.'
+        );
+        break;
+      }
+    }
+  });
+
+  // POLL PHASE
+  for (var poll = 0; poll < 3; poll++) {
+    if (heap.length === 0) break;
+    var root = heap[0];
+    var last = heap[heap.length - 1];
+    snap(heap, new Set([0, heap.length - 1]),
+      'Poll (remove min)',
+      'Swap root with last',
+      'root=' + root + ', last=' + last,
+      'Poll: swap root ' + root + ' with last element ' + last + '.'
+    );
+
+    heap[0] = last;
+    heap[heap.length - 1] = root;
+    heap.pop();
+    swaps++;
+
+    snap(heap, new Set([0]),
+      'Polled ' + root + ' — sift-down',
+      'Root removed',
+      '—',
+      'Removed ' + root + '. New root is ' + (heap.length > 0 ? heap[0] : '(empty)') + '. Begin sift-down.'
+    );
+
+    var i2 = 0;
+    while (true) {
+      var l = leftIdx(i2);
+      var r = rightIdx(i2);
+      var best = i2;
+      if (l < heap.length && heap[l] < heap[best]) best = l;
+      if (r < heap.length && heap[r] < heap[best]) best = r;
+
+      var cmpSet = new Set([i2]);
+      if (l < heap.length) cmpSet.add(l);
+      if (r < heap.length) cmpSet.add(r);
+
+      var cmpStr = 'node[' + i2 + ']=' + heap[i2];
+      if (l < heap.length) cmpStr += ', L[' + l + ']=' + heap[l];
+      if (r < heap.length) cmpStr += ', R[' + r + ']=' + heap[r];
+
+      snap(heap, cmpSet,
+        'Sift-down',
+        'Compare with children',
+        cmpStr,
+        'Node ' + heap[i2] + ' at [' + i2 + ']. ' +
+          (best === i2 ? 'No smaller child — heap property OK. Stop.' :
+            'Smallest child: heap[' + best + ']=' + heap[best] + '. Will swap.')
+      );
+
+      if (best === i2) break;
+
+      var t2 = heap[i2]; heap[i2] = heap[best]; heap[best] = t2;
+      swaps++;
+      snap(heap, new Set([i2, best]),
+        'Sift-down',
+        'Swap with smaller child',
+        'Swapped [' + i2 + ']=' + heap[i2] + ' and [' + best + ']=' + heap[best],
+        'Swapped. Continue sifting down from [' + best + '].'
+      );
+      i2 = best;
+    }
+  }
+
+  return steps;
+}
+
+function renderStepState(idx) {
+  if (idx < 0 || idx >= stepperSteps.length) return;
+  var s = stepperSteps[idx];
+
+  document.getElementById('tr-op').textContent = s.op;
+  document.getElementById('tr-phase').textContent = s.phase;
+  document.getElementById('tr-compare').textContent = s.compare;
+  document.getElementById('tr-swaps').textContent = String(s.swaps);
+  document.getElementById('tr-size').textContent = String(s.heap.length);
+  document.getElementById('tr-msg').textContent = s.msg;
+  document.getElementById('step-counter').textContent = 'Step ' + (idx + 1) + ' / ' + stepperSteps.length;
+
+  // Render array cells using DOM methods only
+  var display = document.getElementById('heap-arr-display');
+  while (display.firstChild) display.removeChild(display.firstChild);
+  if (s.heap.length === 0) {
+    display.textContent = '(empty)';
+  } else {
+    s.heap.forEach(function(v, i) {
+      var span = document.createElement('span');
+      span.className = 'heap-cell' + (s.hi.has(i) ? ' hi' : '');
+      span.textContent = String(v);
+      display.appendChild(span);
+    });
+  }
+
+  // Render tree
+  renderHeapTree('stepper-viz', 'stepper-svg', s.heap, s.hi);
+}
+
+function initStepper() {
+  stepperSteps = buildSteps();
+  stepperPos = -1;
+  stepperRunning = false;
+  document.getElementById('step-counter').textContent = 'Step 0 / ' + stepperSteps.length;
+  document.getElementById('tr-op').textContent = '—';
+  document.getElementById('tr-phase').textContent = '—';
+  document.getElementById('tr-compare').textContent = '—';
+  document.getElementById('tr-swaps').textContent = '0';
+  document.getElementById('tr-size').textContent = '0';
+  document.getElementById('tr-msg').textContent = 'Press Play or Step to begin.';
+  var display = document.getElementById('heap-arr-display');
+  while (display.firstChild) display.removeChild(display.firstChild);
+  renderHeapTree('stepper-viz', 'stepper-svg', [], null);
+}
+
+document.getElementById('step-btn').addEventListener('click', function() {
+  if (stepperPos < stepperSteps.length - 1) {
+    stepperPos++;
+    renderStepState(stepperPos);
+  }
+});
+
+document.getElementById('reset-btn').addEventListener('click', function() {
+  if (stepperTimer) { clearInterval(stepperTimer); stepperTimer = null; }
+  stepperRunning = false;
+  document.getElementById('play-btn').textContent = 'Play';
+  document.getElementById('play-btn').className = 'btn primary';
+  initStepper();
+});
+
+document.getElementById('play-btn').addEventListener('click', function() {
+  var btn = this;
+  if (stepperRunning) {
+    clearInterval(stepperTimer);
+    stepperRunning = false;
+    btn.textContent = 'Play';
+    btn.className = 'btn primary';
+  } else {
+    stepperRunning = true;
+    btn.textContent = 'Pause';
+    btn.className = 'btn active';
+    stepperTimer = setInterval(function() {
+      if (stepperPos < stepperSteps.length - 1) {
+        stepperPos++;
+        renderStepState(stepperPos);
+      } else {
+        clearInterval(stepperTimer);
+        stepperTimer = null;
+        stepperRunning = false;
+        btn.textContent = 'Play';
+        btn.className = 'btn primary';
+      }
+    }, 720);
+  }
+});
+
+/* ================================================================
+   LIVE INTERACTIVE HEAP
+================================================================ */
+var liveHeap = [];
+var liveIsMin = true;
+
+function setLiveHeapType(type) {
+  liveIsMin = (type === 'min');
+  document.getElementById('live-min-btn').className = 'btn' + (liveIsMin ? ' active' : '');
+  document.getElementById('live-max-btn').className = 'btn' + (!liveIsMin ? ' active' : '');
+  // Rebuild heap with same values under new ordering
+  var vals = liveHeap.slice();
+  liveHeap = [];
+  vals.forEach(function(v) {
+    liveHeap.push(v);
+    siftUp(liveHeap, liveHeap.length - 1, liveIsMin);
+  });
+  renderLiveHeap(null);
+  document.getElementById('live-status').textContent = 'Converted to ' + type + '-heap.';
+}
+
+function liveInsertRandom() {
+  if (liveHeap.length >= 15) {
+    document.getElementById('live-status').textContent = 'Max size 15 reached. Poll first.';
+    return;
+  }
+  var val = Math.floor(Math.random() * 50) + 1;
+  liveHeap.push(val);
+  var ni = liveHeap.length - 1;
+  siftUp(liveHeap, ni, liveIsMin);
+  renderLiveHeap(null);
+  document.getElementById('live-status').textContent = 'Inserted ' + val + '. Size: ' + liveHeap.length;
+}
+
+function livePoll() {
+  if (liveHeap.length === 0) {
+    document.getElementById('live-status').textContent = 'Heap is empty!';
+    return;
+  }
+  var root = liveHeap[0];
+  if (liveHeap.length === 1) {
+    liveHeap = [];
+  } else {
+    liveHeap[0] = liveHeap[liveHeap.length - 1];
+    liveHeap.pop();
+    siftDown(liveHeap, 0, liveHeap.length, liveIsMin);
+  }
+  renderLiveHeap(new Set([0]));
+  document.getElementById('live-status').textContent = 'Polled ' + root + '. Size: ' + liveHeap.length;
+}
+
+function liveReset() {
+  liveHeap = [];
+  [4, 7, 6, 9, 12, 11, 10].forEach(function(v) {
+    liveHeap.push(v);
+    siftUp(liveHeap, liveHeap.length - 1, liveIsMin);
+  });
+  renderLiveHeap(null);
+  document.getElementById('live-status').textContent = 'Reset to defaults.';
+}
+
+function renderLiveHeap(hiSet) {
+  renderHeapTree('live-viz', 'live-heap-svg', liveHeap, hiSet);
+  document.getElementById('live-array-display').textContent =
+    (liveIsMin ? 'Min' : 'Max') + '-Heap array: [' + liveHeap.join(', ') + ']';
+}
+
+function initLiveHeap() {
+  liveHeap = [];
+  [4, 7, 6, 9, 12, 11, 10].forEach(function(v) {
+    liveHeap.push(v);
+    siftUp(liveHeap, liveHeap.length - 1, true);
+  });
+  renderLiveHeap(null);
+}
+
+/* ================================================================
+   INTERSECTION OBSERVER
+================================================================ */
+function setupObserver() {
+  var obs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      var el = entry.target;
+      if (el.classList.contains('concept-card')) {
+        var idx = parseInt(el.getAttribute('data-idx') || '0', 10);
+        anime({
+          targets: el,
+          opacity: [0, 1],
+          translateY: [30, 0],
+          duration: 500,
+          delay: idx * 110,
+          easing: 'easeOutCubic'
+        });
+      } else if (el.classList.contains('card')) {
+        anime({
+          targets: el,
+          opacity: [0, 1],
+          translateY: [20, 0],
+          duration: 500,
+          easing: 'easeOutCubic'
+        });
+      } else if (el.classList.contains('problem-card')) {
+        var idx2 = parseInt(el.getAttribute('data-idx') || '0', 10);
+        anime({
+          targets: el,
+          opacity: [0, 1],
+          translateY: [20, 0],
+          duration: 440,
+          delay: idx2 * 55,
+          easing: 'easeOutCubic'
+        });
+      } else if (el.classList.contains('staff-card')) {
+        anime({
+          targets: el,
+          opacity: [0, 1],
+          translateY: [20, 0],
+          duration: 500,
+          easing: 'easeOutCubic'
+        });
+      }
+      obs.unobserve(el);
+    });
+  }, { threshold: 0.25 });
+
+  document.querySelectorAll('.concept-card').forEach(function(el, i) {
+    el.setAttribute('data-idx', String(i));
+    obs.observe(el);
+  });
+  document.querySelectorAll('.card').forEach(function(el) { obs.observe(el); });
+  document.querySelectorAll('.problem-card').forEach(function(el, i) {
+    el.setAttribute('data-idx', String(i));
+    obs.observe(el);
+  });
+  document.querySelectorAll('.staff-card').forEach(function(el) { obs.observe(el); });
+}
+
+/* ================================================================
+   INIT + RESIZE
+================================================================ */
+window.addEventListener('load', function() {
+  toggleHeapType('min');
+  initStepper();
+  initLiveHeap();
+  setupObserver();
+});
+
+window.addEventListener('resize', function() {
+  toggleHeapType(d3IsMin ? 'min' : 'max');
+  renderLiveHeap(null);
+  if (stepperPos >= 0 && stepperPos < stepperSteps.length) {
+    renderStepState(stepperPos);
+  }
+});
+</script>
+</body>
+</html>

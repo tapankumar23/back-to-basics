@@ -60,12 +60,14 @@ Sections:
 **Source:** Chapter 2
 
 Sections:
-1. **Relational Model** — tables, joins, normalization, impedance mismatch ORM translation animation
-2. **Document Model** — JSON tree, schema flexibility, locality advantage, one-to-many without joins
-3. **Relational vs Document** — interactive toggle: same resume data rendered in each model side-by-side
-4. **Graph Model** — property graph (nodes + edges with properties), triple-store (subject-predicate-object), Cypher vs SPARQL query animation
-5. **Query Languages** — SQL declarative vs MapReduce imperative: same aggregation shown both ways
-6. **Schema-on-read vs Schema-on-write** — animated comparison: schema enforcement at write time vs runtime parse
+1. **Historical Data Models & Many-to-Many** — IMS hierarchical model (tree animation: records as children, one-to-many only), CODASYL network model (graph of pointers, manual traversal), how many-to-many relationships broke both models; why the relational model won (query optimizer hides access path from application)
+2. **Relational Model** — tables, joins, normalization, impedance mismatch ORM translation animation
+3. **Document Model** — JSON tree, schema flexibility, locality advantage, one-to-many without joins
+4. **Relational vs Document** — interactive toggle: same resume data rendered in each model side-by-side
+5. **Graph Model** — property graph (nodes + edges with properties), triple-store (subject-predicate-object), Cypher vs SPARQL query animation
+6. **Query Languages** — SQL declarative vs MapReduce imperative: same aggregation shown both ways
+7. **Schema-on-read vs Schema-on-write** — animated comparison: schema enforcement at write time vs runtime parse
+8. **Datalog** — recursive rules, facts as triples, same graph query shown in Cypher vs SPARQL vs Datalog side-by-side; why it's the foundation that inspired Prolog and modern query engines
 
 ---
 
@@ -76,9 +78,16 @@ Sections:
 1. **Hash Index** — in-memory hashmap → append-only log, segment compaction + merging animation
 2. **LSM-Tree + SSTables** — writes to MemTable → flush to SSTable → multi-level compaction cascade, bloom filter check on reads
 3. **B-Trees** — node page reads/writes, node split on overflow, WAL (crash recovery animation)
-4. **OLTP vs OLAP** — query pattern contrast (point lookups vs full scans), star schema, data warehouse ETL pipeline
-5. **Column-Oriented Storage** — column compression (run-length encoding animation), vectorized CPU execution, sort orders
-6. **Encoding Formats** — JSON/Thrift/Protobuf/Avro side-by-side byte size comparison, schema evolution: forward/backward compatibility matrix toggle
+4. **B-Trees vs LSM-Trees** — head-to-head comparison: write amplification (B-tree: full page write; LSM: compaction rewrites data multiple times), space amplification (LSM fragmentation vs B-tree unused page space), read amplification (LSM checks multiple SSTables + bloom filter); interactive slider: workload skew (write-heavy → LSM wins, read-heavy → B-tree wins)
+5. **OLTP vs OLAP** — query pattern contrast (point lookups vs full scans), star schema, data warehouse ETL pipeline
+6. **Column-Oriented Storage** — column compression (run-length encoding animation), vectorized CPU execution, sort orders; writing to column stores via LSM-tree in-memory buffer
+7. **Data Cubes and Materialized Views** — pre-aggregated OLAP cubes (2D grid animation showing roll-up/drill-down), materialized view refresh vs query-time aggregation trade-off
+8. **Other Indexing Structures** — multi-column (concatenated) indexes, full-text fuzzy indexes (Levenshtein automaton), in-memory databases (VoltDB, Redis) — why durability doesn't require disk
+9. **Encoding Formats** — JSON/Thrift/Protobuf/Avro side-by-side byte size comparison, schema evolution: forward/backward compatibility matrix toggle
+10. **Modes of Dataflow** — three channels animated side-by-side:
+   - Dataflow through Databases: writer encodes, future reader decodes — schema evolution at rest
+   - Dataflow through Services: REST (resource-oriented, HTTP verbs) vs RPC (remote procedure illusion, network problems leaking through) — latency/failure comparison
+   - Message-Passing Dataflow: producer → broker → consumer decoupling animation, actor model, one-way async vs request-response
 
 ---
 
@@ -87,10 +96,12 @@ Sections:
 
 Sections:
 1. **Single-Leader Replication** — write → leader → replication log (statement-based / WAL / row-based) → followers animated flow
-2. **Replication Lag Anomalies** — three timelines: read-your-own-writes violation, monotonic reads violation, consistent prefix reads violation — each with a fix
-3. **Multi-Leader Replication** — multi-datacenter topology, conflict detection, resolution strategies: last-write-wins vs merge vs CRDT
-4. **Leaderless Replication (Dynamo)** — quorum writes (w) + reads (r), w+r>n guarantee animation, sloppy quorum + hinted handoff
-5. **Anti-Entropy & Read Repair** — version vectors, detecting stale replicas, Merkle tree sync
+2. **Synchronous vs Asynchronous Replication** — timeline showing sync guarantee (follower ACKs before leader responds) vs async (leader responds immediately, follower may lag); durability vs availability trade-off slider; node outage handling: follower catch-up vs leader failover steps (detecting failure → choosing new leader → reconfiguring clients)
+3. **Replication Lag Anomalies** — three timelines: read-your-own-writes violation, monotonic reads violation, consistent prefix reads violation — each with a fix
+4. **Multi-Leader Replication** — multi-datacenter topology, conflict detection, resolution strategies: last-write-wins vs merge vs CRDT
+5. **Multi-Leader Topologies** — circular topology (one broken node halts replication), star topology (central hub single point of failure), all-to-all topology (causality violation: a write reaching replica out of order because faster network path); version vectors to detect ordering issues
+6. **Leaderless Replication (Dynamo)** — quorum writes (w) + reads (r), w+r>n guarantee animation, sloppy quorum + hinted handoff
+7. **Anti-Entropy & Read Repair** — version vectors, detecting stale replicas, Merkle tree sync
 
 ---
 
@@ -100,9 +111,10 @@ Sections:
 Sections:
 1. **Key-Range Partitioning** — sorted key ranges, manual boundaries, hot spot problem (all writes to one partition)
 2. **Hash Partitioning** — consistent hash ring, virtual nodes, uniform distribution animation
-3. **Secondary Indexes: Local vs Global** — local: scatter/gather query fan-out animation; global: distributed index update on write
-4. **Rebalancing Strategies** — fixed partitions (move whole partition), dynamic splitting (when partition grows too large), proportional (Cassandra-style)
-5. **Request Routing** — three approaches: client-aware routing, routing tier, ZooKeeper/gossip metadata service
+3. **Skewed Workloads & Hot Spots** — celebrity problem animation (one key gets millions of writes); mitigation: add random bytes to hot key → writes spread across N partitions → reads must query all N and merge; trade-off: application complexity vs partition balance; skew detection heuristic
+4. **Secondary Indexes: Local vs Global** — local: scatter/gather query fan-out animation; global: distributed index update on write
+5. **Rebalancing Strategies** — fixed partitions (move whole partition), dynamic splitting (when partition grows too large), proportional (Cassandra-style)
+6. **Request Routing** — three approaches: client-aware routing, routing tier, ZooKeeper/gossip metadata service
 
 ---
 
@@ -111,11 +123,13 @@ Sections:
 
 Sections:
 1. **ACID** — each letter as a card: Atomicity (all-or-nothing animation), Consistency (invariants), Isolation (concurrent tx lanes), Durability (crash + recovery animation)
-2. **Weak Isolation: Read Committed** — dirty reads blocked, dirty writes blocked — animated tx timeline
-3. **Snapshot Isolation / MVCC** — version chain per row, each transaction reads its consistent snapshot, read skew prevention
-4. **Isolation Levels Ladder** — interactive: read uncommitted → read committed → repeatable read → serializable — anomalies that each level prevents
-5. **Write Skew & Phantoms** — doctor on-call race condition step-by-step animation, phantom reads, materializing conflicts
-6. **Serializability** — actual serial execution vs 2PL (shared/exclusive locks, deadlock animation) vs Serializable Snapshot Isolation (optimistic, detect conflict on commit, abort)
+2. **Single-Object vs Multi-Object Operations** — single-object atomicity (increment, JSON blob update); multi-object: why atomicity is needed (foreign key consistency, denormalized copies, secondary indexes); read-modify-write cycles; error handling and retry logic
+3. **Weak Isolation: Read Committed** — dirty reads blocked, dirty writes blocked — animated tx timeline
+4. **Snapshot Isolation / MVCC** — version chain per row, each transaction reads its consistent snapshot, read skew prevention
+5. **Isolation Levels Ladder** — interactive: read uncommitted → read committed → repeatable read → serializable — anomalies that each level prevents
+6. **Preventing Lost Updates** — four strategies animated: atomic write operations (compare-and-set), explicit locking (`SELECT FOR UPDATE`), automatic detection (database aborts loser), application-level conflict resolution (for multi-leader); lost update race condition step-by-step
+7. **Write Skew & Phantoms** — doctor on-call race condition step-by-step animation, phantom reads, materializing conflicts
+8. **Serializability** — actual serial execution vs 2PL (shared/exclusive locks, deadlock animation) vs Serializable Snapshot Isolation (optimistic, detect conflict on commit, abort)
 
 ---
 
@@ -123,13 +137,16 @@ Sections:
 **Source:** Chapters 8 + 9
 
 Sections:
-1. **Partial Failures** — node crash vs network partition vs Byzantine faults — unreliable networks animation, packet loss/reorder/delay
-2. **Unreliable Clocks** — wall clock drift animation, NTP sync, monotonic clocks, why you can't trust timestamps for ordering
-3. **Logical Clocks** — Lamport timestamps step-by-step animation, happens-before relation, vector clocks
-4. **Process Pauses** — GC stop-the-world causing lease expiry, response time uncertainty, fencing tokens
-5. **Linearizability vs Serializability** — timeline diagram showing the subtle distinction; CAP theorem precise formulation (network partition always happens)
-6. **Consensus** — 2PC coordinator failure (blocking problem animation), Raft: leader election + log replication step-by-step, epoch/term numbering
-7. **Total Order Broadcast & Distributed Transactions** — XA transactions, how consensus relates to total order broadcast, ZooKeeper use cases
+1. **Partial Failures** — node crash vs network partition — unreliable networks animation, packet loss/reorder/delay; cloud vs HPC failure model contrast
+2. **Byzantine Faults & System Models** — Byzantine node sending contradictory messages animation; three system models: crash-stop, crash-recovery, Byzantine; safety vs liveness properties; why Byzantine tolerance is impractical in most data systems (but matters for blockchains/aerospace)
+3. **Unreliable Clocks** — wall clock drift animation, NTP sync, monotonic clocks, why you can't trust timestamps for ordering; confidence intervals on clock readings
+4. **Logical Clocks** — Lamport timestamps step-by-step animation, happens-before relation, vector clocks
+5. **Process Pauses** — GC stop-the-world causing lease expiry, response time uncertainty, fencing tokens
+6. **Ordering and Causality** — causal consistency as a middle ground between eventual and linearizable; causal dependencies tracked via version vectors; sequence number ordering (Lamport clocks vs true causality); why causal ordering is weaker but sufficient for many use cases
+7. **Implementing Linearizable Systems** — which architectures can be linearizable: single-leader yes (reads from leader or sync follower only), consensus algorithms yes, multi-leader no (conflicting writes by design), leaderless usually no (quorum reads don't guarantee linearizability without extra protocol); animated per-architecture verdict grid
+8. **Linearizability vs Serializability** — timeline diagram showing the subtle distinction; CAP theorem precise formulation (network partition always happens); cost of linearizability (CAP trade-off for multi-datacenter)
+9. **Consensus** — formal properties (termination, agreement, validity, integrity); 2PC coordinator failure (blocking problem animation); Raft: leader election + log replication step-by-step, epoch/term numbering; FLP impossibility result (why no deterministic async consensus)
+10. **Total Order Broadcast & Distributed Transactions** — XA transactions, how consensus relates to total order broadcast, ZooKeeper/etcd use cases (service discovery, leader election, membership)
 
 ---
 
@@ -137,13 +154,21 @@ Sections:
 **Source:** Chapters 10 + 11 + 12
 
 Sections:
-1. **Unix Philosophy → MapReduce** — pipe chaining animation, fault tolerance via materializing intermediate state, immutable inputs
+1. **Unix Philosophy → MapReduce** — pipe chaining animation, fault tolerance via materializing intermediate state, immutable inputs; comparing Hadoop to MPP distributed databases
 2. **MapReduce Internals** — map phase → shuffle (partition by key) → sort → reduce — animated data flow with multiple workers
-3. **Dataflow Engines** — Spark/Flink: pipelining without materializing intermediate state, operator graph animation
-4. **Stream Processing** — event log as source of truth, stream-table joins (enrichment animation), windowed aggregations (tumbling/sliding/session windows)
-5. **Lambda vs Kappa Architecture** — toggle between: Lambda (batch + speed + serving layers) vs Kappa (single streaming path)
-6. **Exactly-Once Semantics** — idempotence animation, distributed transactions in streams, atomic commit across stream + side effects
-7. **The Future: Unbundling Databases** — dataflow as application architecture, derived data systems, end-to-end argument animation
+3. **MapReduce Join Strategies** — reduce-side join: both datasets shuffled by key, join at reducer (sort-merge animation); map-side broadcast hash join: small dataset broadcast to all mappers (no shuffle); partitioned map-side join: pre-partitioned datasets avoid shuffle entirely; when to use each
+4. **Graph & Iterative Processing** — Pregel BSP model: superstep animation (each vertex sends messages to neighbors, waits for barrier, processes received messages); PageRank convergence animation; why iterative algorithms don't fit standard MapReduce (repeated job launches vs in-memory vertex state)
+5. **Output of Batch Workflows** — what batch jobs actually produce: search indexes (Lucene segment files built offline then swapped in), key-value stores for serving (read-only files copied to application servers), pre-computed ML features; immutable output files + atomic swap pattern; why batch output is easier to reason about than in-place mutation
+6. **Dataflow Engines** — Spark/Flink: pipelining without materializing intermediate state, operator graph animation
+7. **Partitioned Logs (Kafka)** — log as durable, replayable buffer; consumer offset as the key insight (consumers can rewind); log compaction vs deletion; partitioned log vs traditional message broker (no delete-on-consume, any consumer can replay independently)
+9. **Keeping Systems in Sync** — dual-write problem animation (DB write succeeds, search index write fails → permanent divergence); why periodic full re-sync is expensive; CDC as the correct solution; systems of record vs derived data distinction; the log as single source of truth
+10. **Change Data Capture (CDC)** — database log as event stream; Debezium-style log consumer animation; derived data systems (search index, cache, data warehouse) staying in sync via CDC; schema evolution challenges; CDC vs dual-write anti-pattern
+11. **Event Sourcing** — immutable event log as primary record (not current state); deriving current state by replaying events; event sourcing vs CDC distinction (application-level intent vs DB-level changes); snapshotting for performance; CQRS connection
+12. **Stream Processing** — event log as source of truth; stream-table join (enrichment animation); stream-stream join (windowed); table-table join (materialized view maintenance); windowed aggregations (tumbling/sliding/session windows)
+13. **Lambda vs Kappa Architecture** — toggle between: Lambda (batch + speed + serving layers) vs Kappa (single streaming path)
+14. **Exactly-Once Semantics** — idempotence animation, distributed transactions in streams, atomic commit across stream + side effects
+15. **The Future: Unbundling Databases** — dataflow as application architecture, derived data systems, end-to-end argument (enforce constraints at application level, not just DB); enforcing uniqueness in a log-based system; timeliness vs integrity trade-off
+16. **Doing the Right Thing** — predictive analytics (feedback loops, self-fulfilling prophecies animation); privacy and surveillance (data as a liability); right to be forgotten vs immutable event log tension; responsible data engineering principles
 
 ---
 

@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Storage, Retrieval &amp; Encoding — DDIA Ch. 3+4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #fb923c;
+      --accent-dim: rgba(251,146,60,0.15);
+      --red: #f87171;
+      --green: #4ade80;
+      --amber: #fbbf24;
+      --blue: #60a5fa;
+      --violet: #a78bfa;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+
+    #progress-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.93);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      text-decoration: none;
+      margin-right: 1.2rem;
+    }
+    #navbar a { color: var(--text-muted); text-decoration: none; font-size: 12px; }
+    #navbar a:hover { color: var(--accent); }
+    #navbar .chapter-pager {
+      display: flex; align-items: stretch; gap: 6px;
+      margin-right: 12px; padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    .chapter-nav-chip {
+      min-height: 34px; padding: 5px 10px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      display: flex; flex-direction: column; justify-content: center; gap: 1px;
+      color: var(--text); text-decoration: none;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .chapter-nav-chip:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-chip.current { background: rgba(255,255,255,0.07); text-align: center; align-items: center; }
+    .nav-kicker { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; }
+    .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+    #navbar .nav-sections { display: flex; align-items: center; gap: 2px; flex: 1; }
+    #navbar .nav-sections a { padding: 0 8px; height: 48px; display: flex; align-items: center; }
+    #navbar .nav-links { display: flex; align-items: center; gap: 2px; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 8px; }
+    #navbar .nav-links a { padding: 0 8px; height: 48px; display: flex; align-items: center; white-space: nowrap; }
+
+    main { padding: 80px 1.5rem 4rem; max-width: 1100px; margin: 0 auto; }
+
+    .hero { text-align: center; padding: 4rem 0 3rem; }
+    .hero-badge {
+      display: inline-block; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--accent); background: var(--accent-dim);
+      border: 1px solid var(--accent); border-radius: 20px;
+      padding: 3px 12px; margin-bottom: 1rem; letter-spacing: 0.06em;
+    }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 1rem; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+    section { margin-bottom: 5rem; }
+    .section-header { margin-bottom: 2rem; }
+    .section-kicker { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .section-title { font-size: 1.8rem; font-weight: 700; }
+    .section-desc { color: var(--text-muted); margin-top: 0.5rem; max-width: 700px; }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--accent); }
+    .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--accent); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    svg text { font-family: 'JetBrains Mono', monospace; }
+
+    .btn {
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid var(--accent); border-radius: 8px;
+      padding: 7px 16px; font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: background 0.15s, transform 0.1s;
+    }
+    .btn:hover { background: var(--accent); color: #0d1117; }
+    .btn:active { transform: scale(0.97); }
+
+    .toggle-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; }
+
+    .metric-bar-wrap { margin-bottom: 1rem; }
+    .metric-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .metric-track { height: 10px; background: rgba(255,255,255,0.06); border-radius: 5px; overflow: visible; position: relative; }
+    .metric-fill { height: 10px; border-radius: 5px; transform: scaleX(0); transform-origin: left center; }
+
+    .kw { color: #ff7b72; }
+    .fn { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm { color: #8b949e; }
+    .num { color: #79c0ff; }
+    .tp { color: #ffa657; }
+
+    .compat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 1rem; }
+    .compat-cell { background: rgba(255,255,255,0.04); border-radius: 4px; padding: 6px; text-align: center; font-size: 11px; font-family: 'JetBrains Mono', monospace; transition: background 0.3s; }
+    .compat-cell.header { background: rgba(251,146,60,0.15); color: var(--accent); font-size: 10px; }
+    .compat-cell.ok { background: rgba(74,222,128,0.2); color: #4ade80; }
+    .compat-cell.fail { background: rgba(248,113,113,0.2); color: #f87171; }
+    .compat-cell.highlight { background: rgba(251,146,60,0.3); }
+
+    .expandable { cursor: pointer; }
+    .expandable .expand-body { display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+    .expandable.open .expand-body { display: block; }
+    .expand-caret { float: right; transition: transform 0.2s; display: inline-block; }
+    .expandable.open .expand-caret { transform: rotate(90deg); }
+
+    .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    footer { text-align: center; padding: 3rem 1rem; color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border); }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--accent); cursor: pointer;
+    }
+    .slider-label { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; margin-bottom: 4px; }
+
+    .badge { display: inline-block; font-size: 10px; font-family: 'JetBrains Mono', monospace; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+    .badge-orange { background: rgba(251,146,60,0.2); color: #fb923c; }
+    .badge-blue { background: rgba(96,165,250,0.2); color: #60a5fa; }
+
+    .info-box { background: var(--accent-dim); border: 1px solid rgba(251,146,60,0.3); border-radius: 8px; padding: 0.75rem 1rem; font-size: 13px; color: var(--text-muted); margin-top: 0.75rem; }
+    .info-box strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <a href="00_index.html" class="nav-brand">DDIA</a>
+  <div class="chapter-pager">
+    <a href="02_data_models.html" class="chapter-nav-chip">
+      <span class="nav-kicker">prev</span>
+      <span class="nav-title">Data Models</span>
+    </a>
+    <span class="chapter-nav-chip current">
+      <span class="nav-kicker">ch 3</span>
+      <span class="nav-title">Storage &amp; Encoding</span>
+    </span>
+    <a href="04_replication.html" class="chapter-nav-chip">
+      <span class="nav-kicker">next</span>
+      <span class="nav-title">Replication</span>
+    </a>
+  </div>
+  <div class="nav-sections">
+    <a href="#s1">Hash Index</a>
+    <a href="#s2">LSM-Tree</a>
+    <a href="#s3">B-Trees</a>
+    <a href="#s4">B-Tree vs LSM</a>
+    <a href="#s5">OLTP vs OLAP</a>
+    <a href="#s6">Columnar</a>
+    <a href="#s7">Data Cubes</a>
+    <a href="#s8">Other Indexes</a>
+    <a href="#s9">Encoding</a>
+    <a href="#s10">Dataflow</a>
+  </div>
+  <div class="nav-links">
+    <a href="../system-design-concepts/00_index.html">System Design</a>
+    <a href="../coding-concepts/00_index.html">Coding Concepts</a>
+  </div>
+</nav>
+
+<main>
+  <div class="hero">
+    <div class="hero-badge">DDIA · Chapters 3 + 4</div>
+    <h1>Storage, Retrieval<br><span>&amp; Encoding</span></h1>
+    <p>How databases store data efficiently, choose indexes, handle analytics, and serialize records across time and services.</p>
+  </div>
+
+  <!-- S1: Hash Index -->
+  <section id="s1">
+    <div class="section-header reveal">
+      <div class="section-kicker">01 — Hash Index</div>
+      <div class="section-title">Append-Only Log + In-Memory Hashmap</div>
+      <div class="section-desc">Bitcask-style storage: every write appends to a segment file. A hash map in memory maps each key to its latest byte offset.</div>
+    </div>
+    <div class="grid-2 reveal">
+      <div class="card">
+        <div class="card-title">Segment Log</div>
+        <svg id="log-svg" width="100%" height="220" viewBox="0 0 340 220"></svg>
+        <div class="toggle-row">
+          <button class="btn" id="btn-write">Write Key</button>
+          <button class="btn" id="btn-compact">Compact Segments</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">In-Memory Hashmap (key to offset)</div>
+        <svg id="hash-svg" width="100%" height="220" viewBox="0 0 340 220"></svg>
+        <div class="info-box" style="margin-top:0.75rem">
+          <strong>Compaction:</strong> duplicate keys removed; segments merged into one compacted file. Reads still served from old segments until merge completes.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S2: LSM-Tree -->
+  <section id="s2">
+    <div class="section-header reveal">
+      <div class="section-kicker">02 — LSM-Tree + SSTables</div>
+      <div class="section-title">Log-Structured Merge Tree</div>
+      <div class="section-desc">Writes go to an in-memory MemTable. When it fills, it is flushed to an immutable SSTable on disk. Background compaction merges SSTables level by level.</div>
+    </div>
+    <div class="grid-2 reveal">
+      <div class="card">
+        <div class="card-title">Write Path</div>
+        <svg id="lsm-write-svg" width="100%" height="260" viewBox="0 0 340 260"></svg>
+        <div class="toggle-row">
+          <button class="btn" id="btn-lsm-flush">Flush MemTable</button>
+          <button class="btn" id="btn-lsm-compact">Trigger Compaction</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Read Path (newest to oldest)</div>
+        <svg id="lsm-read-svg" width="100%" height="260" viewBox="0 0 340 260"></svg>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Cache / Bloom hit</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Disk lookup</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Found</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S3: B-Trees -->
+  <section id="s3">
+    <div class="section-header reveal">
+      <div class="section-kicker">03 — B-Trees</div>
+      <div class="section-title">Update-in-Place with WAL Safety</div>
+      <div class="section-desc">B-trees update leaf pages in place. A Write-Ahead Log (WAL) is written first for crash recovery. When a page overflows, it splits.</div>
+    </div>
+    <div class="grid-2 reveal">
+      <div class="card">
+        <div class="card-title">B-Tree Structure</div>
+        <svg id="btree-svg" width="100%" height="260" viewBox="0 0 340 260"></svg>
+        <div class="toggle-row">
+          <button class="btn" id="btn-btree-write">Write Key</button>
+          <button class="btn" id="btn-btree-split">Force Split</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">WAL + Crash Recovery</div>
+        <svg id="wal-svg" width="100%" height="260" viewBox="0 0 340 260"></svg>
+        <div class="info-box">
+          <strong>WAL:</strong> every write is first appended to the Write-Ahead Log. On crash, the WAL is replayed to restore the B-tree to a consistent state.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S4: B-Tree vs LSM -->
+  <section id="s4">
+    <div class="section-header reveal">
+      <div class="section-kicker">04 — B-Trees vs LSM-Trees</div>
+      <div class="section-title">Amplification Trade-offs</div>
+      <div class="section-desc">Neither structure dominates. The best choice depends on your workload: write-heavy favors LSM; read-heavy favors B-trees.</div>
+    </div>
+    <div class="card reveal" id="s4-card">
+      <div class="grid-2" style="gap:2rem">
+        <div>
+          <div style="font-weight:600;margin-bottom:1rem">B-Tree <span class="badge badge-blue">blue</span></div>
+          <div class="metric-bar-wrap">
+            <div class="metric-label"><span>Write Amplification</span><span id="btree-wa-val">high</span></div>
+            <div class="metric-track"><div class="metric-fill" id="btree-wa" style="background:#60a5fa;width:100%"></div></div>
+          </div>
+          <div class="metric-bar-wrap">
+            <div class="metric-label"><span>Read Amplification</span><span id="btree-ra-val">low</span></div>
+            <div class="metric-track"><div class="metric-fill" id="btree-ra" style="background:#60a5fa;width:100%"></div></div>
+          </div>
+          <div class="metric-bar-wrap">
+            <div class="metric-label"><span>Space Amplification</span><span id="btree-sa-val">medium</span></div>
+            <div class="metric-track"><div class="metric-fill" id="btree-sa" style="background:#60a5fa;width:100%"></div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:600;margin-bottom:1rem">LSM-Tree <span class="badge badge-orange">orange</span></div>
+          <div class="metric-bar-wrap">
+            <div class="metric-label"><span>Write Amplification</span><span id="lsm-wa-val">low</span></div>
+            <div class="metric-track"><div class="metric-fill" id="lsm-wa" style="background:#fb923c;width:100%"></div></div>
+          </div>
+          <div class="metric-bar-wrap">
+            <div class="metric-label"><span>Read Amplification</span><span id="lsm-ra-val">high</span></div>
+            <div class="metric-track"><div class="metric-fill" id="lsm-ra" style="background:#fb923c;width:100%"></div></div>
+          </div>
+          <div class="metric-bar-wrap">
+            <div class="metric-label"><span>Space Amplification</span><span id="lsm-sa-val">high</span></div>
+            <div class="metric-track"><div class="metric-fill" id="lsm-sa" style="background:#fb923c;width:100%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem">
+        <div class="slider-label">
+          <span>Write-Heavy</span><span id="workload-label">50% read / 50% write</span><span>Read-Heavy</span>
+        </div>
+        <input type="range" id="workload-slider" min="0" max="100" value="50">
+      </div>
+    </div>
+  </section>
+
+  <!-- S5: OLTP vs OLAP -->
+  <section id="s5">
+    <div class="section-header reveal">
+      <div class="section-kicker">05 — OLTP vs OLAP</div>
+      <div class="section-title">Transactional vs Analytical Workloads</div>
+      <div class="section-desc">OLTP handles many small reads/writes for users. OLAP runs large aggregations over historical data for analysts.</div>
+    </div>
+    <div class="card reveal" id="s5-card">
+      <div class="toggle-row" style="margin-bottom:1.5rem">
+        <button class="btn" id="btn-oltp-toggle">Switch to OLAP</button>
+        <span id="oltp-mode-label" style="font-size:13px;color:var(--text-muted);align-self:center">Currently: OLTP mode</span>
+      </div>
+      <div class="grid-2">
+        <div>
+          <svg id="oltp-svg" width="100%" height="220" viewBox="0 0 320 220"></svg>
+        </div>
+        <div>
+          <svg id="olap-svg" width="100%" height="220" viewBox="0 0 320 220"></svg>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem">
+        <svg id="etl-svg" width="100%" height="70" viewBox="0 0 680 70"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- S6: Columnar -->
+  <section id="s6">
+    <div class="section-header reveal">
+      <div class="section-kicker">06 — Column-Oriented Storage</div>
+      <div class="section-title">Store Columns, Not Rows</div>
+      <div class="section-desc">Column stores read only the columns needed for a query, enabling much better I/O efficiency for analytics. Run-length encoding compresses repeated values dramatically.</div>
+    </div>
+    <div class="grid-2 reveal">
+      <div class="card">
+        <div class="card-title">Row vs Column Store</div>
+        <div class="toggle-row" style="margin-bottom:1rem">
+          <button class="btn" id="btn-col-toggle">Column Store</button>
+        </div>
+        <svg id="col-svg" width="100%" height="200" viewBox="0 0 320 200"></svg>
+      </div>
+      <div class="card">
+        <div class="card-title">Run-Length Encoding</div>
+        <svg id="rle-svg" width="100%" height="200" viewBox="0 0 320 200"></svg>
+        <div class="info-box" style="margin-top:0.75rem">
+          <strong>Compression ratio:</strong> <span id="rle-ratio">6:3 = 2x</span>. Sorted columns compress even better. Allows vectorized CPU operations on compressed data.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S7: Data Cubes -->
+  <section id="s7">
+    <div class="section-header reveal">
+      <div class="section-kicker">07 — Data Cubes &amp; Materialized Views</div>
+      <div class="section-title">Pre-Aggregated Analytics</div>
+      <div class="section-desc">An OLAP cube pre-computes aggregates along multiple dimensions. Materialized views cache query results and must be refreshed when underlying data changes.</div>
+    </div>
+    <div class="card reveal" id="s7-card">
+      <div class="grid-2">
+        <div>
+          <div class="card-title">2D OLAP Cube (product x date)</div>
+          <svg id="cube-svg" width="100%" height="220" viewBox="0 0 300 220"></svg>
+          <div class="toggle-row">
+            <button class="btn" id="btn-rollup">Roll Up</button>
+            <button class="btn" id="btn-refresh-view">Refresh View</button>
+          </div>
+        </div>
+        <div>
+          <div class="card-title">Drill-Down Detail</div>
+          <svg id="drill-svg" width="100%" height="220" viewBox="0 0 300 220"></svg>
+          <div class="info-box" style="margin-top:0.75rem">
+            <strong>Roll-up:</strong> aggregate from day to week to month.<br>
+            <strong>Drill-down:</strong> expand a cell into sub-dimensions.<br>
+            <strong>Materialized views</strong> trade freshness for query speed.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S8: Other Indexes -->
+  <section id="s8">
+    <div class="section-header reveal">
+      <div class="section-kicker">08 — Other Indexing Structures</div>
+      <div class="section-title">Multi-Column, Full-Text, and In-Memory</div>
+      <div class="section-desc">Compound indexes, Levenshtein automata for fuzzy search, and in-memory databases each optimize for specific access patterns.</div>
+    </div>
+    <div class="grid-3 reveal">
+      <div class="card">
+        <div class="card-title">Multi-Column Index</div>
+        <svg id="multi-idx-svg" width="100%" height="200" viewBox="0 0 280 200"></svg>
+        <div style="margin-top:0.75rem;font-size:12px;color:var(--text-muted)">
+          Compound key (last_name, first_name) — efficient for prefix range scans; not for first_name alone.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fuzzy / Full-Text Index</div>
+        <svg id="fuzzy-svg" width="100%" height="200" viewBox="0 0 280 200"></svg>
+        <div class="toggle-row">
+          <button class="btn" id="btn-fuzzy-search">Search "acme"</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">In-Memory Speed</div>
+        <div style="margin-bottom:0.75rem;font-size:12px;color:var(--text-muted)">
+          No disk I/O. Durability via replication or periodic snapshots. Redis, Memcached, VoltDB.
+        </div>
+        <div class="metric-bar-wrap">
+          <div class="metric-label"><span>In-Memory</span><span style="color:#4ade80">~100ns</span></div>
+          <div class="metric-track"><div class="metric-fill" id="mem-bar" style="background:#4ade80;width:100%"></div></div>
+        </div>
+        <div class="metric-bar-wrap">
+          <div class="metric-label"><span>Disk-Based</span><span style="color:#f87171">~10ms</span></div>
+          <div class="metric-track"><div class="metric-fill" id="disk-bar" style="background:#f87171;width:100%"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S9: Encoding -->
+  <section id="s9">
+    <div class="section-header reveal">
+      <div class="section-kicker">09 — Encoding Formats</div>
+      <div class="section-title">JSON, Thrift, Protobuf, Avro</div>
+      <div class="section-desc">Binary formats shrink payload size and enable schema evolution. The choice affects forward/backward compatibility between service versions.</div>
+    </div>
+    <div class="card reveal" id="s9-card">
+      <div class="grid-2" style="gap:2rem">
+        <div>
+          <div class="card-title">Byte-Size Comparison</div>
+          <div id="codec-bars"></div>
+        </div>
+        <div>
+          <div class="card-title">Schema Evolution Compatibility</div>
+          <div class="toggle-row" style="margin-bottom:0.75rem">
+            <button class="btn" id="btn-fwd-compat">Forward Compat</button>
+            <button class="btn" id="btn-bwd-compat">Backward Compat</button>
+          </div>
+          <div class="compat-grid" id="compat-grid"></div>
+          <div class="info-box" style="margin-top:0.75rem">
+            <strong>Forward:</strong> old reader handles new writer data.<br>
+            <strong>Backward:</strong> new reader handles old writer data.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S10: Dataflow -->
+  <section id="s10">
+    <div class="section-header reveal">
+      <div class="section-kicker">10 — Modes of Dataflow</div>
+      <div class="section-title">Databases, Services, Message Passing</div>
+      <div class="section-desc">Encoded data flows between processes in three major modes. Each has different compatibility requirements, failure modes, and deployment patterns.</div>
+    </div>
+    <div id="dataflow-cards" class="reveal" style="display:flex;flex-direction:column;gap:1rem">
+
+      <div class="card expandable" id="df-db">
+        <div class="card-title" onclick="toggleExpand('df-db')">
+          Dataflow Through Databases <span class="expand-caret">&#9658;</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:13px">Writer encodes, bytes rest at rest, future reader decodes. Different versions of code may coexist.</div>
+        <div class="expand-body">
+          <svg id="df-db-svg" width="100%" height="100" viewBox="0 0 600 100"></svg>
+          <div class="info-box" style="margin-top:0.75rem">
+            <strong>Key insight:</strong> when you deploy a new version of your app, it may read records written by the old version and vice-versa. Use schema evolution carefully — add optional fields, never remove required fields.
+          </div>
+        </div>
+      </div>
+
+      <div class="card expandable" id="df-svc">
+        <div class="card-title" onclick="toggleExpand('df-svc')">
+          Dataflow Through Services (REST vs RPC) <span class="expand-caret">&#9658;</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:13px">REST uses HTTP verbs on resources. RPC looks like local calls but hides network failures.</div>
+        <div class="expand-body">
+          <svg id="df-svc-svg" width="100%" height="120" viewBox="0 0 600 120"></svg>
+          <div class="info-box" style="margin-top:0.75rem">
+            <strong>RPC leaky abstraction:</strong> local calls cannot timeout, cannot fail partway, and cannot have ambiguous results. Network calls can. gRPC, Thrift, Avro RPC all try to hide this — be careful.
+          </div>
+        </div>
+      </div>
+
+      <div class="card expandable" id="df-msg">
+        <div class="card-title" onclick="toggleExpand('df-msg')">
+          Message-Passing Dataflow <span class="expand-caret">&#9658;</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:13px">Producer to broker to consumer. Decouples sender and receiver in time and space.</div>
+        <div class="expand-body">
+          <svg id="df-msg-svg" width="100%" height="120" viewBox="0 0 600 120"></svg>
+          <div class="info-box" style="margin-top:0.75rem">
+            <strong>Advantages:</strong> buffer if receiver is slow, redeliver on crash, fan-out to multiple consumers, decouple sender from receiver. Actor model uses single-threaded mailboxes for concurrency without locks.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer>Designing Data-Intensive Applications — Martin Kleppmann</footer>
+
+<script>
+// ─── Progress bar ────────────────────────────────────────────────────────────
+const progressBar = document.getElementById('progress-bar');
+window.addEventListener('scroll', function() {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  progressBar.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+});
+
+// ─── Reveal on scroll ────────────────────────────────────────────────────────
+const revealObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) {
+    if (e.isIntersecting) { e.target.classList.add('visible'); revealObserver.unobserve(e.target); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(function(el) { revealObserver.observe(el); });
+
+// ─── Section-animation observers ─────────────────────────────────────────────
+function observeOnce(el, fn) {
+  if (!el) return;
+  const obs = new IntersectionObserver(function(entries) {
+    if (entries[0].isIntersecting) { fn(); obs.unobserve(el); }
+  }, { threshold: 0.25 });
+  obs.observe(el);
+}
+
+// ─── SVG helpers ────────────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  Object.keys(attrs).forEach(function(k) { el.setAttribute(k, String(attrs[k])); });
+  return el;
+}
+function svgText(x, y, fill, size, content, anchor) {
+  const t = svgEl('text', { x: x, y: y, fill: fill, 'font-size': size });
+  if (anchor) t.setAttribute('text-anchor', anchor);
+  t.textContent = content;
+  return t;
+}
+function svgRect(x, y, w, h, fill, stroke, rx) {
+  const attrs = { x: x, y: y, width: w, height: h, fill: fill, stroke: stroke };
+  if (rx) attrs.rx = rx;
+  return svgEl('rect', attrs);
+}
+function svgLine(x1, y1, x2, y2, stroke, sw, dash) {
+  const attrs = { x1: x1, y1: y1, x2: x2, y2: y2, stroke: stroke, 'stroke-width': sw || 1.5 };
+  if (dash) attrs['stroke-dasharray'] = dash;
+  return svgEl('line', attrs);
+}
+function clearSvg(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+
+// ═══════════════════════════════════════════════════════════════════
+// S1 — Hash Index
+// ═══════════════════════════════════════════════════════════════════
+(function initS1() {
+  const logSvg = document.getElementById('log-svg');
+  const hashSvg = document.getElementById('hash-svg');
+  const ENTRY_H = 28;
+
+  const entries = [
+    {key:'name', val:'Alice', offset:0},
+    {key:'age',  val:'30',   offset:28},
+    {key:'city', val:'NYC',  offset:56},
+    {key:'name', val:'Bob',  offset:84},
+    {key:'age',  val:'25',   offset:112},
+  ];
+
+  let current = entries.slice();
+  let writeCounter = 0;
+  const sampleWrites = [
+    {key:'city', val:'LA'}, {key:'name', val:'Carol'},
+    {key:'score', val:'99'}, {key:'lang', val:'Java'},
+  ];
+
+  // Arrow marker definition
+  function addArrowMarker(svg) {
+    const defs = svgEl('defs', {});
+    const marker = svgEl('marker', { id: 'arrow-' + svg.id, markerWidth: 6, markerHeight: 6, refX: 5, refY: 3, orient: 'auto' });
+    const path = svgEl('path', { d: 'M0,0 L0,6 L6,3 z', fill: '#fb923c' });
+    marker.appendChild(path);
+    defs.appendChild(marker);
+    svg.insertBefore(defs, svg.firstChild);
+  }
+
+  function renderLog() {
+    clearSvg(logSvg);
+    const maxVisible = Math.floor((220 - 20) / ENTRY_H);
+    const visible = current.slice(-maxVisible);
+    const startY = 220 - visible.length * ENTRY_H - 10;
+
+    const ruler = svgText(248, 14, '#8b949e', 9, 'OFFSET');
+    logSvg.appendChild(ruler);
+
+    visible.forEach(function(e, i) {
+      const y = startY + i * ENTRY_H;
+      const g = svgEl('g', { opacity: 0 });
+      g.appendChild(svgRect(10, y, 230, ENTRY_H - 2, '#1c2330', '#30363d', 4));
+      g.appendChild(svgText(20, y + 18, '#e6edf3', 11, e.key + ' = ' + e.val));
+      g.appendChild(svgText(200, y + 18, '#8b949e', 10, '@' + e.offset, 'end'));
+      logSvg.appendChild(g);
+      anime({ targets: g, opacity: [0, 1], translateY: [-8, 0], duration: 300, delay: i * 40, easing: 'easeOutQuad' });
+    });
+  }
+
+  function renderHash() {
+    clearSvg(hashSvg);
+    addArrowMarker(hashSvg);
+    const latest = {};
+    current.forEach(function(e) { latest[e.key] = e.offset; });
+    const keys = Object.keys(latest);
+    const rowH = 30;
+    const startY = 20;
+
+    keys.forEach(function(k, i) {
+      const y = startY + i * rowH;
+      const g = svgEl('g', { opacity: 0 });
+      g.appendChild(svgRect(10, y, 80, 22, 'rgba(251,146,60,0.15)', 'rgba(251,146,60,0.4)', 4));
+      g.appendChild(svgText(50, y + 15, '#fb923c', 11, k, 'middle'));
+
+      const arr = svgEl('line', { x1: 92, y1: y + 11, x2: 178, y2: y + 11, stroke: '#fb923c', 'stroke-width': 1.5, 'marker-end': 'url(#arrow-hash-svg)' });
+      g.appendChild(arr);
+      g.appendChild(svgText(185, y + 15, '#60a5fa', 11, 'offset ' + latest[k]));
+      hashSvg.appendChild(g);
+      anime({ targets: g, opacity: [0, 1], translateX: [-10, 0], duration: 280, delay: i * 60, easing: 'easeOutQuad' });
+    });
+  }
+
+  function render() { renderLog(); renderHash(); }
+  observeOnce(document.getElementById('s1'), render);
+
+  document.getElementById('btn-write').addEventListener('click', function() {
+    const w = sampleWrites[writeCounter % sampleWrites.length];
+    writeCounter++;
+    current.push({ key: w.key, val: w.val, offset: current.length * 28 });
+    render();
+  });
+
+  document.getElementById('btn-compact').addEventListener('click', function() {
+    const latest = {};
+    current.forEach(function(e) { latest[e.key] = e; });
+    current = Object.values(latest).map(function(e, i) { return Object.assign({}, e, { offset: i * 28 }); });
+    render();
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S2 — LSM-Tree
+// ═══════════════════════════════════════════════════════════════════
+(function initS2() {
+  const writeSvg = document.getElementById('lsm-write-svg');
+  const readSvg = document.getElementById('lsm-read-svg');
+
+  function drawLSMWrite() {
+    clearSvg(writeSvg);
+    const memG = svgEl('g', {});
+    memG.appendChild(svgRect(10, 10, 150, 80, 'rgba(248,113,113,0.15)', '#f87171', 6));
+    memG.appendChild(svgText(85, 32, '#f87171', 11, 'MemTable', 'middle'));
+    ['age=25', 'city=NYC', 'name=Alice'].forEach(function(entry, i) {
+      memG.appendChild(svgText(85, 50 + i * 16, '#e6edf3', 10, entry, 'middle'));
+    });
+    writeSvg.appendChild(memG);
+
+    const labels = ['SSTable L0-1', 'SSTable L0-2', 'SSTable L1-1'];
+    const colors = ['#fb923c', '#fbbf24', '#60a5fa'];
+    labels.forEach(function(lbl, i) {
+      const y = 130 + i * 40;
+      const g = svgEl('g', { id: 'sst-' + i });
+      g.appendChild(svgRect(10, y, 230, 30, 'rgba(22,27,34,0.8)', colors[i], 4));
+      g.appendChild(svgText(125, y + 19, colors[i], 11, lbl, 'middle'));
+      writeSvg.appendChild(g);
+    });
+
+    const arr = svgEl('line', { x1: 85, y1: 92, x2: 85, y2: 128, stroke: '#fb923c', 'stroke-width': 1.5, 'stroke-dasharray': '4,3', id: 'mem-arrow', opacity: 0 });
+    writeSvg.appendChild(arr);
+  }
+
+  function drawLSMRead() {
+    clearSvg(readSvg);
+    const layers = [
+      {label:'MemTable',      color:'#f87171', y:10},
+      {label:'Bloom Filter',  color:'#fb923c', y:60},
+      {label:'L0 SSTable',    color:'#fbbf24', y:110},
+      {label:'L1 SSTable',    color:'#60a5fa', y:160},
+      {label:'L2 SSTable',    color:'#a78bfa', y:210},
+    ];
+    layers.forEach(function(l, i) {
+      const g = svgEl('g', { id: 'read-layer-' + i });
+      g.appendChild(svgRect(10, l.y, 220, 36, 'rgba(22,27,34,0.8)', l.color, 4));
+      g.appendChild(svgText(120, l.y + 22, l.color, 11, l.label, 'middle'));
+      readSvg.appendChild(g);
+    });
+  }
+
+  observeOnce(document.getElementById('s2'), function() {
+    drawLSMWrite();
+    drawLSMRead();
+    anime({ targets: '#lsm-write-svg g', opacity: [0,1], translateY: [10,0], delay: anime.stagger(80), duration: 400, easing: 'easeOutQuad' });
+    anime({ targets: '#lsm-read-svg g', opacity: [0,1], translateX: [-10,0], delay: anime.stagger(80), duration: 400, easing: 'easeOutQuad' });
+  });
+
+  document.getElementById('btn-lsm-flush').addEventListener('click', function() {
+    const arrow = document.getElementById('mem-arrow');
+    if (arrow) {
+      anime({ targets: arrow, opacity: [0, 1], duration: 200, easing: 'easeOutQuad' });
+      anime({ targets: '#sst-0', opacity: [0.4, 1], duration: 400, delay: 200, easing: 'easeOutQuad' });
+    }
+  });
+
+  document.getElementById('btn-lsm-compact').addEventListener('click', function() {
+    anime({
+      targets: '#sst-0, #sst-1',
+      translateX: [0, 10], opacity: [1, 0.3],
+      duration: 400, easing: 'easeInOutQuad',
+      complete: function() {
+        anime({ targets: '#sst-2', opacity: [0.5, 1], duration: 300, easing: 'easeOutQuad' });
+        anime({ targets: '#sst-0, #sst-1', translateX: 0, opacity: 1, duration: 300, delay: 600 });
+      }
+    });
+    for (var i = 0; i < 5; i++) {
+      anime({ targets: '#read-layer-' + i, opacity: [0.4, 1], duration: 200, delay: i * 120, easing: 'easeOutQuad' });
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S3 — B-Trees
+// ═══════════════════════════════════════════════════════════════════
+(function initS3() {
+  const btreeSvg = document.getElementById('btree-svg');
+  const walSvg = document.getElementById('wal-svg');
+
+  function drawBTree() {
+    clearSvg(btreeSvg);
+    const rootG = svgEl('g', {});
+    rootG.appendChild(svgRect(105, 10, 130, 36, 'rgba(251,146,60,0.15)', '#fb923c', 4));
+    rootG.appendChild(svgText(170, 32, '#fb923c', 12, '[ 30 | 60 ]', 'middle'));
+    btreeSvg.appendChild(rootG);
+
+    [{x:20,y:90,keys:'[ 10 | 20 ]'},{x:120,y:90,keys:'[ 35 | 50 ]'},{x:220,y:90,keys:'[ 65 | 80 ]'}].forEach(function(n) {
+      const g = svgEl('g', {});
+      g.appendChild(svgRect(n.x, n.y, 90, 34, 'rgba(96,165,250,0.1)', '#60a5fa', 4));
+      g.appendChild(svgText(n.x + 45, n.y + 22, '#60a5fa', 10, n.keys, 'middle'));
+      btreeSvg.appendChild(g);
+    });
+
+    [0,1,2,3,4].forEach(function(i) {
+      const x = 10 + i * 62;
+      const g = svgEl('g', { id: 'leaf-' + i });
+      g.appendChild(svgRect(x, 170, 58, 30, 'rgba(22,27,34,0.8)', '#30363d', 3));
+      g.appendChild(svgText(x + 29, 189, '#8b949e', 9, 'Leaf ' + (i + 1), 'middle'));
+      btreeSvg.appendChild(g);
+    });
+
+    [[170,46,65,90],[170,46,165,90],[170,46,265,90]].forEach(function(pts) {
+      btreeSvg.appendChild(svgLine(pts[0], pts[1], pts[2], pts[3], '#30363d', 1));
+    });
+  }
+
+  function drawWAL() {
+    clearSvg(walSvg);
+    walSvg.appendChild(svgText(10, 18, '#8b949e', 11, 'Write-Ahead Log (WAL)'));
+    const entries = ['WRITE key=45 val=X', 'WRITE key=22 val=Y', 'WRITE key=67 val=Z'];
+    entries.forEach(function(entry, i) {
+      const g = svgEl('g', { id: 'wal-entry-' + i, opacity: i === 0 ? 1 : 0.3 });
+      g.appendChild(svgRect(10, 28 + i * 38, 300, 30, 'rgba(251,146,60,0.08)', '#30363d', 4));
+      const t = svgEl('text', { x: 20, y: 48 + i * 38, fill: i === 0 ? '#fb923c' : '#8b949e', 'font-size': 11, 'font-family': 'JetBrains Mono, monospace' });
+      t.textContent = entry;
+      g.appendChild(t);
+      walSvg.appendChild(g);
+    });
+    walSvg.appendChild(svgText(10, 180, '#8b949e', 10, 'Replayed on crash recovery'));
+  }
+
+  let splitDone = false;
+  document.getElementById('btn-btree-write').addEventListener('click', function() {
+    anime({ targets: '#wal-entry-0', opacity: [0.3, 1, 0.3], duration: 700, easing: 'easeInOutQuad' });
+    const leafIdx = Math.floor(Math.random() * 5);
+    anime({ targets: '#leaf-' + leafIdx + ' rect', opacity: [1, 0.3, 1], duration: 600, easing: 'easeInOutQuad' });
+  });
+
+  document.getElementById('btn-btree-split').addEventListener('click', function() {
+    if (!splitDone) {
+      splitDone = true;
+      anime({ targets: '#leaf-2', translateX: [0, -30], duration: 400, easing: 'easeOutBack' });
+      anime({ targets: '#leaf-3', translateX: [0, 30], duration: 400, easing: 'easeOutBack' });
+      anime({ targets: '#leaf-4', translateX: [0, 40], opacity: [0, 1], duration: 500, delay: 200 });
+    } else {
+      splitDone = false;
+      anime({ targets: '#leaf-2, #leaf-3, #leaf-4', translateX: 0, opacity: 1, duration: 400, easing: 'easeOutQuad' });
+    }
+  });
+
+  observeOnce(document.getElementById('s3'), function() {
+    drawBTree();
+    drawWAL();
+    anime({ targets: '#btree-svg g, #btree-svg line', opacity: [0,1], translateY: [10,0], delay: anime.stagger(60), duration: 400 });
+    anime({ targets: '#wal-svg g', opacity: [0,1], translateX: [-10,0], delay: anime.stagger(80), duration: 400 });
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S4 — B-Tree vs LSM Amplification
+// ═══════════════════════════════════════════════════════════════════
+(function initS4() {
+  function setBar(id, fraction) {
+    const el = document.getElementById(id);
+    if (el) el.style.transform = 'scaleX(' + fraction + ')';
+  }
+
+  function updateBars(workload) {
+    const w = workload / 100;
+    const btreeWA = 0.7 - w * 0.3;
+    const btreeRA = 0.2 + w * 0.15;
+    const btreeSA = 0.45;
+    const lsmWA = 0.25 + w * 0.1;
+    const lsmRA = 0.6 - w * 0.35;
+    const lsmSA = 0.65 - w * 0.2;
+
+    setBar('btree-wa', btreeWA);
+    setBar('btree-ra', btreeRA);
+    setBar('btree-sa', btreeSA);
+    setBar('lsm-wa', lsmWA);
+    setBar('lsm-ra', lsmRA);
+    setBar('lsm-sa', lsmSA);
+
+    document.getElementById('btree-wa-val').textContent = btreeWA > 0.5 ? 'high' : 'med';
+    document.getElementById('btree-ra-val').textContent = btreeRA < 0.3 ? 'low' : 'med';
+    document.getElementById('btree-sa-val').textContent = 'medium';
+    document.getElementById('lsm-wa-val').textContent = lsmWA < 0.4 ? 'low' : 'med';
+    document.getElementById('lsm-ra-val').textContent = lsmRA > 0.4 ? 'high' : 'med';
+    document.getElementById('lsm-sa-val').textContent = lsmSA > 0.5 ? 'high' : 'med';
+
+    const pct = Math.round(w * 100);
+    document.getElementById('workload-label').textContent = (100 - pct) + '% write / ' + pct + '% read';
+  }
+
+  observeOnce(document.getElementById('s4-card'), function() { updateBars(50); });
+  document.getElementById('workload-slider').addEventListener('input', function() { updateBars(parseInt(this.value)); });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S5 — OLTP vs OLAP
+// ═══════════════════════════════════════════════════════════════════
+(function initS5() {
+  let mode = 'oltp';
+
+  function drawOLTP() {
+    const svg = document.getElementById('oltp-svg');
+    clearSvg(svg);
+    svg.appendChild(svgText(10, 18, '#4ade80', 12, 'OLTP — Point Lookup'));
+
+    const userG = svgEl('g', {});
+    userG.appendChild(svgRect(10, 30, 120, 30, 'rgba(74,222,128,0.1)', '#4ade80', 4));
+    userG.appendChild(svgText(70, 50, '#4ade80', 10, 'user_id=12345', 'middle'));
+    svg.appendChild(userG);
+
+    const arr = svgEl('line', { x1: 132, y1: 45, x2: 170, y2: 45, stroke: '#4ade80', 'stroke-width': 1.5, id: 'oltp-arrow', opacity: 0 });
+    svg.appendChild(arr);
+
+    const resG = svgEl('g', { id: 'oltp-result', opacity: 0 });
+    resG.appendChild(svgRect(172, 30, 100, 30, 'rgba(74,222,128,0.15)', '#4ade80', 4));
+    resG.appendChild(svgText(222, 50, '#4ade80', 10, 'Row found!', 'middle'));
+    svg.appendChild(resG);
+
+    svg.appendChild(svgText(10, 90, '#8b949e', 10, 'Small # of rows per query'));
+    svg.appendChild(svgText(10, 105, '#8b949e', 10, 'Low latency (~ms)'));
+    svg.appendChild(svgText(10, 120, '#8b949e', 10, 'Random access pattern'));
+
+    anime({ targets: '#oltp-arrow', opacity: [0,1], duration: 400, delay: 200, easing: 'easeOutQuad' });
+    anime({ targets: '#oltp-result', opacity: [0,1], translateX: [-10,0], duration: 400, delay: 400, easing: 'easeOutQuad' });
+  }
+
+  function drawOLAP() {
+    const svg = document.getElementById('olap-svg');
+    clearSvg(svg);
+    svg.appendChild(svgText(10, 18, '#a78bfa', 12, 'OLAP — Aggregation'));
+
+    svg.appendChild(svgRect(110, 70, 80, 36, 'rgba(167,139,250,0.15)', '#a78bfa', 4));
+    svg.appendChild(svgText(150, 92, '#a78bfa', 10, 'fact_sales', 'middle'));
+
+    [{label:'dim_date',x:20,y:30},{label:'dim_prod',x:220,y:30},{label:'dim_cust',x:20,y:150},{label:'dim_store',x:220,y:150}].forEach(function(d) {
+      svg.appendChild(svgRect(d.x, d.y, 80, 28, 'rgba(22,27,34,0.9)', '#30363d', 3));
+      svg.appendChild(svgText(d.x + 40, d.y + 18, '#8b949e', 9, d.label, 'middle'));
+      svg.appendChild(svgLine(d.x + 40, d.y + 28, 150, 88, '#30363d', 1));
+    });
+
+    anime({ targets: '#olap-svg rect, #olap-svg line', opacity: [0,1], duration: 400, delay: anime.stagger(50) });
+  }
+
+  function drawETL() {
+    const svg = document.getElementById('etl-svg');
+    clearSvg(svg);
+    [{label:'Operational DB',x:10,color:'#4ade80'},{label:'Batch ETL',x:260,color:'#fb923c'},{label:'Data Warehouse',x:510,color:'#a78bfa'}].forEach(function(b, i) {
+      svg.appendChild(svgRect(b.x, 15, 150, 36, 'rgba(22,27,34,0.9)', b.color, 4));
+      svg.appendChild(svgText(b.x + 75, 37, b.color, 11, b.label, 'middle'));
+      if (i < 2) {
+        const l = svgEl('line', { x1: b.x + 152, y1: 33, x2: b.x + 258, y2: 33, stroke: '#30363d', 'stroke-width': 2, id: 'etl-arrow-' + i, opacity: 0 });
+        svg.appendChild(l);
+      }
+    });
+    anime({ targets: '#etl-arrow-0', opacity: [0,1], duration: 400, delay: 300 });
+    anime({ targets: '#etl-arrow-1', opacity: [0,1], duration: 400, delay: 600 });
+  }
+
+  observeOnce(document.getElementById('s5-card'), function() {
+    drawOLTP(); drawOLAP(); drawETL();
+  });
+
+  document.getElementById('btn-oltp-toggle').addEventListener('click', function() {
+    mode = mode === 'oltp' ? 'olap' : 'oltp';
+    this.textContent = mode === 'oltp' ? 'Switch to OLAP' : 'Switch to OLTP';
+    document.getElementById('oltp-mode-label').textContent = 'Currently: ' + mode.toUpperCase() + ' mode';
+    if (mode === 'olap') {
+      anime({ targets: '#oltp-svg', opacity: [1, 0.4], duration: 300 });
+      anime({ targets: '#olap-svg', opacity: [0.4, 1], duration: 300 });
+    } else {
+      anime({ targets: '#oltp-svg', opacity: [0.4, 1], duration: 300 });
+      anime({ targets: '#olap-svg', opacity: [1, 0.4], duration: 300 });
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S6 — Column-Oriented Storage
+// ═══════════════════════════════════════════════════════════════════
+(function initS6() {
+  let colMode = false;
+  const columns = ['id', 'name', 'dept', 'salary', 'age'];
+  const rows = [[1,'Alice','Eng',90,30],[2,'Bob','Mkt',75,25],[3,'Carol','Eng',95,28],[4,'Dave','HR',70,35]];
+  const CELL_W = 52, CELL_H = 26;
+
+  function drawColStore() {
+    const svg = document.getElementById('col-svg');
+    clearSvg(svg);
+    columns.forEach(function(col, ci) {
+      svg.appendChild(svgRect(10 + ci * CELL_W, 10, CELL_W - 2, 20, 'rgba(251,146,60,0.15)', '#fb923c'));
+      svg.appendChild(svgText(10 + ci * CELL_W + (CELL_W-2)/2, 24, '#fb923c', 9, col, 'middle'));
+    });
+    rows.forEach(function(row, ri) {
+      row.forEach(function(val, ci) {
+        const isTarget = ci === 3;
+        const highlighted = colMode ? isTarget : ri === 1;
+        const g = svgEl('g', {});
+        const r = svgRect(10 + ci * CELL_W, 34 + ri * CELL_H, CELL_W - 2, CELL_H - 2, highlighted ? (colMode ? 'rgba(251,146,60,0.2)' : 'rgba(96,165,250,0.2)') : 'rgba(22,27,34,0.8)', highlighted ? (colMode ? '#fb923c' : '#60a5fa') : '#30363d', 2);
+        if (!highlighted) r.setAttribute('opacity', '0.4');
+        g.appendChild(r);
+        g.appendChild(svgText(10 + ci * CELL_W + (CELL_W-2)/2, 34 + ri * CELL_H + 16, highlighted ? (colMode ? '#fb923c' : '#60a5fa') : '#8b949e', 9, String(val), 'middle'));
+        svg.appendChild(g);
+      });
+    });
+    svg.appendChild(svgText(10, 170, '#8b949e', 10, colMode ? 'Column store: reads only salary column' : 'Row store: reads full rows (Bob)'));
+  }
+
+  function drawRLE() {
+    const svg = document.getElementById('rle-svg');
+    clearSvg(svg);
+    svg.appendChild(svgText(10, 18, '#8b949e', 11, 'Raw:'));
+    const raw = [1,1,1,2,2,3];
+    raw.forEach(function(v, i) {
+      const color = v === 1 ? '#fb923c' : v === 2 ? '#60a5fa' : '#4ade80';
+      const g = svgEl('g', { id: 'rle-raw-' + i });
+      g.appendChild(svgRect(50 + i * 36, 5, 30, 24, 'rgba(22,27,34,0.9)', color, 4));
+      g.appendChild(svgText(50 + i * 36 + 15, 22, color, 12, String(v), 'middle'));
+      svg.appendChild(g);
+    });
+    svg.appendChild(svgText(10, 60, '#fb923c', 11, 'Encoded (RLE):'));
+    const encoded = [{v:1,c:3},{v:2,c:2},{v:3,c:1}];
+    encoded.forEach(function(e, i) {
+      const color = e.v === 1 ? '#fb923c' : e.v === 2 ? '#60a5fa' : '#4ade80';
+      const g = svgEl('g', { id: 'rle-enc-' + i, opacity: 0 });
+      g.appendChild(svgRect(10 + i * 90, 70, 80, 28, 'rgba(22,27,34,0.9)', color, 4));
+      g.appendChild(svgText(10 + i * 90 + 40, 88, color, 11, '(' + e.v + ', ' + e.c + ')', 'middle'));
+      svg.appendChild(g);
+    });
+    svg.appendChild(svgText(10, 130, '#4ade80', 11, '6 values -> 3 pairs = 2x compression'));
+    anime({ targets: '#rle-enc-0, #rle-enc-1, #rle-enc-2', opacity: [0,1], translateY: [-8,0], delay: anime.stagger(100, {start:200}), duration: 400 });
+  }
+
+  observeOnce(document.getElementById('s6'), function() {
+    drawColStore();
+    drawRLE();
+  });
+
+  document.getElementById('btn-col-toggle').addEventListener('click', function() {
+    colMode = !colMode;
+    this.textContent = colMode ? 'Row Store' : 'Column Store';
+    drawColStore();
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S7 — Data Cubes & Materialized Views
+// ═══════════════════════════════════════════════════════════════════
+(function initS7() {
+  const CELL = 52;
+  const products = ['Phone','Tablet','Laptop','Watch'];
+  const dates = ['Mon','Tue','Wed','Thu'];
+  let data = [[120,85,95,110],[200,175,160,190],[300,280,320,295],[55,60,48,72]];
+
+  function drawCube() {
+    const svg = document.getElementById('cube-svg');
+    clearSvg(svg);
+    dates.forEach(function(d, ci) {
+      svg.appendChild(svgText(70 + ci * CELL + CELL/2, 18, '#8b949e', 9, d, 'middle'));
+    });
+    products.forEach(function(p, ri) {
+      svg.appendChild(svgText(60, 42 + ri * CELL + CELL/2, '#8b949e', 9, p, 'end'));
+      dates.forEach(function(d, ci) {
+        const val = data[ri][ci];
+        const intensity = val / 350;
+        const g = svgEl('g', { id: 'cube-' + ri + '-' + ci });
+        g.appendChild(svgRect(65 + ci * CELL, 28 + ri * CELL, CELL - 3, CELL - 3, 'rgba(251,146,60,' + (0.05 + intensity * 0.35) + ')', '#30363d', 3));
+        g.appendChild(svgText(65 + ci * CELL + (CELL-3)/2, 28 + ri * CELL + (CELL-3)/2 + 5, '#e6edf3', 10, String(val), 'middle'));
+        svg.appendChild(g);
+      });
+    });
+  }
+
+  function drawDrill() {
+    const svg = document.getElementById('drill-svg');
+    clearSvg(svg);
+    svg.appendChild(svgText(10, 18, '#fb923c', 11, 'Phone x Mon - Drill-down'));
+    const subLabels = ['AM','PM','Eve','Night'];
+    const subVals = [30,50,25,15];
+    const subCell = 52;
+    subLabels.forEach(function(lbl, i) {
+      const g = svgEl('g', { id: 'drill-cell-' + i, opacity: 0 });
+      const ci = i % 2, ri = Math.floor(i / 2);
+      const x = 10 + ci * (subCell + 8), y = 26 + ri * (subCell + 8);
+      g.appendChild(svgRect(x, y, subCell, subCell, 'rgba(251,146,60,0.1)', '#fb923c', 6));
+      g.appendChild(svgText(x + subCell/2, y + 20, '#fb923c', 9, lbl, 'middle'));
+      g.appendChild(svgText(x + subCell/2, y + 38, '#e6edf3', 14, String(subVals[i]), 'middle'));
+      svg.appendChild(g);
+    });
+    anime({ targets: '#drill-cell-0, #drill-cell-1, #drill-cell-2, #drill-cell-3', opacity: [0,1], translateY: [8,0], delay: anime.stagger(80), duration: 400, easing: 'easeOutQuad' });
+  }
+
+  observeOnce(document.getElementById('s7-card'), function() {
+    drawCube();
+    drawDrill();
+    anime({ targets: '#cube-svg g', opacity: [0,1], duration: 400, delay: anime.stagger(30) });
+  });
+
+  document.getElementById('btn-rollup').addEventListener('click', function() {
+    anime({
+      targets: '[id^="cube-"]', opacity: [1, 0.3], translateX: [0, 10], duration: 400, delay: anime.stagger(20), easing: 'easeInOutQuad',
+      complete: function() { anime({ targets: '[id^="cube-"]', opacity: 1, translateX: 0, duration: 400, easing: 'easeOutQuad' }); }
+    });
+  });
+
+  document.getElementById('btn-refresh-view').addEventListener('click', function() {
+    data[0][0] = Math.floor(Math.random() * 150 + 80);
+    anime({ targets: '[id^="cube-0-"]', opacity: [0.4, 1], duration: 500, easing: 'easeInOutQuad', complete: function() { drawCube(); } });
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S8 — Other Indexes
+// ═══════════════════════════════════════════════════════════════════
+(function initS8() {
+  function drawMultiIdx() {
+    const svg = document.getElementById('multi-idx-svg');
+    clearSvg(svg);
+    svg.appendChild(svgText(10, 14, '#8b949e', 9, 'INDEX ON (last_name, first_name)'));
+    const rows = [{last:'Adams',first:'Alice'},{last:'Adams',first:'Bob'},{last:'Brown',first:'Carol'},{last:'Brown',first:'Dave'},{last:'Smith',first:'Eve'},{last:'Smith',first:'Frank'}];
+    rows.forEach(function(row, i) {
+      const isHl = i < 2;
+      const g = svgEl('g', {});
+      g.appendChild(svgRect(10, 22 + i * 26, 240, 22, isHl ? 'rgba(251,146,60,0.15)' : 'rgba(22,27,34,0.8)', isHl ? '#fb923c' : '#30363d', 3));
+      g.appendChild(svgText(20, 37 + i * 26, isHl ? '#fb923c' : '#8b949e', 10, row.last + ', ' + row.first));
+      if (isHl) g.appendChild(svgText(220, 37 + i * 26, '#fb923c', 9, 'checked', 'middle'));
+      svg.appendChild(g);
+    });
+  }
+
+  function drawFuzzy() {
+    const svg = document.getElementById('fuzzy-svg');
+    clearSvg(svg);
+    svg.appendChild(svgText(10, 14, '#8b949e', 10, 'Query: "acme" finds "acne" (edit dist 1)'));
+    const states = [{id:'fs0',x:20,y:80,label:'start'},{id:'fs1',x:70,y:80,label:'a'},{id:'fs2',x:120,y:80,label:'ac'},{id:'fs3',x:170,y:80,label:'acm/n'},{id:'fs4',x:220,y:80,label:'acne',active:true}];
+    states.forEach(function(s) {
+      const g = svgEl('g', { id: s.id });
+      g.appendChild(svgEl('circle', { cx: s.x, cy: s.y, r: 18, fill: s.active ? 'rgba(74,222,128,0.15)' : 'rgba(22,27,34,0.8)', stroke: s.active ? '#4ade80' : '#30363d' }));
+      g.appendChild(svgText(s.x, s.y + 4, s.active ? '#4ade80' : '#8b949e', 8, s.label, 'middle'));
+      svg.appendChild(g);
+      if (s.x < 220) {
+        svg.appendChild(svgLine(s.x + 18, s.y, s.x + 32, s.y, '#30363d', 1));
+      }
+    });
+    svg.appendChild(svgText(10, 150, '#8b949e', 10, 'Levenshtein automaton = finite state machine'));
+  }
+
+  observeOnce(document.getElementById('s8'), function() {
+    drawMultiIdx();
+    drawFuzzy();
+    anime({ targets: '#mem-bar', scaleX: [0, 0.08], duration: 700, easing: 'easeOutExpo', transformOrigin: 'left center' });
+    anime({ targets: '#disk-bar', scaleX: [0, 0.92], duration: 1000, delay: 200, easing: 'easeOutExpo', transformOrigin: 'left center' });
+    anime({ targets: '#multi-idx-svg g', opacity: [0,1], translateX: [-8,0], delay: anime.stagger(60), duration: 350 });
+    anime({ targets: '#fuzzy-svg g, #fuzzy-svg line', opacity: [0,1], duration: 400, delay: anime.stagger(50) });
+  });
+
+  document.getElementById('btn-fuzzy-search').addEventListener('click', function() {
+    ['fs0','fs1','fs2','fs3','fs4'].forEach(function(id, i) {
+      anime({ targets: '#' + id + ' circle', opacity: [0.5, 1], duration: 300, delay: i * 150, easing: 'easeOutQuad' });
+    });
+    anime({ targets: '#fs4 circle', opacity: [1, 0.4, 1], duration: 500, delay: 800, easing: 'easeInOutQuad' });
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S9 — Encoding Formats
+// ═══════════════════════════════════════════════════════════════════
+(function initS9() {
+  const codecs = [
+    {name:'JSON',    size:1.0,  color:'#f87171'},
+    {name:'Thrift',  size:0.35, color:'#fbbf24'},
+    {name:'Protobuf',size:0.30, color:'#fb923c'},
+    {name:'Avro',    size:0.28, color:'#4ade80'},
+  ];
+
+  function renderCodecBars() {
+    const container = document.getElementById('codec-bars');
+    // Clear children via DOM
+    while (container.firstChild) container.removeChild(container.firstChild);
+    codecs.forEach(function(c) {
+      const wrap = document.createElement('div');
+      wrap.className = 'metric-bar-wrap';
+
+      const label = document.createElement('div');
+      label.className = 'metric-label';
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = c.name;
+      const valSpan = document.createElement('span');
+      valSpan.style.color = c.color;
+      valSpan.textContent = Math.round(c.size * 100) + '% of JSON size';
+      label.appendChild(nameSpan);
+      label.appendChild(valSpan);
+
+      const track = document.createElement('div');
+      track.className = 'metric-track';
+      const fill = document.createElement('div');
+      fill.className = 'metric-fill';
+      fill.id = 'codec-bar-' + c.name;
+      fill.style.background = c.color;
+      fill.style.width = '100%';
+      track.appendChild(fill);
+
+      wrap.appendChild(label);
+      wrap.appendChild(track);
+      container.appendChild(wrap);
+    });
+  }
+
+  const writerVersions = ['W:v1','W:v2','W:v3','W:v4'];
+  const readerVersions = ['R:v1','R:v2','R:v3','R:v4'];
+
+  function buildCompatGrid(mode) {
+    const grid = document.getElementById('compat-grid');
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+    function makeCell(cls, text) {
+      const c = document.createElement('div');
+      c.className = 'compat-cell ' + cls;
+      c.textContent = text;
+      return c;
+    }
+
+    grid.appendChild(makeCell('header', ''));
+    writerVersions.forEach(function(wv) { grid.appendChild(makeCell('header', wv)); });
+
+    readerVersions.forEach(function(rv, ri) {
+      grid.appendChild(makeCell('header', rv));
+      writerVersions.forEach(function(wv, ci) {
+        let ok = ri === ci;
+        let extra = '';
+        if (mode === 'forward') { ok = ri <= ci; if (ok && ri < ci) extra = ' highlight'; }
+        else if (mode === 'backward') { ok = ri >= ci; if (ok && ri > ci) extra = ' highlight'; }
+        grid.appendChild(makeCell((ok ? 'ok' : 'fail') + extra, ok ? 'checked' : 'fail'));
+      });
+    });
+  }
+
+  observeOnce(document.getElementById('s9-card'), function() {
+    renderCodecBars();
+    buildCompatGrid('none');
+    codecs.forEach(function(c) {
+      anime({ targets: '#codec-bar-' + c.name, scaleX: [0, c.size], duration: 700, delay: 100, easing: 'easeOutExpo', transformOrigin: 'left center' });
+    });
+  });
+
+  document.getElementById('btn-fwd-compat').addEventListener('click', function() { buildCompatGrid('forward'); });
+  document.getElementById('btn-bwd-compat').addEventListener('click', function() { buildCompatGrid('backward'); });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// S10 — Dataflow
+// ═══════════════════════════════════════════════════════════════════
+function toggleExpand(id) {
+  const card = document.getElementById(id);
+  const wasOpen = card.classList.contains('open');
+  document.querySelectorAll('.expandable').forEach(function(c) { c.classList.remove('open'); });
+  if (!wasOpen) {
+    card.classList.add('open');
+    if (id === 'df-db') drawDFDB();
+    if (id === 'df-svc') drawDFSvc();
+    if (id === 'df-msg') drawDFMsg();
+  }
+}
+
+function drawDFDB() {
+  const svg = document.getElementById('df-db-svg');
+  clearSvg(svg);
+  [{label:'App v1 (writer)',x:10,color:'#60a5fa'},{label:'DB (bytes at rest)',x:220,color:'#fb923c'},{label:'App v2 (reader)',x:430,color:'#4ade80'}].forEach(function(b, i) {
+    svg.appendChild(svgRect(b.x, 30, 150, 36, 'rgba(22,27,34,0.9)', b.color, 4));
+    svg.appendChild(svgText(b.x + 75, 53, b.color, 10, b.label, 'middle'));
+    if (i < 2) svg.appendChild(svgLine(b.x + 152, 48, b.x + 218, 48, '#30363d', 1.5, '4,3'));
+  });
+  anime({ targets: '#df-db-svg rect, #df-db-svg line', opacity: [0,1], translateX: [-10,0], delay: anime.stagger(80), duration: 350 });
+}
+
+function drawDFSvc() {
+  const svg = document.getElementById('df-svc-svg');
+  clearSvg(svg);
+  ['Client','HTTP/REST','Server'].forEach(function(lbl, i) {
+    svg.appendChild(svgRect(10 + i * 195, 10, 140, 30, 'rgba(74,222,128,0.1)', '#4ade80', 4));
+    svg.appendChild(svgText(10 + i * 195 + 70, 29, '#4ade80', 10, lbl, 'middle'));
+    if (i < 2) svg.appendChild(svgLine(10 + i * 195 + 141, 25, 10 + i * 195 + 193, 25, '#4ade80', 1));
+  });
+  ['Client','RPC call()','Server'].forEach(function(lbl, i) {
+    svg.appendChild(svgRect(10 + i * 195, 70, 140, 30, 'rgba(248,113,113,0.1)', '#f87171', 4));
+    svg.appendChild(svgText(10 + i * 195 + 70, 89, '#f87171', 10, lbl, 'middle'));
+    if (i < 2) svg.appendChild(svgLine(10 + i * 195 + 141, 85, 10 + i * 195 + 193, 85, '#f87171', 1.5, '3,3'));
+  });
+  svg.appendChild(svgText(10, 115, '#f87171', 9, 'RPC: timeout / retry / partial failure hidden behind fn call syntax'));
+  anime({ targets: '#df-svc-svg rect, #df-svc-svg line', opacity: [0,1], duration: 300, delay: anime.stagger(40) });
+}
+
+function drawDFMsg() {
+  const svg = document.getElementById('df-msg-svg');
+  clearSvg(svg);
+  [{label:'Producer',x:10,color:'#fb923c'},{label:'Broker Queue',x:210,color:'#a78bfa'},{label:'Consumer',x:410,color:'#60a5fa'}].forEach(function(b, i) {
+    svg.appendChild(svgRect(b.x, 30, 150, 40, 'rgba(22,27,34,0.9)', b.color, 4));
+    svg.appendChild(svgText(b.x + 75, 54, b.color, 11, b.label, 'middle'));
+    if (i < 2) svg.appendChild(svgLine(b.x + 151, 50, b.x + 208, 50, '#30363d', 1.5));
+  });
+  svg.appendChild(svgText(10, 95, '#8b949e', 9, 'Fire-and-forget, Retry on failure, Fan-out, Actor mailbox model'));
+
+  const dot = svgEl('circle', { cx: 10, cy: 50, r: 5, fill: '#fb923c', id: 'msg-dot' });
+  svg.appendChild(dot);
+  anime({ targets: '#df-msg-svg rect, #df-msg-svg line', opacity: [0,1], duration: 300, delay: anime.stagger(50) });
+  anime({ targets: '#msg-dot', translateX: [0, 550], duration: 1800, easing: 'easeInOutQuad', loop: true, direction: 'alternate' });
+}
+
+observeOnce(document.getElementById('s10'), function() {
+  anime({ targets: '#dataflow-cards .card', opacity: [0,1], translateY: [20,0], delay: anime.stagger(120), duration: 500, easing: 'easeOutQuad' });
+});
+</script>
+
+</body>
+</html>

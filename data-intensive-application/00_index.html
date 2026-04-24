@@ -564,7 +564,7 @@
   let particleGroup = null;
 
   function createParticles() {
-    if (particleGroup) { svgEl.removeChild(particleGroup); }
+    if (particleGroup) { particleGroup.remove(); }
     particleGroup = svgEl_('g');
     particleGroup.setAttribute('class', 'particle-group');
     svgEl.appendChild(particleGroup);
@@ -599,7 +599,7 @@
   let lineGroup = null;
 
   function createLines() {
-    if (lineGroup) { svgEl.removeChild(lineGroup); }
+    if (lineGroup) { lineGroup.remove(); }
     lineGroup = svgEl_('g');
     lineGroup.setAttribute('class', 'line-group');
     svgEl.appendChild(lineGroup);
@@ -624,7 +624,7 @@
   let labelGroup = null;
 
   function createPartLabels() {
-    if (labelGroup) { svgEl.removeChild(labelGroup); }
+    if (labelGroup) { labelGroup.remove(); }
     labelGroup = svgEl_('g');
     labelGroup.setAttribute('class', 'label-group');
     svgEl.appendChild(labelGroup);
@@ -646,7 +646,7 @@
   let starGroup = null;
 
   function createStars() {
-    if (starGroup) { svgEl.removeChild(starGroup); }
+    if (starGroup) { starGroup.remove(); }
     starGroup = svgEl_('g');
     starGroup.setAttribute('class', 'star-group');
     svgEl.appendChild(starGroup);
@@ -657,11 +657,16 @@
         class: 'star-node',
         'data-id': ch.id,
         transform: 'translate(' + scaleX(ch.cx) + ',' + scaleY(ch.cy) + ')',
-        opacity: '0',
         'aria-label': 'Chapter ' + ch.id + ': ' + ch.label.replace('\n', ' '),
         role: 'button',
         tabindex: '0'
       });
+
+      // Inner group — anime.js animates this, leaving the outer translate untouched
+      const inner = svgEl_('g');
+      inner.setAttribute('class', 'star-inner');
+      inner.style.opacity = '0';
+      inner.style.transform = 'translateY(15px) scaleX(0.6) scaleY(0.6)';
 
       // Glow circle
       const glowCircle = svgEl_('circle');
@@ -688,10 +693,10 @@
       attr(numText, { class: 'star-num', y: '1', fill: 'white' });
       numText.textContent = String(ch.id).padStart(2, '0');
 
-      g.appendChild(glowCircle);
-      g.appendChild(mainCircle);
-      g.appendChild(hoverRing);
-      g.appendChild(numText);
+      inner.appendChild(glowCircle);
+      inner.appendChild(mainCircle);
+      inner.appendChild(hoverRing);
+      inner.appendChild(numText);
 
       // Label lines (split on \n)
       const labelLines = ch.label.split('\n');
@@ -705,8 +710,10 @@
           fill: 'white'
         });
         t.textContent = line;
-        g.appendChild(t);
+        inner.appendChild(t);
       });
+
+      g.appendChild(inner);
 
       // Click
       g.addEventListener('click', () => { window.location.href = ch.file; });
@@ -777,9 +784,9 @@
       easing: 'easeOutSine'
     });
 
-    // 2. Star nodes (scale: shorthand invalid in anime.js v3 — use scaleX+scaleY)
+    // 2. Star inner groups — animate inner group only so outer translate(cx,cy) is untouched
     anime({
-      targets: '.star-node',
+      targets: '.star-inner',
       opacity: [0, 1],
       translateY: [15, 0],
       scaleX: [0.6, 1],
@@ -832,7 +839,7 @@
       buildScene();
       // Snap to final visible state after rebuild
       anime({ targets: '.const-line', opacity: 0.3, duration: 1, easing: 'linear' });
-      anime({ targets: '.star-node',  opacity: 1,   duration: 1, easing: 'linear' });
+      anime({ targets: '.star-inner', opacity: 1, translateY: 0, scaleX: 1, scaleY: 1, duration: 1, easing: 'linear' });
       anime({ targets: '.part-label', opacity: 0.6, duration: 1, easing: 'linear' });
     }, 120);
   });

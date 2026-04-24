@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reliability &amp; Scalability — DDIA Ch. 1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #60a5fa;
+      --accent-dim: rgba(96,165,250,0.15);
+      --red: #f87171;
+      --green: #4ade80;
+      --amber: #fbbf24;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+
+    #progress-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.93);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      text-decoration: none;
+      margin-right: 1.2rem;
+    }
+    #navbar a { color: var(--text-muted); text-decoration: none; font-size: 12px; }
+    #navbar a:hover { color: var(--accent); }
+    #navbar .chapter-pager {
+      display: flex; align-items: stretch; gap: 6px;
+      margin-right: 12px; padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    .chapter-nav-chip {
+      min-height: 34px; padding: 5px 10px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      display: flex; flex-direction: column; justify-content: center; gap: 1px;
+      color: var(--text); text-decoration: none;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .chapter-nav-chip:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-chip.current { background: rgba(255,255,255,0.07); text-align: center; align-items: center; }
+    .chapter-nav-chip.disabled { opacity: 0.4; pointer-events: none; }
+    .nav-kicker { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; }
+    .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+    #navbar .nav-sections { display: flex; align-items: center; gap: 2px; flex: 1; }
+    #navbar .nav-sections a { padding: 0 8px; height: 48px; display: flex; align-items: center; }
+    #navbar .nav-links { display: flex; align-items: center; gap: 2px; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 8px; }
+    #navbar .nav-links a { padding: 0 8px; height: 48px; display: flex; align-items: center; white-space: nowrap; }
+
+    main { padding: 80px 1.5rem 4rem; max-width: 1100px; margin: 0 auto; }
+
+    .concept-section {
+      margin-bottom: 2.5rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+
+    .card-body { padding: 20px 18px; }
+
+    .fault-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .fault-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      overflow: hidden;
+    }
+    .fault-card-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .fault-card-body { padding: 14px 12px; }
+    .fault-diagram { width: 100%; }
+    .fault-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+    .tag-hw { background: rgba(251,191,36,0.15); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+    .tag-sw { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+    .tag-hu { background: rgba(96,165,250,0.15); color: var(--accent); border: 1px solid rgba(96,165,250,0.3); }
+
+    .controls { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .ctrl-btn {
+      background: var(--accent-dim); border: 1px solid var(--accent);
+      color: var(--accent); border-radius: 5px;
+      padding: 5px 14px; font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(96,165,250,0.28); }
+    .ctrl-btn.danger { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.1); }
+    .ctrl-btn.danger:hover { background: rgba(248,113,113,0.22); }
+    .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    input[type=range] { accent-color: var(--accent); width: 100px; }
+
+    .trace-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 18px;
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 32px;
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .diagram-area { padding: 18px; display: flex; align-items: center; justify-content: center; }
+    .diagram-area svg { width: 100%; overflow: visible; }
+
+    .load-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .load-table th { text-align: left; color: var(--text-muted); font-weight: 500; font-size: 11px; padding: 6px 10px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
+    .load-table td { padding: 8px 10px; border-bottom: 1px solid rgba(48,54,61,0.5); }
+    .load-table tr { opacity: 0; }
+    .load-val { color: var(--accent); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+    .principle-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .principle-card {
+      border: 1px solid var(--border); border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      padding: 14px 14px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .principle-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--accent); }
+    .checklist { list-style: none; margin-top: 8px; }
+    .checklist li { font-size: 11px; color: var(--text-muted); padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+    .check-mark { opacity: 0; color: var(--green); }
+    .version-timeline { display: flex; align-items: center; gap: 0; margin-top: 10px; }
+    .ver-node {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+    .ver-line { height: 2px; flex: 1; background: var(--border); }
+    .ver-node.compat { border-color: var(--green); color: var(--green); }
+    .ver-node.breaking { border-color: var(--red); color: var(--red); }
+
+    .kw { color: #ff7b72; }
+    .fn { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm { color: #8b949e; }
+    .num { color: #79c0ff; }
+    .tp { color: #ffa657; }
+
+    footer {
+      text-align: center; padding: 2rem;
+      color: var(--text-muted); font-size: 12px;
+      border-top: 1px solid var(--border); margin-top: 2rem;
+    }
+
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+      gap: 12px; align-items: stretch;
+    }
+    .chapter-nav-link, .chapter-nav-disabled, .chapter-nav-current {
+      border: 1px solid var(--border); border-radius: 14px;
+      min-height: 62px; padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex; flex-direction: column; justify-content: center; gap: 3px;
+      color: var(--text); text-decoration: none;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .chapter-nav-link:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-link.next { text-align: right; align-items: flex-end; }
+    .chapter-nav-link .nav-kicker, .chapter-nav-disabled .nav-kicker, .chapter-nav-current .nav-kicker {
+      color: var(--text-muted); font-size: 10px; letter-spacing: 0.08em;
+      text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title, .chapter-nav-disabled .nav-title, .chapter-nav-current .nav-title {
+      font-size: 13px; font-weight: 600; line-height: 1.3;
+    }
+    .chapter-nav-disabled { opacity: 0.38; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+    .chapter-nav-current {
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      text-align: center; background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 700px) {
+      .chapter-page-nav { grid-template-columns: 1fr; }
+      .chapter-nav-link.next { text-align: left; align-items: flex-start; }
+      .fault-grid { grid-template-columns: 1fr; }
+      .principle-row { grid-template-columns: 1fr; }
+      #navbar .nav-sections { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <a href="00_index.html" class="nav-brand">DDIA</a>
+  <div class="chapter-pager">
+    <span class="chapter-nav-chip disabled">
+      <span class="nav-kicker">prev</span>
+      <span class="nav-title">—</span>
+    </span>
+    <span class="chapter-nav-chip current">
+      <span class="nav-kicker">ch 1</span>
+      <span class="nav-title">Reliability &amp; Scalability</span>
+    </span>
+    <a href="02_data_models.html" class="chapter-nav-chip">
+      <span class="nav-kicker">next</span>
+      <span class="nav-title">Data Models</span>
+    </a>
+  </div>
+  <div class="nav-sections">
+    <a href="#s1">Reliability</a>
+    <a href="#s2">Scalability</a>
+    <a href="#s3">Throughput</a>
+    <a href="#s4">Maintainability</a>
+  </div>
+  <div class="nav-links">
+    <a href="../system-design-concepts/00_index.html">System Design</a>
+    <a href="../coding-concepts/00_index.html">Coding Concepts</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ======================================================= S1 — Reliability -->
+  <section id="s1" class="concept-section" data-section="1">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">01</span>
+          <span class="section-title">Reliability</span>
+          <span class="section-desc">— continuing to work correctly even when things go wrong</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+          DDIA distinguishes <strong style="color:var(--text)">faults</strong> (one component deviating from its spec) from
+          <strong style="color:var(--text)">failures</strong> (the whole system stops). Fault-tolerant systems anticipate
+          faults and prevent them from causing failures. Three categories:
+        </p>
+        <div class="fault-grid">
+
+          <!-- Hardware fault -->
+          <div class="fault-card">
+            <div class="fault-card-header">
+              <span class="fault-tag tag-hw">HW</span>
+              Hardware Faults
+            </div>
+            <div class="fault-card-body">
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+                Disks crash, RAM fails, power cuts out. RAID arrays reconstruct data from remaining disks.
+              </p>
+              <svg id="diag-raid" class="fault-diagram" viewBox="0 0 300 110"></svg>
+              <div style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="raid-status">Ready — click Inject Fault</div>
+            </div>
+          </div>
+
+          <!-- Software fault -->
+          <div class="fault-card">
+            <div class="fault-card-header">
+              <span class="fault-tag tag-sw">SW</span>
+              Software Faults
+            </div>
+            <div class="fault-card-body">
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+                Runaway processes, cascading failures, bugs triggered by unusual inputs.
+              </p>
+              <svg id="diag-cluster" class="fault-diagram" viewBox="0 0 300 130"></svg>
+              <div style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="cluster-status">5-node cluster — stable</div>
+            </div>
+          </div>
+
+          <!-- Human error -->
+          <div class="fault-card">
+            <div class="fault-card-header">
+              <span class="fault-tag tag-hu">HUMAN</span>
+              Human Errors
+            </div>
+            <div class="fault-card-body">
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+                Config mistakes cause more outages than hardware. Canary deployments limit blast radius.
+              </p>
+              <svg id="diag-canary" class="fault-diagram" viewBox="0 0 300 90"></svg>
+              <div style="margin-top:8px;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;" id="canary-status">v1.1 canary: 5% traffic</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="controls">
+        <button id="btn-inject-fault" class="ctrl-btn danger">Inject Fault</button>
+        <button id="btn-chaos" class="ctrl-btn danger">Chaos Monkey</button>
+        <button id="btn-canary-grow" class="ctrl-btn">Grow Canary</button>
+      </div>
+      <div class="trace-panel" id="trace-1">Scroll to this section to begin animations.</div>
+    </div>
+  </section>
+
+  <!-- ======================================================= S2 — Scalability -->
+  <section id="s2" class="concept-section" data-section="2">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">02</span>
+          <span class="section-title">Scalability: Load &amp; Percentiles</span>
+          <span class="section-desc">— describing load, measuring performance, and tail latency</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="scalability-grid">
+          <div>
+            <h3 style="font-size:12px;color:var(--accent);margin-bottom:10px;">Load Parameters</h3>
+            <table class="load-table" id="load-table">
+              <thead>
+                <tr><th>Metric</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                <tr id="lp-0"><td>Requests / sec</td><td class="load-val">12,000</td></tr>
+                <tr id="lp-1"><td>DB writes / sec</td><td class="load-val">3,400</td></tr>
+                <tr id="lp-2"><td>Cache hit ratio</td><td class="load-val">94%</td></tr>
+                <tr id="lp-3"><td>Simultaneous users</td><td class="load-val">45,000</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3 style="font-size:12px;color:var(--accent);margin-bottom:10px;">Response-time Histogram</h3>
+            <svg id="diag-histogram" viewBox="0 0 280 140" width="100%"></svg>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <h3 style="font-size:12px;color:var(--accent);margin-bottom:8px;">Tail-latency Fan-out Effect</h3>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+            When a request fans out to N backends, the response time is determined by the slowest backend.
+            A p99 at one tier becomes p50 at the caller.
+          </p>
+          <svg id="diag-fanout" viewBox="0 0 680 200" width="100%"></svg>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="slider-row">
+          <span>Backends: N =</span>
+          <input type="range" id="slider-backends" min="5" max="50" value="10" />
+          <span id="lbl-backends">10</span>
+        </div>
+      </div>
+      <div class="trace-panel" id="trace-2">Awaiting scroll trigger...</div>
+    </div>
+  </section>
+
+  <!-- ======================================================= S3 — Throughput vs Response Time -->
+  <section id="s3" class="concept-section" data-section="3">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">03</span>
+          <span class="section-title">Throughput vs Response Time</span>
+          <span class="section-desc">— the knee of the curve and queueing effects</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+          Throughput grows linearly until saturation; response time stays flat then hockey-sticks as queues form.
+          The <strong style="color:var(--accent)">knee of the curve</strong> marks the safe operating point.
+        </p>
+        <svg id="diag-curve" viewBox="0 0 680 280" width="100%"></svg>
+      </div>
+      <div class="controls">
+        <div class="slider-row">
+          <span>Request rate:</span>
+          <input type="range" id="slider-rate" min="100" max="5000" step="100" value="500" />
+          <span id="lbl-rate">500 req/s</span>
+        </div>
+      </div>
+      <div class="trace-panel" id="trace-3">Awaiting scroll trigger...</div>
+    </div>
+  </section>
+
+  <!-- ======================================================= S4 — Maintainability -->
+  <section id="s4" class="concept-section" data-section="4">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">04</span>
+          <span class="section-title">Maintainability</span>
+          <span class="section-desc">— Operability, Simplicity, and Evolvability</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+          The majority of software cost is in ongoing maintenance: fixing bugs, adapting to new platforms,
+          repaying technical debt, and adding new features. DDIA identifies three design principles.
+        </p>
+        <div class="principle-row">
+
+          <!-- Operability -->
+          <div class="principle-card" id="pc-operability">
+            <h3>Operability</h3>
+            <p style="font-size:11px;color:var(--text-muted);">Make it easy for ops teams to keep the system running smoothly.</p>
+            <ul class="checklist" id="ops-checklist">
+              <li><span class="check-mark" id="chk-0">✓</span> <span>Monitoring &amp; observability</span></li>
+              <li><span class="check-mark" id="chk-1">✓</span> <span>Automated deployment</span></li>
+              <li><span class="check-mark" id="chk-2">✓</span> <span>Runbooks &amp; documentation</span></li>
+              <li><span class="check-mark" id="chk-3">✓</span> <span>Self-healing &amp; predictable behavior</span></li>
+            </ul>
+          </div>
+
+          <!-- Simplicity -->
+          <div class="principle-card" id="pc-simplicity">
+            <h3>Simplicity</h3>
+            <p style="font-size:11px;color:var(--text-muted);">Remove accidental complexity; keep essential complexity explicit.</p>
+            <svg id="diag-coupling" viewBox="0 0 200 100" width="100%" style="margin-top:10px;"></svg>
+          </div>
+
+          <!-- Evolvability -->
+          <div class="principle-card" id="pc-evolvability">
+            <h3>Evolvability</h3>
+            <p style="font-size:11px;color:var(--text-muted);">Design for easy future changes; prefer backward-compatible evolution.</p>
+            <div style="margin-top:10px;">
+              <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px;">Schema changes over time:</div>
+              <div class="version-timeline" id="ver-timeline">
+                <div class="ver-node compat" style="opacity:0;" id="ver-v1">v1</div>
+                <div class="ver-line" style="opacity:0;" id="ver-l1"></div>
+                <div class="ver-node compat" style="opacity:0;" id="ver-v2">v2</div>
+                <div class="ver-line" style="opacity:0;" id="ver-l2"></div>
+                <div class="ver-node breaking" style="opacity:0;" id="ver-v3">v3!</div>
+                <div class="ver-line" style="opacity:0;" id="ver-l3"></div>
+                <div class="ver-node compat" style="opacity:0;" id="ver-v4">v4</div>
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;" id="ver-legend"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="btn-replay-maint" class="ctrl-btn">Replay</button>
+      </div>
+      <div class="trace-panel" id="trace-4">Awaiting scroll trigger...</div>
+    </div>
+  </section>
+
+  <!-- Chapter page nav -->
+  <nav class="chapter-page-nav">
+    <div class="chapter-nav-disabled">
+      <span class="nav-kicker">previous</span>
+      <span class="nav-title">—</span>
+    </div>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">currently reading</span>
+      <span class="nav-title">Ch 1 — Reliability &amp; Scalability</span>
+    </div>
+    <a href="02_data_models.html" class="chapter-nav-link next">
+      <span class="nav-kicker">next</span>
+      <span class="nav-title">Ch 2 — Data Models &amp; Query Languages</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer>Designing Data-Intensive Applications — Martin Kleppmann</footer>
+
+<script>
+/* =====================================================================
+   Utilities
+===================================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+  return el;
+}
+
+function svgText(parent, x, y, text, fill, fontSize, fontFamily, anchor) {
+  const el = svgEl('text', {
+    x, y,
+    'text-anchor': anchor || 'middle',
+    fill: fill || '#8b949e',
+    'font-size': fontSize || 10,
+    'font-family': fontFamily || 'Inter, sans-serif'
+  });
+  el.textContent = text;
+  parent.appendChild(el);
+  return el;
+}
+
+function clearSvg(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+  return el;
+}
+
+/* =====================================================================
+   Progress bar
+===================================================================== */
+const progressBar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  progressBar.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+});
+
+/* =====================================================================
+   S1 — RAID diagram
+===================================================================== */
+function drawRaid() {
+  const svg = clearSvg('diag-raid');
+  if (!svg) return;
+  const W = 300, H = 110;
+  const diskW = 38, diskH = 60, gap = 14;
+  const totalW = 5 * diskW + 4 * gap;
+  const startX = (W - totalW) / 2;
+  const startY = (H - diskH) / 2;
+
+  svgText(svg, W / 2, 14, 'RAID-5 · 5 disks', '#8b949e', 10);
+
+  for (let i = 0; i < 5; i++) {
+    const x = startX + i * (diskW + gap);
+    const rect = svgEl('rect', {
+      x, y: startY, width: diskW, height: diskH,
+      rx: 5,
+      fill: 'rgba(96,165,250,0.08)',
+      stroke: '#60a5fa', 'stroke-width': 1.5,
+      id: 'raid-disk-' + i
+    });
+    svg.appendChild(rect);
+    svgText(svg, x + diskW / 2, startY + diskH / 2 + 4, 'D' + (i + 1), '#60a5fa', 11, 'JetBrains Mono, monospace');
+    const dot = svgEl('circle', {
+      cx: x + diskW / 2, cy: startY + diskH - 10, r: 4,
+      fill: '#4ade80', id: 'raid-dot-' + i
+    });
+    svg.appendChild(dot);
+  }
+
+  const overlay = svgEl('text', {
+    id: 'raid-reconstruct',
+    x: W / 2, y: H - 8,
+    'text-anchor': 'middle',
+    fill: '#fbbf24', 'font-size': 10, 'font-family': 'JetBrains Mono, monospace',
+    opacity: 0
+  });
+  overlay.textContent = 'Reconstructing...';
+  svg.appendChild(overlay);
+}
+
+let raidAnimating = false;
+function runRaidFaultAnimation() {
+  if (raidAnimating) return;
+  raidAnimating = true;
+  const faultyIdx = 2;
+  const disk = document.getElementById('raid-disk-' + faultyIdx);
+  const dot = document.getElementById('raid-dot-' + faultyIdx);
+  const overlay = document.getElementById('raid-reconstruct');
+  const status = document.getElementById('raid-status');
+  if (!disk) { raidAnimating = false; return; }
+
+  disk.setAttribute('fill', 'rgba(248,113,113,0.2)');
+  disk.setAttribute('stroke', '#f87171');
+  dot.setAttribute('fill', '#f87171');
+  status.textContent = 'D3 FAILED — starting reconstruction...';
+
+  setTimeout(() => {
+    anime({
+      targets: { v: 0 },
+      v: 1,
+      duration: 400,
+      easing: 'easeOutQuad',
+      update(a) { overlay.setAttribute('opacity', a.animations[0].currentValue); }
+    });
+  }, 500);
+
+  setTimeout(() => {
+    anime({
+      targets: { v: 1 },
+      v: 0,
+      duration: 300,
+      easing: 'easeInQuad',
+      update(a) { overlay.setAttribute('opacity', a.animations[0].currentValue); }
+    });
+    setTimeout(() => {
+      disk.setAttribute('fill', 'rgba(74,222,128,0.12)');
+      disk.setAttribute('stroke', '#4ade80');
+      dot.setAttribute('fill', '#4ade80');
+      status.textContent = 'D3 reconstructed — all disks healthy';
+      setTimeout(() => {
+        disk.setAttribute('fill', 'rgba(96,165,250,0.08)');
+        disk.setAttribute('stroke', '#60a5fa');
+        status.textContent = 'All 5 disks healthy — ready';
+        raidAnimating = false;
+      }, 2000);
+    }, 350);
+  }, 1700);
+}
+
+/* =====================================================================
+   Cluster diagram
+===================================================================== */
+let killedNode = -1;
+
+function drawCluster() {
+  const svg = clearSvg('diag-cluster');
+  if (!svg) return;
+  const W = 300, H = 130;
+  const cx = W / 2, cy = H / 2 + 10;
+  const R = 48;
+  const n = 5;
+
+  svgText(svg, W / 2, 14, '5-node cluster', '#8b949e', 10);
+
+  for (let i = 0; i < n; i++) {
+    const angle = (2 * Math.PI / n) * i - Math.PI / 2;
+    const nx = cx + R * Math.cos(angle);
+    const ny = cy + R * Math.sin(angle);
+    const g = svgEl('g', { id: 'cluster-node-' + i });
+
+    const circle = svgEl('circle', {
+      cx: nx, cy: ny, r: 20,
+      fill: 'rgba(96,165,250,0.1)', stroke: '#60a5fa', 'stroke-width': 1.5
+    });
+    g.appendChild(circle);
+
+    const lbl = svgEl('text', {
+      x: nx, y: ny + 4,
+      'text-anchor': 'middle', fill: '#60a5fa',
+      'font-size': 10, 'font-family': 'JetBrains Mono, monospace'
+    });
+    lbl.textContent = 'N' + (i + 1);
+    g.appendChild(lbl);
+
+    svg.appendChild(g);
+  }
+}
+
+function runChaosMonkey() {
+  const n = 5;
+  if (killedNode >= 0) {
+    const pg = document.getElementById('cluster-node-' + killedNode);
+    if (pg) {
+      const pc = pg.querySelector('circle');
+      const pt = pg.querySelector('text');
+      const kl = pg.querySelector('[data-killed]');
+      if (pc) { pc.setAttribute('fill', 'rgba(96,165,250,0.1)'); pc.setAttribute('stroke', '#60a5fa'); }
+      if (pt) { pt.setAttribute('fill', '#60a5fa'); pt.textContent = 'N' + (killedNode + 1); }
+      if (kl) pg.removeChild(kl);
+    }
+  }
+
+  killedNode = Math.floor(Math.random() * n);
+  const g = document.getElementById('cluster-node-' + killedNode);
+  if (!g) return;
+  const circle = g.querySelector('circle');
+  const lbl = g.querySelector('text');
+  if (circle) { circle.setAttribute('fill', 'rgba(156,163,175,0.12)'); circle.setAttribute('stroke', '#6b7280'); }
+  if (lbl) { lbl.setAttribute('fill', '#6b7280'); }
+
+  const angle = (2 * Math.PI / n) * killedNode - Math.PI / 2;
+  const nx = 150 + 48 * Math.cos(angle);
+  const ny = 75 + 48 * Math.sin(angle);
+
+  const klbl = svgEl('text', {
+    x: nx, y: ny + 30,
+    'text-anchor': 'middle', fill: '#f87171',
+    'font-size': 8, 'font-family': 'JetBrains Mono, monospace',
+    opacity: 0
+  });
+  klbl.setAttribute('data-killed', '1');
+  klbl.textContent = 'KILLED';
+  g.appendChild(klbl);
+  anime({
+    targets: { v: 0 },
+    v: 1,
+    duration: 400,
+    easing: 'easeOutQuad',
+    update(a) { klbl.setAttribute('opacity', a.animations[0].currentValue); }
+  });
+
+  const targetIdx = (killedNode + 2) % n;
+  const tAngle = (2 * Math.PI / n) * targetIdx - Math.PI / 2;
+  const tx = 150 + 48 * Math.cos(tAngle);
+  const ty = 75 + 48 * Math.sin(tAngle);
+
+  const dot = svgEl('circle', { cx: nx, cy: ny, r: 4, fill: '#fbbf24' });
+  document.getElementById('diag-cluster').appendChild(dot);
+  anime({
+    targets: dot,
+    translateX: [0, tx - nx],
+    translateY: [0, ty - ny],
+    opacity: [1, 0],
+    duration: 900,
+    easing: 'easeInOutQuad',
+    complete: () => {
+      const clusterSvg = document.getElementById('diag-cluster');
+      if (clusterSvg && dot.parentNode === clusterSvg) clusterSvg.removeChild(dot);
+    }
+  });
+
+  document.getElementById('cluster-status').textContent = 'N' + (killedNode + 1) + ' KILLED — traffic rerouted to N' + (targetIdx + 1);
+}
+
+/* =====================================================================
+   Canary diagram
+===================================================================== */
+let canaryPct = 5;
+
+function drawCanary() {
+  const svg = clearSvg('diag-canary');
+  if (!svg) return;
+  const W = 300, H = 90;
+  const barH = 24, barY = 30, barW = W - 40, barX = 20;
+
+  svgText(svg, W / 2, 16, 'Canary deployment — traffic split', '#8b949e', 10);
+
+  const bg = svgEl('rect', {
+    x: barX, y: barY, width: barW, height: barH,
+    rx: 4, fill: 'rgba(255,255,255,0.04)', stroke: '#30363d', 'stroke-width': 1
+  });
+  svg.appendChild(bg);
+
+  const v1W = barW * (1 - canaryPct / 100);
+  const v1 = svgEl('rect', {
+    id: 'canary-v1', x: barX, y: barY,
+    width: Math.max(1, v1W), height: barH,
+    rx: 4, fill: 'rgba(96,165,250,0.25)'
+  });
+  svg.appendChild(v1);
+
+  const v11W = barW * canaryPct / 100;
+  if (v11W > 0) {
+    const v11 = svgEl('rect', {
+      id: 'canary-v11', x: barX + v1W, y: barY,
+      width: v11W, height: barH,
+      fill: 'rgba(74,222,128,0.35)'
+    });
+    svg.appendChild(v11);
+  }
+
+  svgText(svg, barX + v1W / 2, barY + barH / 2 + 4, 'v1.0 — ' + (100 - canaryPct) + '%', '#60a5fa', 10, 'JetBrains Mono, monospace');
+
+  if (canaryPct > 8 && v11W > 20) {
+    svgText(svg, barX + v1W + v11W / 2, barY + barH / 2 + 4, 'v1.1', '#4ade80', 9, 'JetBrains Mono, monospace');
+  }
+
+  const gaugeText = canaryPct <= 20 ? 'Monitoring: nominal' : canaryPct <= 60 ? 'Monitoring: watching' : 'Monitoring: stable';
+  const gaugeColor = canaryPct <= 60 ? '#4ade80' : '#4ade80';
+  svgText(svg, W / 2, 80, gaugeText, gaugeColor, 10);
+
+  document.getElementById('canary-status').textContent = 'v1.1 canary: ' + canaryPct + '% traffic — ' + (canaryPct >= 100 ? 'full rollout' : 'gradual rollout');
+}
+
+/* =====================================================================
+   S2 — Histogram
+===================================================================== */
+function drawHistogram() {
+  const svg = clearSvg('diag-histogram');
+  if (!svg) return;
+  const W = 280, H = 140;
+  const padL = 36, padB = 28, padT = 16, padR = 10;
+  const chartW = W - padL - padR;
+  const chartH = H - padB - padT;
+
+  const buckets = [
+    ['5',   0.30, false],
+    ['10',  0.72, false],
+    ['15',  0.95, false],
+    ['20',  1.00, true],
+    ['30',  0.80, false],
+    ['50',  0.55, false],
+    ['80',  0.38, false],
+    ['150', 0.18, true],
+    ['250', 0.09, false],
+    ['400', 0.04, true],
+  ];
+
+  const bW = (chartW - (buckets.length - 1) * 3) / buckets.length;
+  const baseY = padT + chartH;
+
+  svg.appendChild(svgEl('line', { x1: padL, y1: baseY, x2: padL + chartW, y2: baseY, stroke: '#30363d', 'stroke-width': 1 }));
+  svg.appendChild(svgEl('line', { x1: padL, y1: padT, x2: padL, y2: baseY, stroke: '#30363d', 'stroke-width': 1 }));
+  svgText(svg, padL + chartW / 2, H - 2, 'latency (ms)', '#8b949e', 9);
+
+  const markerMap = { 3: { label: 'p50', ms: '20ms' }, 7: { label: 'p95', ms: '150ms' }, 9: { label: 'p99', ms: '400ms' } };
+
+  buckets.forEach(([lbl, h, highlight], i) => {
+    const x = padL + i * (bW + 3);
+    const barHActual = h * chartH;
+
+    const rect = svgEl('rect', {
+      x, y: baseY, width: bW, height: barHActual,
+      fill: highlight ? '#60a5fa' : 'rgba(96,165,250,0.3)',
+      rx: 2,
+      id: 'hist-bar-' + i,
+      transform: 'translate(0,0) scaleY(0)',
+      'transform-origin': x + bW / 2 + 'px ' + baseY + 'px'
+    });
+    svg.appendChild(rect);
+
+    if (i === 0 || highlight) {
+      svgText(svg, x + bW / 2, baseY + 10, lbl, '#8b949e', 8, 'JetBrains Mono, monospace');
+    }
+
+    if (markerMap[i]) {
+      const { label, ms } = markerMap[i];
+      const markerLine = svgEl('line', {
+        x1: x + bW / 2, y1: baseY - barHActual - 4,
+        x2: x + bW / 2, y2: padT,
+        stroke: '#60a5fa', 'stroke-width': 1, 'stroke-dasharray': '3,2',
+        opacity: 0, id: 'hist-marker-line-' + i
+      });
+      svg.appendChild(markerLine);
+      const markerLbl = svgEl('text', {
+        x: x + bW / 2, y: padT - 2,
+        'text-anchor': 'middle', fill: '#60a5fa',
+        'font-size': 8, 'font-family': 'JetBrains Mono, monospace',
+        opacity: 0, id: 'hist-marker-lbl-' + i
+      });
+      markerLbl.textContent = label + '=' + ms;
+      svg.appendChild(markerLbl);
+    }
+  });
+}
+
+function animateHistogram() {
+  const heights = [0.30, 0.72, 0.95, 1.0, 0.80, 0.55, 0.38, 0.18, 0.09, 0.04];
+  const chartH = 96;
+  const baseY = 112;
+
+  heights.forEach((h, i) => {
+    const barH = h * chartH;
+    const rect = document.getElementById('hist-bar-' + i);
+    if (!rect) return;
+    const x = parseFloat(rect.getAttribute('x'));
+    const bW = parseFloat(rect.getAttribute('width'));
+    const pivotX = x + bW / 2;
+
+    const obj = { scale: 0 };
+    setTimeout(() => {
+      anime({
+        targets: obj,
+        scale: 1,
+        duration: 600,
+        easing: 'easeOutQuart',
+        update() {
+          const s = obj.scale;
+          const dy = baseY - barH * s;
+          rect.setAttribute('transform', 'translate(0,' + (dy - baseY) + ') scaleY(' + s + ')');
+          rect.setAttribute('y', dy);
+          rect.setAttribute('height', barH * s);
+        }
+      });
+    }, i * 70);
+  });
+
+  [3, 7, 9].forEach((idx, mi) => {
+    setTimeout(() => {
+      const line = document.getElementById('hist-marker-line-' + idx);
+      const lbl = document.getElementById('hist-marker-lbl-' + idx);
+      if (line) anime({ targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad', update(a) { line.setAttribute('opacity', a.animations[0].currentValue); } });
+      if (lbl) anime({ targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad', update(a) { lbl.setAttribute('opacity', a.animations[0].currentValue); } });
+    }, 800 + mi * 200);
+  });
+}
+
+/* =====================================================================
+   Load params table
+===================================================================== */
+function animateLoadTable() {
+  ['lp-0', 'lp-1', 'lp-2', 'lp-3'].forEach((id, i) => {
+    const row = document.getElementById(id);
+    if (!row) return;
+    setTimeout(() => {
+      anime({
+        targets: { op: 0, ty: -8 },
+        op: 1, ty: 0,
+        duration: 500,
+        easing: 'easeOutQuad',
+        update(a) {
+          row.style.opacity = a.animations[0].currentValue;
+          row.style.transform = 'translateY(' + a.animations[1].currentValue + 'px)';
+        }
+      });
+    }, i * 180);
+  });
+}
+
+/* =====================================================================
+   Fan-out diagram
+===================================================================== */
+let fanoutN = 10;
+
+function drawFanout(n) {
+  fanoutN = n;
+  const svg = clearSvg('diag-fanout');
+  if (!svg) return;
+  const W = 680, H = 200;
+  const callerX = 60, callerY = H / 2;
+  const backendX = W - 60;
+  const slowIdx = Math.floor(n * 0.85);
+
+  const callerCircle = svgEl('circle', { cx: callerX, cy: callerY, r: 26, fill: 'rgba(96,165,250,0.15)', stroke: '#60a5fa', 'stroke-width': 2 });
+  svg.appendChild(callerCircle);
+  svgText(svg, callerX, callerY + 4, 'Client', '#60a5fa', 10, 'Inter, sans-serif');
+
+  for (let i = 0; i < n; i++) {
+    const frac = n === 1 ? 0.5 : i / (n - 1);
+    const by = 18 + frac * (H - 36);
+    const isSlow = i === slowIdx;
+
+    const line = svgEl('line', {
+      x1: callerX + 26, y1: callerY, x2: backendX - 12, y2: by,
+      stroke: isSlow ? 'rgba(248,113,113,0.3)' : 'rgba(96,165,250,0.2)',
+      'stroke-width': 1,
+      id: 'fanout-line-' + i
+    });
+    svg.insertBefore(line, callerCircle);
+
+    const bc = svgEl('circle', {
+      cx: backendX, cy: by, r: 12,
+      fill: isSlow ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.1)',
+      stroke: isSlow ? '#f87171' : '#4ade80',
+      'stroke-width': 1.5
+    });
+    svg.appendChild(bc);
+
+    if (isSlow) {
+      svgText(svg, backendX, by + 3, 'SLOW', '#f87171', 7, 'JetBrains Mono, monospace');
+    }
+  }
+
+  svgText(svg, W / 2, H - 4, 'p99 of ' + n + ' backends becomes p50 of fan-out response', '#8b949e', 10);
+}
+
+function animateFanout() {
+  const svg = document.getElementById('diag-fanout');
+  if (!svg) return;
+  const n = fanoutN;
+  const callerX = 60, callerY = 100;
+  const backendX = 620;
+  const H = 200;
+  const slowIdx = Math.floor(n * 0.85);
+
+  for (let i = 0; i < n; i++) {
+    const frac = n === 1 ? 0.5 : i / (n - 1);
+    const by = 18 + frac * (H - 36);
+    const isSlow = i === slowIdx;
+
+    const dot = svgEl('circle', {
+      cx: callerX + 26, cy: callerY, r: 4,
+      fill: isSlow ? '#f87171' : '#60a5fa',
+      opacity: 0
+    });
+    svg.appendChild(dot);
+
+    const delay = i * 40;
+    const duration = isSlow ? 2200 : 600 + Math.random() * 400;
+
+    anime({
+      targets: dot,
+      opacity: [0, 1, 1, 0],
+      translateX: [0, backendX - 12 - (callerX + 26)],
+      translateY: [0, by - callerY],
+      duration: duration,
+      delay: delay,
+      easing: 'easeInOutQuad',
+      complete: () => {
+        if (dot.parentNode === svg) svg.removeChild(dot);
+      }
+    });
+  }
+}
+
+/* =====================================================================
+   S3 — Load Curve
+===================================================================== */
+function computeCurvePoints(maxRate) {
+  const W = 680, H = 280;
+  const padL = 60, padB = 48, padT = 24, padR = 24;
+  const chartW = W - padL - padR;
+  const chartH = H - padB - padT;
+  const steps = 60;
+  const knee = 0.55;
+
+  const throughputPts = [];
+  const responsePts = [];
+
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    const x = padL + t * chartW;
+
+    let tput = t < knee ? t / knee : 1 - 0.05 * (t - knee);
+    const ty = padT + chartH - tput * chartH;
+    throughputPts.push([x, ty]);
+
+    let resp;
+    if (t < knee) {
+      resp = 0.05 + 0.1 * (t / knee);
+    } else {
+      const excess = (t - knee) / (1 - knee);
+      resp = 0.15 + Math.pow(excess, 2.2) * 0.85;
+    }
+    resp = Math.min(resp, 1);
+    responsePts.push([x, padT + chartH - resp * chartH]);
+  }
+
+  return { throughputPts, responsePts, padL, padB, padT, padR, chartW, chartH, knee, maxRate, W, H, steps };
+}
+
+function pointsToD(pts) {
+  return pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+}
+
+function drawLoadCurve(maxRate, doAnimate, currentRate) {
+  const svg = clearSvg('diag-curve');
+  if (!svg) return;
+  const { throughputPts, responsePts, padL, padT, padR, chartW, chartH, knee, W, H } = computeCurvePoints(maxRate);
+  const baseY = padT + chartH;
+
+  for (let g = 0; g <= 4; g++) {
+    const y = padT + (g / 4) * chartH;
+    svg.appendChild(svgEl('line', { x1: padL, y1: y, x2: padL + chartW, y2: y, stroke: '#30363d', 'stroke-width': 1, 'stroke-dasharray': '4,4' }));
+  }
+
+  svg.appendChild(svgEl('line', { x1: padL, y1: baseY, x2: padL + chartW, y2: baseY, stroke: '#8b949e', 'stroke-width': 1.5 }));
+  svg.appendChild(svgEl('line', { x1: padL, y1: padT, x2: padL, y2: baseY, stroke: '#8b949e', 'stroke-width': 1.5 }));
+
+  svgText(svg, padL + chartW / 2, H - 4, 'Request load (0 – ' + maxRate + ' req/s)', '#8b949e', 10);
+
+  const yl1 = svgEl('text', { x: 10, y: padT + chartH / 2, 'text-anchor': 'middle', fill: '#4ade80', 'font-size': 9, 'font-family': 'Inter, sans-serif', transform: 'rotate(-90, 10, ' + (padT + chartH / 2) + ')' });
+  yl1.textContent = 'Throughput';
+  svg.appendChild(yl1);
+
+  const yl2 = svgEl('text', { x: W - 8, y: padT + chartH / 2, 'text-anchor': 'middle', fill: '#f87171', 'font-size': 9, 'font-family': 'Inter, sans-serif', transform: 'rotate(90, ' + (W - 8) + ', ' + (padT + chartH / 2) + ')' });
+  yl2.textContent = 'Response Time';
+  svg.appendChild(yl2);
+
+  for (let t = 0; t <= 5; t++) {
+    const x = padL + (t / 5) * chartW;
+    const val = Math.round((t / 5) * maxRate);
+    svg.appendChild(svgEl('line', { x1: x, y1: baseY, x2: x, y2: baseY + 4, stroke: '#8b949e', 'stroke-width': 1 }));
+    svgText(svg, x, baseY + 14, val >= 1000 ? (val / 1000).toFixed(1) + 'k' : String(val), '#8b949e', 9, 'JetBrains Mono, monospace');
+  }
+
+  const tputPath = svgEl('path', {
+    d: pointsToD(throughputPts),
+    fill: 'none', stroke: '#4ade80', 'stroke-width': 2.5,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    id: 'curve-throughput'
+  });
+  svg.appendChild(tputPath);
+
+  const respPath = svgEl('path', {
+    d: pointsToD(responsePts),
+    fill: 'none', stroke: '#f87171', 'stroke-width': 2.5,
+    'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    id: 'curve-response'
+  });
+  svg.appendChild(respPath);
+
+  const kneeX = padL + knee * chartW;
+  const kneeLine = svgEl('line', {
+    x1: kneeX, y1: padT, x2: kneeX, y2: baseY,
+    stroke: '#fbbf24', 'stroke-width': 1.5, 'stroke-dasharray': '6,3',
+    opacity: 0, id: 'curve-knee-line'
+  });
+  svg.appendChild(kneeLine);
+  const kneeLbl = svgEl('text', {
+    x: kneeX + 6, y: padT + 18,
+    fill: '#fbbf24', 'font-size': 10, 'font-family': 'JetBrains Mono, monospace',
+    opacity: 0, id: 'curve-knee-lbl'
+  });
+  kneeLbl.textContent = 'knee of curve';
+  svg.appendChild(kneeLbl);
+
+  // Legend
+  const legendData = [
+    ['#4ade80', 'Throughput'],
+    ['#f87171', 'Response Time'],
+    ['#fbbf24', 'Saturation point'],
+  ];
+  legendData.forEach(([color, text], i) => {
+    const lx = padL + chartW - 180;
+    const ly = padT + 14 + i * 18;
+    svg.appendChild(svgEl('line', { x1: lx, y1: ly, x2: lx + 20, y2: ly, stroke: color, 'stroke-width': 2 }));
+    svgText(svg, lx + 26, ly + 4, text, '#8b949e', 10, 'Inter, sans-serif', 'start');
+  });
+
+  if (currentRate !== undefined) {
+    const t = currentRate / maxRate;
+    const cx = padL + t * chartW;
+    svg.appendChild(svgEl('line', { x1: cx, y1: padT, x2: cx, y2: baseY, stroke: '#a78bfa', 'stroke-width': 1.5, 'stroke-dasharray': '4,3' }));
+    svgText(svg, cx + 5, baseY - 8, currentRate + ' req/s', '#a78bfa', 9, 'JetBrains Mono, monospace', 'start');
+  }
+
+  if (doAnimate) {
+    [tputPath, respPath].forEach(path => {
+      const len = path.getTotalLength ? path.getTotalLength() : 800;
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+      anime({
+        targets: { v: len },
+        v: 0,
+        duration: 1200,
+        easing: 'easeInOutQuad',
+        update(a) { path.style.strokeDashoffset = a.animations[0].currentValue; }
+      });
+    });
+    setTimeout(() => {
+      anime({ targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad', update(a) { kneeLine.setAttribute('opacity', a.animations[0].currentValue); } });
+      anime({ targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad', update(a) { kneeLbl.setAttribute('opacity', a.animations[0].currentValue); } });
+    }, 1100);
+  } else {
+    kneeLine.setAttribute('opacity', 1);
+    kneeLbl.setAttribute('opacity', 1);
+  }
+}
+
+/* =====================================================================
+   S4 — Maintainability
+===================================================================== */
+function drawCouplingMeter() {
+  const svg = clearSvg('diag-coupling');
+  if (!svg) return;
+  const W = 200, H = 100;
+  const cx = W / 2, cy = H - 10;
+  const R = 60;
+
+  const describeArc = (x, y, r, startA, endA) => {
+    const sx = x + r * Math.cos(startA);
+    const sy = y + r * Math.sin(startA);
+    const ex = x + r * Math.cos(endA);
+    const ey = y + r * Math.sin(endA);
+    return 'M ' + sx + ' ' + sy + ' A ' + r + ' ' + r + ' 0 0 1 ' + ex + ' ' + ey;
+  };
+
+  svg.appendChild(svgEl('path', { d: describeArc(cx, cy, R, Math.PI, 0), fill: 'none', stroke: '#30363d', 'stroke-width': 10, 'stroke-linecap': 'round' }));
+  svg.appendChild(svgEl('path', { d: describeArc(cx, cy, R, Math.PI, Math.PI + Math.PI * 0.45), fill: 'none', stroke: '#4ade80', 'stroke-width': 10, 'stroke-linecap': 'round' }));
+  svg.appendChild(svgEl('path', { d: describeArc(cx, cy, R, Math.PI + Math.PI * 0.55, 0), fill: 'none', stroke: '#f87171', 'stroke-width': 10, 'stroke-linecap': 'round' }));
+
+  const needleAngle = Math.PI + 0.25 * Math.PI;
+  const nx = cx + (R - 5) * Math.cos(needleAngle);
+  const ny = cy + (R - 5) * Math.sin(needleAngle);
+  const needle = svgEl('line', { x1: cx, y1: cy, x2: nx, y2: ny, stroke: '#e6edf3', 'stroke-width': 2.5, 'stroke-linecap': 'round', id: 'coupling-needle' });
+  svg.appendChild(needle);
+
+  svgText(svg, cx - R - 2, cy + 14, 'Simple', '#4ade80', 9);
+  svgText(svg, cx + R + 2, cy + 14, 'Complex', '#f87171', 9);
+  svgText(svg, cx, cy - R - 6, 'Accidental Complexity', '#8b949e', 9);
+}
+
+let maintAnimated = false;
+function animateMaintainability() {
+  if (maintAnimated) return;
+  maintAnimated = true;
+
+  ['pc-operability', 'pc-simplicity', 'pc-evolvability'].forEach((id, i) => {
+    const card = document.getElementById(id);
+    if (!card) return;
+    setTimeout(() => {
+      const obj = { op: 0, ty: 20 };
+      anime({
+        targets: obj,
+        op: 1, ty: 0,
+        duration: 550,
+        easing: 'easeOutQuart',
+        update() {
+          card.style.opacity = obj.op;
+          card.style.transform = 'translateY(' + obj.ty + 'px)';
+        }
+      });
+    }, i * 220);
+  });
+
+  ['chk-0', 'chk-1', 'chk-2', 'chk-3'].forEach((id, i) => {
+    setTimeout(() => {
+      const chk = document.getElementById(id);
+      if (!chk) return;
+      const obj = { op: 0, tx: -6 };
+      anime({
+        targets: obj,
+        op: 1, tx: 0,
+        duration: 350,
+        easing: 'easeOutQuad',
+        update() {
+          chk.style.opacity = obj.op;
+          chk.style.transform = 'translateX(' + obj.tx + 'px)';
+        }
+      });
+    }, 400 + i * 300);
+  });
+
+  setTimeout(() => {
+    drawCouplingMeter();
+    const needle = document.getElementById('coupling-needle');
+    if (!needle) return;
+    const cx = 100, cy = 90, R = 55;
+    const obj = { frac: 0.25 };
+    anime({
+      targets: obj,
+      frac: 0.92,
+      duration: 1200,
+      easing: 'easeInOutQuad',
+      update() {
+        const angle = Math.PI + obj.frac * Math.PI;
+        needle.setAttribute('x2', cx + (R - 5) * Math.cos(angle));
+        needle.setAttribute('y2', cy + (R - 5) * Math.sin(angle));
+        needle.setAttribute('stroke', obj.frac > 0.6 ? '#f87171' : '#e6edf3');
+      },
+      complete() {
+        const obj2 = { frac: 0.92 };
+        anime({
+          targets: obj2,
+          frac: 0.2,
+          duration: 800,
+          delay: 600,
+          easing: 'easeOutQuad',
+          update() {
+            const angle = Math.PI + obj2.frac * Math.PI;
+            needle.setAttribute('x2', cx + (R - 5) * Math.cos(angle));
+            needle.setAttribute('y2', cy + (R - 5) * Math.sin(angle));
+            needle.setAttribute('stroke', '#4ade80');
+          }
+        });
+      }
+    });
+  }, 700);
+
+  const verItems = [
+    { id: 'ver-v1', delay: 1000 },
+    { id: 'ver-l1', delay: 1200 },
+    { id: 'ver-v2', delay: 1350 },
+    { id: 'ver-l2', delay: 1550 },
+    { id: 'ver-v3', delay: 1700 },
+    { id: 'ver-l3', delay: 1900 },
+    { id: 'ver-v4', delay: 2050 },
+  ];
+  verItems.forEach(({ id, delay }) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      anime({ targets: { v: 0 }, v: 1, duration: 350, easing: 'easeOutQuad', update(a) { el.style.opacity = a.animations[0].currentValue; } });
+    }, delay);
+  });
+
+  setTimeout(() => {
+    const leg = document.getElementById('ver-legend');
+    if (leg) {
+      // Build legend using DOM (no innerHTML)
+      const s1 = document.createElement('span');
+      s1.style.color = '#4ade80';
+      s1.textContent = 'v1, v2, v4';
+      const t1 = document.createTextNode(' backward-compatible   |   ');
+      const s2 = document.createElement('span');
+      s2.style.color = '#f87171';
+      s2.textContent = 'v3!';
+      const t2 = document.createTextNode(' breaking change');
+      while (leg.firstChild) leg.removeChild(leg.firstChild);
+      leg.appendChild(s1);
+      leg.appendChild(t1);
+      leg.appendChild(s2);
+      leg.appendChild(t2);
+    }
+    document.getElementById('trace-4').textContent = 'Operability keeps it running. Simplicity keeps it understandable. Evolvability keeps it changeable.';
+  }, 2400);
+}
+
+/* =====================================================================
+   Section Animator map
+===================================================================== */
+function animateReliability() {
+  drawRaid();
+  drawCluster();
+  canaryPct = 5;
+  drawCanary();
+  runRaidFaultAnimation();
+  document.getElementById('trace-1').textContent = 'HW: RAID-5 reconstructing D3. SW: 5-node cluster — use Chaos Monkey button. Human: canary deployment splitting traffic.';
+}
+
+let scalabilityAnimated = false;
+function animateScalability() {
+  if (scalabilityAnimated) return;
+  scalabilityAnimated = true;
+  drawHistogram();
+  animateLoadTable();
+  animateHistogram();
+  drawFanout(fanoutN);
+  setTimeout(animateFanout, 900);
+  document.getElementById('trace-2').textContent = 'Load params fade in → histogram bars scale up → p50/p95/p99 markers appear → fan-out dots race to backends (slow node arrives last).';
+}
+
+let curveAnimated = false;
+function animateLoadCurve() {
+  if (curveAnimated) return;
+  curveAnimated = true;
+  drawLoadCurve(1000, true, 500);
+  document.getElementById('trace-3').textContent = 'Throughput (green) climbs then plateaus. Response time (red) stays flat then hockey-sticks at saturation. Knee at ~55% load.';
+}
+
+function animateMaintSection() {
+  drawCouplingMeter();
+  animateMaintainability();
+}
+
+const animators = {
+  '1': animateReliability,
+  '2': animateScalability,
+  '3': animateLoadCurve,
+  '4': animateMaintSection
+};
+
+function animateSection(id) {
+  if (animators[id]) animators[id]();
+}
+
+/* =====================================================================
+   IntersectionObserver
+===================================================================== */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      animateSection(entry.target.dataset.section);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.25 });
+
+document.querySelectorAll('.concept-section').forEach(el => observer.observe(el));
+
+/* =====================================================================
+   Button / slider handlers
+===================================================================== */
+document.getElementById('btn-inject-fault').addEventListener('click', () => {
+  drawRaid();
+  setTimeout(runRaidFaultAnimation, 80);
+});
+
+document.getElementById('btn-chaos').addEventListener('click', runChaosMonkey);
+
+document.getElementById('btn-canary-grow').addEventListener('click', () => {
+  if (canaryPct < 100) {
+    canaryPct = Math.min(100, canaryPct + 15);
+    drawCanary();
+  }
+});
+
+document.getElementById('slider-backends').addEventListener('input', function () {
+  const n = parseInt(this.value, 10);
+  document.getElementById('lbl-backends').textContent = n;
+  drawFanout(n);
+  setTimeout(animateFanout, 100);
+});
+
+document.getElementById('slider-rate').addEventListener('input', function () {
+  const rate = parseInt(this.value, 10);
+  document.getElementById('lbl-rate').textContent = rate + ' req/s';
+  const isSaturated = rate > 550;
+  document.getElementById('trace-3').textContent = isSaturated
+    ? 'At ' + rate + ' req/s: past saturation — queues form, latency spikes.'
+    : 'At ' + rate + ' req/s: within safe operating range — response time stable.';
+  drawLoadCurve(1000, false, rate);
+});
+
+document.getElementById('btn-replay-maint').addEventListener('click', () => {
+  maintAnimated = false;
+  ['pc-operability', 'pc-simplicity', 'pc-evolvability'].forEach(id => {
+    const card = document.getElementById(id);
+    if (card) { card.style.opacity = '0'; card.style.transform = 'translateY(20px)'; }
+  });
+  ['chk-0', 'chk-1', 'chk-2', 'chk-3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.opacity = '0';
+  });
+  ['ver-v1', 'ver-l1', 'ver-v2', 'ver-l2', 'ver-v3', 'ver-l3', 'ver-v4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.opacity = '0';
+  });
+  const leg = document.getElementById('ver-legend');
+  if (leg) { while (leg.firstChild) leg.removeChild(leg.firstChild); }
+  drawCouplingMeter();
+  setTimeout(animateMaintainability, 100);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 · Binary Search — DSA Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2330; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #f59e0b; --accent-dim: rgba(245,158,11,0.15);
+  --good: #4ade80; --bad: #f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-back{color:var(--text-muted);text-decoration:none;font-size:0.8rem;white-space:nowrap}
+.nav-back:hover{color:var(--accent)}
+.nav-pager{display:flex;align-items:center;gap:0.75rem;margin:0 auto;font-size:0.8rem}
+.nav-pager a{color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-pager span{color:var(--text);font-weight:600}
+.nav-anchors{display:flex;gap:0.5rem;margin-left:auto}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.75rem;padding:3px 8px;border-radius:4px}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 3rem}
+section{margin-bottom:4rem;opacity:0;transform:translateY(32px);transition:opacity 0.6s ease,transform 0.6s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.hero{text-align:center;padding:3rem 0 2rem;opacity:1!important;transform:none!important}
+.hero .pattern-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.5rem}
+.hero h1{font-size:3.5rem;font-weight:700;margin-bottom:0.75rem;background:linear-gradient(135deg,var(--accent),#fcd34d);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{color:var(--text-muted);font-size:1.1rem;max-width:640px;margin:0 auto}
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card:hover{background:var(--bg-card-hover)}
+.controls{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+.slider-row{display:flex;align-items:center;gap:0.75rem;font-size:0.875rem;color:var(--text-muted)}
+input[type=range]{accent-color:var(--accent);width:120px}
+input[type=number]{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:0.875rem;width:80px}
+input[type=number]:focus{outline:none;border-color:var(--accent)}
+#viz-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+#viz-svg{width:100%;overflow:visible}
+.trace-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.trace-row{display:flex;gap:1rem;margin-bottom:0.4rem;flex-wrap:wrap}
+.trace-key{color:var(--text-muted)}
+.trace-val{color:var(--accent);font-weight:600}
+.trace-invariant{color:#4ade80;font-size:0.75rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)}
+.code-panel{position:relative}
+.code-panel pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7}
+.copy-btn{position:absolute;top:0.75rem;right:0.75rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-family:'Inter',sans-serif}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.875rem 1rem}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.problem-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:0.75rem;margin-bottom:0.25rem}
+.problem-name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}
+.problem-note{color:var(--text-muted);font-size:0.8rem}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;margin-bottom:0.5rem}
+.tag-classic{background:rgba(245,158,11,0.15);color:#f59e0b}
+.tag-answer{background:rgba(167,139,250,0.15);color:#a78bfa}
+.section-label{font-size:1.1rem;font-weight:600;margin-bottom:0.75rem;margin-top:1.25rem;color:var(--text-muted)}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.staff-card h3{color:#a78bfa;font-size:1rem;margin-bottom:0.75rem}
+.staff-card p{color:var(--text-muted);font-size:0.875rem;line-height:1.7}
+.staff-card .hint{color:var(--text);margin-top:0.5rem;font-size:0.875rem}
+footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border)}
+.concept-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+@media(max-width:700px){.concept-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<nav>
+  <a href="00_index.html" class="nav-back">Problem Solving Home</a>
+<div class="nav-pager">
+    <a href="01_sliding_window.html">← Sliding Window</a>
+    <span>Binary Search</span>
+    <a href="03_recursion.html">Recursion →</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+</nav>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="pattern-num">PATTERN 02</div>
+    <h1>Binary Search</h1>
+    <p class="tagline">Input is sorted, OR you can define a monotonic predicate f(x) where the answer is the boundary between false→true. O(log n) per search.</p>
+  </section>
+
+  <section id="concept">
+    <h2>Core Concept</h2>
+    <div class="card">
+      <p style="color:var(--text-muted);margin-bottom:1rem">The key insight: you don't need a sorted array — you need a <strong style="color:var(--text)">monotonic predicate</strong>. If you can answer "is mid a valid answer?" in O(P), the whole search is O(P · log R).</p>
+      <div class="concept-grid">
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem">
+          <div class="tag tag-classic">Classic — Find Value</div>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:0.5rem">Array is sorted. Shrink [lo, hi] toward target.</p>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.77rem;color:var(--text)">
+            lo=0, hi=n-1<br>
+            <span class="kw">while</span> lo &lt;= hi:<br>
+            &nbsp;&nbsp;mid = lo + (hi-lo)/2<br>
+            &nbsp;&nbsp;<span class="kw">if</span> arr[mid] == target → found<br>
+            &nbsp;&nbsp;<span class="kw">if</span> arr[mid] &lt; target → lo=mid+1<br>
+            &nbsp;&nbsp;<span class="kw">else</span> → hi=mid-1
+          </div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem">
+          <div class="tag tag-answer">Search on Answer</div>
+          <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:0.5rem">lo/hi are answer-space bounds. Predicate is canAchieve(mid).</p>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.77rem;color:var(--text)">
+            lo=minFeasible, hi=maxFeasible<br>
+            <span class="kw">while</span> lo &lt; hi:<br>
+            &nbsp;&nbsp;mid = lo + (hi-lo)/2<br>
+            &nbsp;&nbsp;<span class="kw">if</span> canAchieve(mid) → hi=mid<br>
+            &nbsp;&nbsp;<span class="kw">else</span> → lo=mid+1<br>
+            <span class="kw">return</span> lo
+          </div>
+        </div>
+      </div>
+      <div id="concept-anim" style="margin-top:1.25rem;height:60px"></div>
+    </div>
+  </section>
+
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <div class="controls">
+      <button class="btn active" id="btn-classic" onclick="setSearchMode('classic')">Classic Search</button>
+      <button class="btn" id="btn-answer" onclick="setSearchMode('answer')">Search on Answer</button>
+      <div class="slider-row">
+        <span>Target:</span>
+        <input type="number" id="target-input" value="23" min="1" max="99" oninput="onTargetChange()">
+      </div>
+      <div class="slider-row">
+        <span>Speed:</span>
+        <input type="range" id="speed-ctrl" min="200" max="1500" value="800" step="100">
+        <span>⚡</span>
+      </div>
+    </div>
+    <div id="viz-container">
+      <svg id="viz-svg" height="200"></svg>
+    </div>
+    <div class="controls" style="margin-top:0.75rem">
+      <button class="btn primary" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" onclick="stepForward()">Step →</button>
+      <button class="btn" onclick="resetStepper()">↺ Reset</button>
+      <span id="step-counter" style="color:var(--text-muted);font-size:0.85rem">Step 0 / 0</span>
+    </div>
+    <div class="trace-panel">
+      <div class="trace-row">
+        <span class="trace-key">lo:</span><span class="trace-val" id="tr-lo">0</span>
+        <span class="trace-key">hi:</span><span class="trace-val" id="tr-hi">9</span>
+        <span class="trace-key">mid:</span><span class="trace-val" id="tr-mid">—</span>
+        <span class="trace-key">arr[mid]:</span><span class="trace-val" id="tr-midval">—</span>
+        <span class="trace-key">result:</span><span class="trace-val" id="tr-result">—</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">action:</span><span style="color:var(--text);font-size:0.8rem" id="tr-action">—</span>
+      </div>
+      <div class="trace-invariant" id="trace-inv">Invariant: answer ∈ [lo..hi] at all times</div>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>Java Code Template</h2>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+      <pre><span class="cm">// ===== CLASSIC BINARY SEARCH =====</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">binarySearch</span>(<span class="tp">int</span>[] arr, <span class="tp">int</span> target) {
+    <span class="tp">int</span> lo = <span class="num">0</span>, hi = arr.length - <span class="num">1</span>;
+    <span class="kw">while</span> (lo &lt;= hi) {
+        <span class="tp">int</span> mid = lo + (hi - lo) / <span class="num">2</span>; <span class="cm">// avoid overflow</span>
+        <span class="kw">if</span> (arr[mid] == target) <span class="kw">return</span> mid;
+        <span class="kw">else if</span> (arr[mid] &lt; target) lo = mid + <span class="num">1</span>;
+        <span class="kw">else</span> hi = mid - <span class="num">1</span>;
+    }
+    <span class="kw">return</span> -<span class="num">1</span>;
+}
+
+<span class="cm">// ===== LOWER BOUND (first index &gt;= target) =====</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">lowerBound</span>(<span class="tp">int</span>[] arr, <span class="tp">int</span> target) {
+    <span class="tp">int</span> lo = <span class="num">0</span>, hi = arr.length; <span class="cm">// open interval [0, n)</span>
+    <span class="kw">while</span> (lo &lt; hi) {
+        <span class="tp">int</span> mid = lo + (hi - lo) / <span class="num">2</span>;
+        <span class="kw">if</span> (arr[mid] &lt; target) lo = mid + <span class="num">1</span>;
+        <span class="kw">else</span> hi = mid;
+    }
+    <span class="kw">return</span> lo;
+}
+
+<span class="cm">// ===== UPPER BOUND (first index &gt; target) =====</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">upperBound</span>(<span class="tp">int</span>[] arr, <span class="tp">int</span> target) {
+    <span class="tp">int</span> lo = <span class="num">0</span>, hi = arr.length;
+    <span class="kw">while</span> (lo &lt; hi) {
+        <span class="tp">int</span> mid = lo + (hi - lo) / <span class="num">2</span>;
+        <span class="kw">if</span> (arr[mid] &lt;= target) lo = mid + <span class="num">1</span>;
+        <span class="kw">else</span> hi = mid;
+    }
+    <span class="kw">return</span> lo;
+}
+
+<span class="cm">// ===== SEARCH ON ANSWER TEMPLATE =====</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">searchOnAnswer</span>(<span class="tp">int</span>[] arr, <span class="tp">int</span> constraints) {
+    <span class="tp">int</span> lo = <span class="fn">minFeasible</span>(arr);   <span class="cm">// smallest possible answer</span>
+    <span class="tp">int</span> hi = <span class="fn">maxFeasible</span>(arr);   <span class="cm">// largest possible answer</span>
+    <span class="kw">while</span> (lo &lt; hi) {
+        <span class="tp">int</span> mid = lo + (hi - lo) / <span class="num">2</span>;
+        <span class="kw">if</span> (<span class="fn">canAchieve</span>(arr, mid, constraints)) hi = mid; <span class="cm">// find minimum feasible</span>
+        <span class="kw">else</span> lo = mid + <span class="num">1</span>;
+    }
+    <span class="kw">return</span> lo;
+}</pre>
+    </div>
+  </section>
+
+  <section id="problems">
+    <h2>Canonical Problems</h2>
+    <div class="section-label">Classic Binary Search</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">01 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Binary Search (LC 704)</div>
+        <div class="problem-note">Pure template; practice off-by-one with lo=0, hi=n-1</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">02 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">First and Last Position (LC 34)</div>
+        <div class="problem-note">Two passes: lowerBound + upperBound-1; master both variants</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">03 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Count Occurrences in Sorted Array</div>
+        <div class="problem-note">last - first + 1 using bounds; pure application of LC 34</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">04 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Search in Rotated Sorted Array (LC 33)</div>
+        <div class="problem-note">Identify which half is sorted before deciding which way to go</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">05 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Find Minimum in Rotated Array (LC 153)</div>
+        <div class="problem-note">Pivot-finding pattern; compare mid with hi to decide direction</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">06 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Peak Element (LC 162)</div>
+        <div class="problem-note">BS on unsorted array: "is right neighbor smaller?" predicate</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">07 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Search in Nearly Sorted Array</div>
+        <div class="problem-note">Each element at index i-1, i, or i+1; check three positions per step</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">08 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Floor and Ceil in Sorted Array</div>
+        <div class="problem-note">Track last seen ≤ and ≥ during the search; two passes or one pass</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">09 <span class="tag tag-classic">Classic</span></div>
+        <div class="problem-name">Smallest Letter Greater Than Target (LC 744)</div>
+        <div class="problem-note">Circular wrap when no letter qualifies; use modulo on lowerBound result</div>
+      </div>
+    </div>
+    <div class="section-label" style="margin-top:1.5rem">Search on Answer</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">10 <span class="tag tag-answer">On Answer</span></div>
+        <div class="problem-name">Capacity to Ship in D Days (LC 1011)</div>
+        <div class="problem-note">canShip(cap) predicate O(n); lo=max(weights), hi=sum(weights)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">11 <span class="tag tag-answer">On Answer</span></div>
+        <div class="problem-name">Koko Eating Bananas (LC 875)</div>
+        <div class="problem-note">Same skeleton as LC 1011; lo=1, hi=max(piles)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">12 <span class="tag tag-answer">On Answer</span></div>
+        <div class="problem-name">Aggressive Cows (classic)</div>
+        <div class="problem-note">Maximize minimum gap; canPlace(minDist) greedy predicate</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">13 <span class="tag tag-answer">On Answer</span></div>
+        <div class="problem-name">Allocate Minimum Pages (classic)</div>
+        <div class="problem-note">Minimize maximum allocation; flip of Aggressive Cows predicate</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">14 <span class="tag tag-answer">On Answer</span></div>
+        <div class="problem-name">Painter's Partition Problem</div>
+        <div class="problem-note">Same structure as Allocate Min Pages; identical predicate logic</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">15 <span class="tag tag-answer">HARD</span></div>
+        <div class="problem-name">Median of Two Sorted Arrays (LC 4)</div>
+        <div class="problem-note">Binary search on partition index; O(log min(m,n)); hardest BS problem</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="staff">
+    <h2>Staff Angles</h2>
+    <div class="staff-card">
+      <h3>Scale: Binary Search on Disk</h3>
+      <p>Binary search assumes the array fits in RAM. How do you binary search a 5TB sorted file on disk?</p>
+      <p class="hint">→ <strong>B-tree index pages</strong> (O(log_B n) I/Os instead of O(log n)), <strong>SSTables in LSM trees</strong> use bloom filters + sparse index to skip most disk reads, <strong>external merge sort</strong> produces sorted runs you can index. Each I/O reads a full 4KB page, so binary search with aligned block-granularity jumps. For range scans: prefix-compressed sorted string tables (like LevelDB blocks).</p>
+    </div>
+    <div class="staff-card">
+      <h3>Approximation: Beyond O(n log R)</h3>
+      <p>The canShip predicate is O(n), giving O(n log R) total. At 10B items is this optimal, or is there a better approach?</p>
+      <p class="hint">→ <strong>Prefix sums precomputed</strong> reduce each predicate call to O(log n) binary search on prefix array → overall O(log n · log R). For distributed systems: <strong>distributed binary search on partitioned sorted arrays</strong> across shards — each shard answers locally, coordinator aggregates. For approximation: <strong>sample k random items</strong>, estimate distribution, skip most of the search space entirely (probabilistic O(1) amortized for well-distributed inputs).</p>
+    </div>
+  </section>
+</main>
+
+<footer>Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt & Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers</footer>
+
+<script>
+// ─── Progress bar ───────────────────────────────────────────────
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+});
+
+// ─── Intersection observer ───────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// ─── Concept animation ──────────────────────────────────────────
+function runConceptAnim() {
+  const arr = [2,5,8,12,16,23,38,45,56,72];
+  const container = document.getElementById('concept-anim');
+  const W = container.offsetWidth;
+  const cellW = Math.min(48, (W - 20) / arr.length);
+  const svg = d3.select(container).append('svg').attr('width','100%').attr('height',60);
+  arr.forEach((v, i) => {
+    const x = (W - arr.length*(cellW+4))/2 + i*(cellW+4);
+    svg.append('rect').attr('x',x).attr('y',10).attr('width',cellW).attr('height',40).attr('rx',4)
+      .attr('fill','#161b22').attr('stroke','#30363d').attr('class',`ca-rect ca-r${i}`);
+    svg.append('text').attr('x',x+cellW/2).attr('y',35).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-size',11).attr('font-family','JetBrains Mono').text(v);
+  });
+  let lo=0,hi=arr.length-1,target=23;
+  function step() {
+    svg.selectAll('.ca-rect').attr('fill','#161b22').attr('stroke','#30363d');
+    const mid=Math.floor((lo+hi)/2);
+    for(let i=lo;i<=hi;i++) svg.select(`.ca-r${i}`).attr('stroke','#30363d').attr('fill','rgba(245,158,11,0.06)');
+    svg.select(`.ca-r${mid}`).attr('fill','rgba(245,158,11,0.3)').attr('stroke','#f59e0b');
+    if(arr[mid]===target){lo=-1;hi=-1;svg.select(`.ca-r${mid}`).attr('fill','rgba(74,222,128,0.3)').attr('stroke','#4ade80');setTimeout(()=>{lo=0;hi=arr.length-1;step();},1400);return;}
+    else if(arr[mid]<target) lo=mid+1; else hi=mid-1;
+    if(lo>hi){lo=0;hi=arr.length-1;}
+    setTimeout(step, 900);
+  }
+  step();
+}
+setTimeout(runConceptAnim, 400);
+
+// ─── Stepper state ──────────────────────────────────────────────
+const classicArr = [2,5,8,12,16,23,38,45,56,72];
+// For search on answer: capacity problem simulation
+// weights array, D days
+const shipWeights = [1,2,3,4,5,6,7,8,9,10];
+const shipDays = 5;
+
+let searchMode = 'classic';
+let steps = [];
+let stepIdx = 0;
+let playInterval = null;
+
+function setSearchMode(m) {
+  searchMode = m;
+  document.getElementById('btn-classic').classList.toggle('active', m === 'classic');
+  document.getElementById('btn-answer').classList.toggle('active', m === 'answer');
+  document.getElementById('target-input').style.display = m === 'classic' ? '' : 'none';
+  document.querySelector('.slider-row span').textContent = m === 'classic' ? 'Target:' : '';
+  resetStepper();
+}
+
+function onTargetChange() { resetStepper(); }
+
+function buildClassicSteps(arr, target) {
+  const s = [];
+  let lo = 0, hi = arr.length - 1;
+  s.push({lo, hi, mid: -1, midval: '—', action:'Initialize: lo=0, hi='+(arr.length-1), result:'—', highlight:[], state:'init'});
+  while (lo <= hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    let action, result, state;
+    if (arr[mid] === target) {
+      action = `arr[${mid}]=${arr[mid]} == target → FOUND at index ${mid}`;
+      result = mid; state = 'found';
+      s.push({lo, hi, mid, midval: arr[mid], action, result, highlight:[mid], state});
+      break;
+    } else if (arr[mid] < target) {
+      action = `arr[${mid}]=${arr[mid]} < ${target} → move lo to ${mid+1}`;
+      result = '—'; state = 'move_lo';
+      s.push({lo, hi, mid, midval: arr[mid], action, result, highlight:[mid], state, lo2: mid+1, hi2: hi});
+      lo = mid + 1;
+    } else {
+      action = `arr[${mid}]=${arr[mid]} > ${target} → move hi to ${mid-1}`;
+      result = '—'; state = 'move_hi';
+      s.push({lo, hi, mid, midval: arr[mid], action, result, highlight:[mid], state, lo2: lo, hi2: mid-1});
+      hi = mid - 1;
+    }
+  }
+  if (steps.length === 0 || steps[steps.length-1]?.state !== 'found') {
+    const last = s[s.length-1];
+    if (last && last.state !== 'found') {
+      s.push({...last, lo: last.lo2 ?? lo, hi: last.hi2 ?? hi, mid: -1, midval:'—', action:`lo > hi: ${target} not found`, result:'-1', state:'not_found', highlight:[]});
+    }
+  }
+  return s;
+}
+
+function buildAnswerSteps(weights, D) {
+  // canShip(cap): can we ship all within D days?
+  const s = [];
+  let lo = Math.max(...weights);
+  let hi = weights.reduce((a,b)=>a+b,0);
+  s.push({lo, hi, mid:-1, midval:'—', action:`Initialize: lo=max(w)=${lo}, hi=sum(w)=${hi}`, result:'—', highlight:[], state:'init', cap:-1, bars: weights.map(()=>0)});
+  while (lo < hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    // simulate canShip
+    let days=1, cur=0, bars=weights.map(()=>0), dayIdx=0;
+    for(let i=0;i<weights.length;i++){
+      if(cur+weights[i]>mid){days++;cur=0;dayIdx++;}
+      cur+=weights[i]; bars[i]=dayIdx;
+    }
+    const can = days <= D;
+    const action = `canShip(${mid})? days=${days} ${can?'≤':'>'} ${D} → ${can?'hi='+mid:'lo='+(mid+1)}`;
+    s.push({lo, hi, mid, midval: mid, action, result: can?'feasible':'infeasible', highlight:[], state: can?'feasible':'infeasible', cap: mid, bars, daysUsed: days});
+    if (can) hi = mid;
+    else lo = mid + 1;
+  }
+  s.push({lo, hi, mid:lo, midval:lo, action:`lo == hi = ${lo}: minimum capacity found`, result: lo, highlight:[], state:'found', cap:lo, bars:[]});
+  return s;
+}
+
+function resetStepper() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; document.getElementById('play-btn').textContent = '▶ Play'; }
+  const target = parseInt(document.getElementById('target-input').value) || 23;
+  steps = searchMode === 'classic'
+    ? buildClassicSteps(classicArr, target)
+    : buildAnswerSteps(shipWeights, shipDays);
+  stepIdx = 0;
+  drawViz();
+  if (steps[0]) applyStep(steps[0]);
+  updateCounter();
+}
+
+function drawViz() {
+  const svg = d3.select('#viz-svg');
+  svg.selectAll('*').remove();
+  if (searchMode === 'classic') drawClassicViz(); else drawAnswerViz();
+}
+
+function drawClassicViz() {
+  const arr = classicArr;
+  const svg = d3.select('#viz-svg');
+  const W = document.getElementById('viz-container').offsetWidth - 48;
+  const cellW = Math.min(58, (W - 20) / arr.length);
+  const cellH = 52;
+  const startX = (W - arr.length * (cellW + 4)) / 2 + 12;
+  const startY = 60;
+  svg.attr('height', 170);
+
+  arr.forEach((v, i) => {
+    const x = startX + i * (cellW + 4);
+    svg.append('rect').attr('x', x).attr('y', startY).attr('width', cellW).attr('height', cellH)
+      .attr('rx', 6).attr('fill', '#161b22').attr('stroke', '#30363d').attr('class', `cell-rect cell-${i}`);
+    svg.append('text').attr('x', x + cellW/2).attr('y', startY + cellH/2 + 6)
+      .attr('text-anchor','middle').attr('fill','#e6edf3')
+      .attr('font-size', 13).attr('font-family','JetBrains Mono').attr('class', `cell-text cell-t${i}`).text(v);
+    svg.append('text').attr('x', x + cellW/2).attr('y', startY - 10)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size', 10).attr('font-family','JetBrains Mono').text(i);
+  });
+  svg.append('text').attr('id','ptr-lo').attr('y', startY + cellH + 22)
+    .attr('text-anchor','middle').attr('fill','#4ade80').attr('font-size',12).attr('font-weight','bold').attr('font-family','JetBrains Mono').text('lo');
+  svg.append('text').attr('id','ptr-hi').attr('y', startY + cellH + 22)
+    .attr('text-anchor','middle').attr('fill','#f87171').attr('font-size',12).attr('font-weight','bold').attr('font-family','JetBrains Mono').text('hi');
+  svg.append('text').attr('id','ptr-mid').attr('y', startY - 26)
+    .attr('text-anchor','middle').attr('fill','#f59e0b').attr('font-size',12).attr('font-weight','bold').attr('font-family','JetBrains Mono').text('mid');
+  svg.append('text').attr('id','action-label').attr('x', W/2+12).attr('y', 22)
+    .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',12).attr('font-family','Inter').text('');
+  window._bsStartX = startX; window._bsCellW = cellW; window._bsStartY = startY; window._bsCellH = cellH;
+}
+
+function drawAnswerViz() {
+  const weights = shipWeights;
+  const svg = d3.select('#viz-svg');
+  const W = document.getElementById('viz-container').offsetWidth - 48;
+  svg.attr('height', 200);
+  const barW = Math.min(40, (W - 40) / weights.length);
+  const startX = (W - weights.length * (barW + 4)) / 2 + 12;
+  const maxH = 80;
+  const maxW = Math.max(...weights);
+  weights.forEach((w, i) => {
+    const x = startX + i * (barW + 4);
+    const bh = (w / maxW) * maxH;
+    svg.append('rect').attr('x', x).attr('y', 130 - bh).attr('width', barW).attr('height', bh)
+      .attr('rx', 3).attr('fill', '#161b22').attr('stroke', '#30363d').attr('class', `bar-rect bar-${i}`);
+    svg.append('text').attr('x', x + barW/2).attr('y', 148)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',10).attr('font-family','JetBrains Mono').text(w);
+  });
+  svg.append('text').attr('id','ans-capacity').attr('x', W/2+12).attr('y', 170)
+    .attr('text-anchor','middle').attr('fill','#f59e0b').attr('font-size',13).attr('font-family','JetBrains Mono').attr('font-weight','bold').text('');
+  svg.append('text').attr('id','action-label').attr('x', W/2+12).attr('y', 22)
+    .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',12).attr('font-family','Inter').text('');
+  svg.append('text').attr('x', W/2+12).attr('y', 192)
+    .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',11).attr('font-family','Inter')
+    .text(`Ship ${weights.length} packages in ≤ ${shipDays} days — find minimum capacity`);
+  window._ansStartX = startX; window._ansBarW = barW; window._ansMaxH = maxH; window._ansMaxW = maxW;
+}
+
+const COLORS = ['#f59e0b','#4ade80','#f87171','#a78bfa','#38bdf8'];
+
+function applyStep(st) {
+  if (!st) return;
+  const svg = d3.select('#viz-svg');
+  if (searchMode === 'classic') {
+    const arr = classicArr;
+    const startX = window._bsStartX, cellW = window._bsCellW, startY = window._bsStartY, cellH = window._bsCellH;
+    // reset
+    arr.forEach((_, i) => {
+      svg.select(`.cell-${i}`).attr('fill', st.lo <= i && i <= st.hi ? 'rgba(245,158,11,0.07)' : '#161b22')
+        .attr('stroke', st.lo <= i && i <= st.hi ? '#f59e0b' : '#30363d').attr('opacity', st.lo <= i && i <= st.hi ? 1 : 0.4);
+      svg.select(`.cell-t${i}`).attr('fill', st.lo <= i && i <= st.hi ? '#e6edf3' : '#4a4f5a');
+    });
+    if (st.mid >= 0) {
+      svg.select(`.cell-${st.mid}`).attr('fill', 'rgba(245,158,11,0.35)').attr('stroke','#f59e0b').attr('opacity',1);
+      svg.select(`.cell-t${st.mid}`).attr('fill','#f59e0b');
+    }
+    if (st.state === 'found') {
+      svg.select(`.cell-${st.mid}`).attr('fill', 'rgba(74,222,128,0.35)').attr('stroke','#4ade80');
+      svg.select(`.cell-t${st.mid}`).attr('fill','#4ade80');
+    }
+    // pointers
+    const lx = startX + st.lo * (cellW + 4) + cellW/2;
+    const hx = startX + st.hi * (cellW + 4) + cellW/2;
+    svg.select('#ptr-lo').attr('x', lx);
+    svg.select('#ptr-hi').attr('x', hx);
+    if (st.mid >= 0) {
+      svg.select('#ptr-mid').attr('x', startX + st.mid * (cellW+4) + cellW/2).attr('opacity',1);
+    } else {
+      svg.select('#ptr-mid').attr('opacity',0);
+    }
+    svg.select('#action-label').text(st.action || '');
+    document.getElementById('tr-lo').textContent = st.lo;
+    document.getElementById('tr-hi').textContent = st.hi;
+    document.getElementById('tr-mid').textContent = st.mid >= 0 ? st.mid : '—';
+    document.getElementById('tr-midval').textContent = st.midval !== undefined ? st.midval : '—';
+    document.getElementById('tr-result').textContent = st.result !== undefined ? st.result : '—';
+    document.getElementById('tr-action').textContent = st.action || '';
+    document.getElementById('trace-inv').textContent = `Invariant: answer ∈ [lo..hi] at all times`;
+  } else {
+    // answer mode
+    if (st.bars && st.bars.length > 0) {
+      const startX = window._ansStartX, barW = window._ansBarW, maxH = window._ansMaxH, maxW = window._ansMaxW;
+      shipWeights.forEach((w, i) => {
+        const dayColor = COLORS[st.bars[i] % COLORS.length];
+        d3.select('#viz-svg').select(`.bar-${i}`).attr('fill', 'rgba(' + hexToRgb(dayColor) + ',0.3)').attr('stroke', dayColor);
+      });
+    }
+    const cap = st.cap > 0 ? `Trying capacity = ${st.cap}` : '';
+    d3.select('#viz-svg').select('#ans-capacity').text(cap);
+    d3.select('#viz-svg').select('#action-label').text(st.action || '');
+    document.getElementById('tr-lo').textContent = st.lo;
+    document.getElementById('tr-hi').textContent = st.hi;
+    document.getElementById('tr-mid').textContent = st.cap > 0 ? st.cap : '—';
+    document.getElementById('tr-midval').textContent = st.daysUsed !== undefined ? `${st.daysUsed} days` : '—';
+    document.getElementById('tr-result').textContent = st.result !== undefined ? st.result : '—';
+    document.getElementById('tr-action').textContent = st.action || '';
+    document.getElementById('trace-inv').textContent = `Invariant: minimum feasible capacity ∈ [lo..hi] = [${st.lo}..${st.hi}]`;
+  }
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+function updateCounter() {
+  document.getElementById('step-counter').textContent = `Step ${stepIdx} / ${steps.length - 1}`;
+}
+
+function stepForward() {
+  if (stepIdx < steps.length - 1) {
+    stepIdx++;
+    applyStep(steps[stepIdx]);
+    updateCounter();
+  }
+}
+
+function togglePlay() {
+  if (playInterval) {
+    clearInterval(playInterval); playInterval = null;
+    document.getElementById('play-btn').textContent = '▶ Play';
+  } else {
+    document.getElementById('play-btn').textContent = '⏸ Pause';
+    playInterval = setInterval(() => {
+      if (stepIdx >= steps.length - 1) {
+        clearInterval(playInterval); playInterval = null;
+        document.getElementById('play-btn').textContent = '▶ Play'; return;
+      }
+      stepForward();
+    }, parseInt(document.getElementById('speed-ctrl').value));
+  }
+}
+
+function copyCode() {
+  const raw = `// ===== CLASSIC BINARY SEARCH =====
+public int binarySearch(int[] arr, int target) {
+    int lo = 0, hi = arr.length - 1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (arr[mid] == target) return mid;
+        else if (arr[mid] < target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1;
+}
+
+// ===== LOWER BOUND (first index >= target) =====
+public int lowerBound(int[] arr, int target) {
+    int lo = 0, hi = arr.length;
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (arr[mid] < target) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+// ===== UPPER BOUND (first index > target) =====
+public int upperBound(int[] arr, int target) {
+    int lo = 0, hi = arr.length;
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (arr[mid] <= target) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+
+// ===== SEARCH ON ANSWER TEMPLATE =====
+public int searchOnAnswer(int[] arr, int constraints) {
+    int lo = minFeasible(arr);
+    int hi = maxFeasible(arr);
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (canAchieve(arr, mid, constraints)) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}`;
+  navigator.clipboard.writeText(raw).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+resetStepper();
+window.addEventListener('resize', () => { drawViz(); if (steps[stepIdx]) applyStep(steps[stepIdx]); });
+</script>
+</body>
+</html>

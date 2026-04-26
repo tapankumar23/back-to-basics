@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>09 · Arrays, Two Pointers, Prefix Sums</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root{--bg:#0d1117;--bg-card:#161b22;--bg-card-hover:#1c2330;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--accent:#facc15;--accent-dim:rgba(250,204,21,0.15);--good:#4ade80;--bad:#f87171}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+#scroll-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:10px 20px;flex-wrap:wrap}
+nav a{color:var(--text-muted);text-decoration:none;font-size:13px;white-space:nowrap;transition:color .2s}
+nav a:hover{color:var(--accent)}
+.nav-sep{color:var(--border);font-size:12px}
+.nav-chapter{display:flex;gap:6px;margin-left:auto}
+.btn-nav{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:12px;text-decoration:none;transition:all .2s}
+.btn-nav:hover{border-color:var(--accent);color:var(--accent)}
+.nav-anchors{display:flex;gap:6px;flex-wrap:wrap}
+.nav-anchors a{font-size:11px;color:var(--text-muted);text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent;transition:all .2s}
+.nav-anchors a:hover{border-color:var(--border);color:var(--text)}
+main{padding-top:70px;max-width:1100px;margin:0 auto;padding-left:20px;padding-right:20px}
+section{padding:60px 0}
+h1{font-size:2.4rem;font-weight:700;margin-bottom:12px}
+h2{font-size:1.5rem;font-weight:600;margin-bottom:20px;color:var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-bottom:12px}
+.accent{color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px;transition:background .2s}
+.card:hover{background:var(--bg-card-hover)}
+.hero-tag{display:inline-block;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;margin-bottom:16px}
+.hero-desc{font-size:1.1rem;color:var(--text-muted);max-width:700px;line-height:1.8}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.stepper-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px}
+.stepper-controls{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:7px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.step-info{font-size:13px;color:var(--text-muted);margin-left:auto}
+.trace-panel{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;margin-top:16px}
+.trace-row{display:flex;gap:12px;align-items:center}
+.trace-key{color:var(--text-muted);min-width:120px}
+.trace-val{color:var(--accent);font-weight:600}
+.code-panel{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:20px;position:relative;overflow-x:auto}
+pre{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;white-space:pre-wrap}
+.copy-btn{position:absolute;top:12px;right:12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;transition:all .2s}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problem-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.problem-list li{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px;transition:background .2s}
+.problem-list li:hover{background:var(--bg-card-hover)}
+.prob-num{color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;min-width:30px}
+.prob-body{flex:1}
+.prob-title{font-weight:600;margin-bottom:3px}
+.prob-desc{font-size:13px;color:var(--text-muted)}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--accent-dim);color:var(--accent);margin-left:8px;vertical-align:middle}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:18px 20px;margin-bottom:16px}
+.staff-q{font-weight:600;margin-bottom:8px}
+.staff-a{font-size:13px;color:var(--text-muted);line-height:1.7}
+.controls-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.select{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:7px;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer}
+.select:focus{outline:none;border-color:var(--accent)}
+.query-row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.num-input{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:13px;width:70px;font-family:'JetBrains Mono',monospace}
+.num-input:focus{outline:none;border-color:var(--accent)}
+label{font-size:13px;color:var(--text-muted)}
+footer{border-top:1px solid var(--border);padding:30px 20px;text-align:center;font-size:12px;color:var(--text-muted);margin-top:40px;max-width:1100px;margin-left:auto;margin-right:auto}
+.bar-label{font-size:12px;color:var(--text-muted);margin-bottom:4px}
+.bar-track{background:var(--border);border-radius:4px;height:8px;overflow:hidden;margin-bottom:12px}
+.bar-fill{height:100%;border-radius:4px;background:var(--accent);transform:scaleX(0);transform-origin:left center}
+</style>
+</head>
+<body>
+<div id="scroll-bar"></div>
+
+<nav>
+  <a href="00_index.html">Problem Solving Home</a>
+  <span class="nav-sep">|</span>
+  <span style="color:var(--accent);font-weight:600;font-size:13px">09 · Arrays / Two Pointers / Prefix Sums</span>
+  <div class="nav-anchors">
+    <a href="#hero">Intro</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#problems">Problems</a>
+    <a href="#code">Code</a>
+    <a href="#staff">Staff</a>
+  </div>
+  <div class="nav-chapter">
+    <a href="08_mixed_must_do.html" class="btn-nav">Prev</a>
+    <a href="10_hashing_intervals_sweep_line.html" class="btn-nav">Next</a>
+  </div>
+</nav>
+
+<main>
+  <section id="hero">
+    <div class="hero-tag">Pattern 09 · Arrays / Two Pointers / Prefix Sums</div>
+    <h1>Arrays, Two Pointers <span class="accent">&amp; Prefix Sums</span></h1>
+    <p class="hero-desc">Prefix sums: O(n) build, O(1) range queries. Two pointers: eliminate O(n^2) nested loops on sorted or positive data. Difference arrays: O(1) range updates, O(n) final prefix pass.</p>
+    <div style="display:flex;gap:24px;margin-top:28px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:160px">
+        <div style="font-size:1.6rem;font-weight:700;color:var(--accent)">O(1)</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Range query after prefix build</div>
+      </div>
+      <div class="card" style="flex:1;min-width:160px">
+        <div style="font-size:1.6rem;font-weight:700;color:var(--good)">prefix[R+1] - prefix[L]</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Sum from L to R inclusive</div>
+      </div>
+      <div class="card" style="flex:1;min-width:160px">
+        <div style="font-size:1.6rem;font-weight:700;color:var(--bad)">Two-ptr</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Sorted or monotone condition</div>
+      </div>
+      <div class="card" style="flex:1;min-width:160px">
+        <div style="font-size:1.6rem;font-weight:700;color:#38bdf8">Diff[]</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Range add in O(1)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stepper">
+    <h2>Interactive Stepper</h2>
+    <div class="controls-row">
+      <label>Mode:</label>
+      <select class="select" id="mode-select">
+        <option value="prefix">Prefix Sum Build</option>
+        <option value="twoptr">Two Pointers (Sorted)</option>
+        <option value="diff">Difference Array</option>
+      </select>
+    </div>
+    <div class="query-row" id="query-row">
+      <label>Query L:</label>
+      <input type="number" class="num-input" id="q-l" value="2" min="0" max="7">
+      <label>Query R:</label>
+      <input type="number" class="num-input" id="q-r" value="5" min="0" max="7">
+      <button class="btn" id="btn-query">Run Query</button>
+    </div>
+    <div class="stepper-wrap" style="margin-top:16px">
+      <svg id="stepper-svg" style="width:100%;height:240px"></svg>
+      <div class="stepper-controls">
+        <button class="btn" id="btn-play">Play</button>
+        <button class="btn" id="btn-step">Step</button>
+        <button class="btn" id="btn-reset">Reset</button>
+        <span class="step-info" id="step-info">Step 0 / 0</span>
+      </div>
+    </div>
+    <div class="trace-panel" id="trace-panel">
+      <div class="trace-row"><span class="trace-key" id="lbl-a">i</span><span class="trace-val" id="tr-a">-</span></div>
+      <div class="trace-row"><span class="trace-key" id="lbl-b">arr[i]</span><span class="trace-val" id="tr-b">-</span></div>
+      <div class="trace-row"><span class="trace-key" id="lbl-c">prefix[i]</span><span class="trace-val" id="tr-c">-</span></div>
+      <div class="trace-row"><span class="trace-key" id="lbl-d">query result</span><span class="trace-val" id="tr-d">-</span></div>
+    </div>
+  </section>
+
+  <section id="problems">
+    <h2>Must-Know Problems</h2>
+    <ul class="problem-list">
+      <li><span class="prob-num">1</span><div class="prob-body"><div class="prob-title">Subarray Sum Equals K <span class="tag">LC 560</span></div><div class="prob-desc">Prefix sum + HashMap: count(prefix[j] - k) gives subarrays ending at j with sum k.</div></div></li>
+      <li><span class="prob-num">2</span><div class="prob-body"><div class="prob-title">Range Sum Query Immutable <span class="tag">LC 303</span></div><div class="prob-desc">Classical 1D prefix sum. Build once, answer in O(1).</div></div></li>
+      <li><span class="prob-num">3</span><div class="prob-body"><div class="prob-title">Range Sum Query 2D Immutable <span class="tag">LC 304</span></div><div class="prob-desc">2D prefix: dp[i][j] = sum of top-left rectangle. Inclusion-exclusion for range query.</div></div></li>
+      <li><span class="prob-num">4</span><div class="prob-body"><div class="prob-title">Product of Array Except Self <span class="tag">LC 238</span></div><div class="prob-desc">left-prefix[i] * right-suffix[i]. No division. O(n) time O(1) extra.</div></div></li>
+      <li><span class="prob-num">5</span><div class="prob-body"><div class="prob-title">Maximum Subarray <span class="tag">LC 53</span></div><div class="prob-desc">Kadane's: cur = max(nums[i], cur + nums[i]). Track global max. O(n).</div></div></li>
+      <li><span class="prob-num">6</span><div class="prob-body"><div class="prob-title">Minimum Size Subarray Sum <span class="tag">LC 209</span></div><div class="prob-desc">Two-pointer variable window on positive array. Shrink from left when sum >= target.</div></div></li>
+      <li><span class="prob-num">7</span><div class="prob-body"><div class="prob-title">Sort Colors <span class="tag">LC 75</span></div><div class="prob-desc">Dutch National Flag: three-way partition with lo/mid/hi pointers. Single pass.</div></div></li>
+      <li><span class="prob-num">8</span><div class="prob-body"><div class="prob-title">Trapping Rain Water <span class="tag">LC 42</span></div><div class="prob-desc">Two-pointer with maxLeft and maxRight. Water at i = min(maxL, maxR) - height[i].</div></div></li>
+      <li><span class="prob-num">9</span><div class="prob-body"><div class="prob-title">Squares of Sorted Array <span class="tag">LC 977</span></div><div class="prob-desc">Two pointers from both ends, place larger square at back of result array.</div></div></li>
+      <li><span class="prob-num">10</span><div class="prob-body"><div class="prob-title">3Sum Closest <span class="tag">LC 16</span></div><div class="prob-desc">Sort + two-pointer. Track minimum |sum - target| across all windows.</div></div></li>
+      <li><span class="prob-num">11</span><div class="prob-body"><div class="prob-title">Difference Array Range Update</div><div class="prob-desc">diff[l] += v; diff[r+1] -= v; then prefix sum rebuilds the final array in O(n).</div></div></li>
+    </ul>
+  </section>
+
+  <section id="code">
+    <h2>Java Implementations</h2>
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn active" id="btn-prefix" onclick="showCode('prefix',this)">Prefix Sum</button>
+      <button class="btn" id="btn-subk" onclick="showCode('subk',this)">Subarray Sum=K</button>
+      <button class="btn" id="btn-kadane" onclick="showCode('kadane',this)">Kadane's</button>
+      <button class="btn" id="btn-diffarray" onclick="showCode('diffarray',this)">Diff Array</button>
+    </div>
+    <div class="code-panel">
+      <button class="copy-btn" id="copy-btn" onclick="copyCode()">Copy</button>
+      <pre id="code-pre"></pre>
+    </div>
+  </section>
+
+  <section id="staff">
+    <h2>Staff-Level Angles</h2>
+    <div class="staff-card">
+      <div class="staff-q">Q: Range sum queries over a mutable 1B-element array with 10M updates/sec - better than prefix sum?</div>
+      <div class="staff-a">Fenwick tree (Binary Indexed Tree) gives O(log n) for both point update and prefix query - 10x smaller constant than segment tree due to cache-friendly layout. For range updates + range queries use a dual BIT. SIMD vectorization on prefix sum rebuild can hit 20GB/s on modern CPUs but can't beat BIT on mixed workloads. For approximate answers use sampling with Chebyshev bounds.</div>
+    </div>
+    <div class="staff-card">
+      <div class="staff-q">Q: 2D prefix sums for ML image processing kernels at 100MP images - limits and alternatives?</div>
+      <div class="staff-a">Summed area table (integral image) is the standard - used in Viola-Jones, SURF, and many CNN accelerators. At 100MP the table fits in ~800MB (float32). Cache-tiling is critical: scan in Z-order (Morton code) to improve L2 hit rate. On GPU, parallel prefix scan in CUDA achieves near-peak memory bandwidth. For repeated queries over the same image this dominates; for single-query per image skip the build and use SIMD sliding window sum instead.</div>
+    </div>
+  </section>
+
+  <section id="complexity">
+    <h2>Complexity at a Glance</h2>
+    <div class="grid2">
+      <div class="card">
+        <h3>Prefix Sum Patterns</h3>
+        <div class="bar-label">Build - O(n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.3"></div></div>
+        <div class="bar-label">Query - O(1)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.05" style="background:var(--good)"></div></div>
+        <div class="bar-label">Subarray Sum K - O(n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.3"></div></div>
+        <div class="bar-label">2D Prefix Build - O(m*n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.5"></div></div>
+      </div>
+      <div class="card">
+        <h3>Two Pointer Patterns</h3>
+        <div class="bar-label">Two Sum sorted - O(n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.3" style="background:var(--good)"></div></div>
+        <div class="bar-label">Trapping Rain Water - O(n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.3" style="background:var(--good)"></div></div>
+        <div class="bar-label">Min Size Subarray - O(n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.3" style="background:var(--good)"></div></div>
+        <div class="bar-label">Dutch Flag Sort - O(n)</div>
+        <div class="bar-track"><div class="bar-fill" data-w="0.3" style="background:var(--good)"></div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>Clean Code - Robert C. Martin · The Pragmatic Programmer - Hunt &amp; Thomas · Refactoring - Martin Fowler · Working Effectively with Legacy Code - Michael Feathers</footer>
+
+<script>
+(function(){
+  var bar=document.getElementById('scroll-bar');
+  window.addEventListener('scroll',function(){
+    var total=document.documentElement.scrollHeight-window.innerHeight;
+    if(total<=0)return;
+    bar.style.transform='scaleX('+window.scrollY/total+')';
+  });
+})();
+
+// ── Code snippets built with DOM ──
+var codeSnippets={
+  prefix:[
+    {type:'tp',t:'int'},{type:'t',t:'[] '},{type:'fn',t:'buildPrefix'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] arr) {\n    '},
+    {type:'tp',t:'int'},{type:'t',t:' n = arr.length;\n    '},
+    {type:'tp',t:'int'},{type:'t',t:'[] p = new '},{type:'tp',t:'int'},{type:'t',t:'[n + '},{type:'num',t:'1'},{type:'t',t:'];\n    '},
+    {type:'kw',t:'for'},{type:'t',t:' ('},{type:'tp',t:'int'},{type:'t',t:' i = '},{type:'num',t:'0'},{type:'t',t:'; i < n; i++)\n        p[i+'},{type:'num',t:'1'},{type:'t',t:'] = p[i] + arr[i];\n    '},
+    {type:'kw',t:'return'},{type:'t',t:' p;\n}\n\n'},
+    {type:'tp',t:'int'},{type:'t',t:' '},{type:'fn',t:'rangeSum'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] p, '},{type:'tp',t:'int'},{type:'t',t:' l, '},{type:'tp',t:'int'},{type:'t',t:' r) {\n    '},
+    {type:'kw',t:'return'},{type:'t',t:' p[r + '},{type:'num',t:'1'},{type:'t',t:'] - p[l]; '},{type:'cm',t:'// sum from l to r inclusive'},{type:'t',t:'\n}'}
+  ],
+  subk:[
+    {type:'kw',t:'public'},{type:'t',t:' '},{type:'tp',t:'int'},{type:'t',t:' '},{type:'fn',t:'subarraySum'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] nums, '},{type:'tp',t:'int'},{type:'t',t:' k) {\n    '},
+    {type:'tp',t:'Map'},{type:'t',t:'<'},{type:'tp',t:'Integer'},{type:'t',t:','},{type:'tp',t:'Integer'},{type:'t',t:'> prefixCount = new '},{type:'fn',t:'HashMap'},{type:'t',t:'<>();\n    prefixCount.put('},
+    {type:'num',t:'0'},{type:'t',t:', '},{type:'num',t:'1'},{type:'t',t:'); '},{type:'cm',t:'// empty prefix has sum 0'},{type:'t',t:'\n    '},
+    {type:'tp',t:'int'},{type:'t',t:' count = '},{type:'num',t:'0'},{type:'t',t:', sum = '},{type:'num',t:'0'},{type:'t',t:';\n    '},
+    {type:'kw',t:'for'},{type:'t',t:' ('},{type:'tp',t:'int'},{type:'t',t:' n : nums) {\n        sum += n;\n        count += prefixCount.getOrDefault(sum - k, '},
+    {type:'num',t:'0'},{type:'t',t:'); '},{type:'cm',t:'// how many prefixes had sum-k'},{type:'t',t:'\n        prefixCount.merge(sum, '},{type:'num',t:'1'},{type:'t',t:', '},{type:'tp',t:'Integer'},{type:'t',t:'::sum);\n    }\n    '},
+    {type:'kw',t:'return'},{type:'t',t:' count;\n}'}
+  ],
+  kadane:[
+    {type:'cm',t:"// Kadane's Algorithm - Maximum Subarray"},{type:'t',t:'\n'},
+    {type:'kw',t:'public'},{type:'t',t:' '},{type:'tp',t:'int'},{type:'t',t:' '},{type:'fn',t:'maxSubArray'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] nums) {\n    '},
+    {type:'tp',t:'int'},{type:'t',t:' max = nums['},{type:'num',t:'0'},{type:'t',t:'], cur = nums['},{type:'num',t:'0'},{type:'t',t:';\n    '},
+    {type:'kw',t:'for'},{type:'t',t:' ('},{type:'tp',t:'int'},{type:'t',t:' i = '},{type:'num',t:'1'},{type:'t',t:'; i < nums.length; i++) {\n        cur = '},{type:'tp',t:'Math'},{type:'t',t:'.max(nums[i], cur + nums[i]); '},
+    {type:'cm',t:'// extend or restart'},{type:'t',t:'\n        max = '},{type:'tp',t:'Math'},{type:'t',t:'.max(max, cur);\n    }\n    '},
+    {type:'kw',t:'return'},{type:'t',t:' max;\n}\n\n'},
+    {type:'cm',t:'// Trapping Rain Water - two pointer O(n) O(1)'},{type:'t',t:'\n'},
+    {type:'kw',t:'public'},{type:'t',t:' '},{type:'tp',t:'int'},{type:'t',t:' '},{type:'fn',t:'trap'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] h) {\n    '},
+    {type:'tp',t:'int'},{type:'t',t:' l = '},{type:'num',t:'0'},{type:'t',t:', r = h.length - '},{type:'num',t:'1'},{type:'t',t:', mL = '},{type:'num',t:'0'},{type:'t',t:', mR = '},{type:'num',t:'0'},{type:'t',t:', water = '},{type:'num',t:'0'},{type:'t',t:';\n    '},
+    {type:'kw',t:'while'},{type:'t',t:' (l < r) {\n        '},
+    {type:'kw',t:'if'},{type:'t',t:' (h[l] <= h[r]) {\n            mL = '},{type:'tp',t:'Math'},{type:'t',t:'.max(mL, h[l]);\n            water += mL - h[l];\n            l++;\n        } '},
+    {type:'kw',t:'else'},{type:'t',t:' {\n            mR = '},{type:'tp',t:'Math'},{type:'t',t:'.max(mR, h[r]);\n            water += mR - h[r];\n            r--;\n        }\n    }\n    '},
+    {type:'kw',t:'return'},{type:'t',t:' water;\n}'}
+  ],
+  diffarray:[
+    {type:'cm',t:'// Difference Array - O(1) range update, O(n) final build'},{type:'t',t:'\n'},
+    {type:'kw',t:'void'},{type:'t',t:' '},{type:'fn',t:'rangeAdd'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] diff, '},{type:'tp',t:'int'},{type:'t',t:' l, '},{type:'tp',t:'int'},{type:'t',t:' r, '},{type:'tp',t:'int'},{type:'t',t:' val) {\n    diff[l] += val;\n    '},
+    {type:'kw',t:'if'},{type:'t',t:' (r + '},{type:'num',t:'1'},{type:'t',t:' < diff.length) diff[r + '},{type:'num',t:'1'},{type:'t',t:'] -= val;\n}\n\n'},
+    {type:'cm',t:'// Rebuild original from diff array'},{type:'t',t:'\n'},
+    {type:'tp',t:'int'},{type:'t',t:'[] '},{type:'fn',t:'buildFromDiff'},{type:'t',t:'('},{type:'tp',t:'int'},{type:'t',t:'[] diff) {\n    '},{type:'tp',t:'int'},{type:'t',t:'[] result = new '},{type:'tp',t:'int'},{type:'t',t:'[diff.length];\n    result['},{type:'num',t:'0'},{type:'t',t:'] = diff['},{type:'num',t:'0'},{type:'t',t:'];\n    '},
+    {type:'kw',t:'for'},{type:'t',t:' ('},{type:'tp',t:'int'},{type:'t',t:' i = '},{type:'num',t:'1'},{type:'t',t:'; i < diff.length; i++)\n        result[i] = result[i-'},{type:'num',t:'1'},{type:'t',t:'] + diff[i];\n    '},
+    {type:'kw',t:'return'},{type:'t',t:' result;\n}'}
+  ]
+};
+
+var rawCodes={
+  prefix:'int[] buildPrefix(int[] arr) {\n    int n = arr.length;\n    int[] p = new int[n + 1];\n    for (int i = 0; i < n; i++) p[i+1] = p[i] + arr[i];\n    return p;\n}\nint rangeSum(int[] p, int l, int r) { return p[r+1] - p[l]; }',
+  subk:'public int subarraySum(int[] nums, int k) {\n    Map<Integer,Integer> pc = new HashMap<>();\n    pc.put(0, 1);\n    int count = 0, sum = 0;\n    for (int n : nums) {\n        sum += n;\n        count += pc.getOrDefault(sum - k, 0);\n        pc.merge(sum, 1, Integer::sum);\n    }\n    return count;\n}',
+  kadane:'public int maxSubArray(int[] nums) {\n    int max = nums[0], cur = nums[0];\n    for (int i = 1; i < nums.length; i++) {\n        cur = Math.max(nums[i], cur + nums[i]);\n        max = Math.max(max, cur);\n    }\n    return max;\n}',
+  diffarray:'void rangeAdd(int[] diff, int l, int r, int val) {\n    diff[l] += val;\n    if (r + 1 < diff.length) diff[r+1] -= val;\n}'
+};
+
+var currentCode='prefix';
+
+function buildCodeDOM(key){
+  var pre=document.getElementById('code-pre');
+  while(pre.firstChild)pre.removeChild(pre.firstChild);
+  codeSnippets[key].forEach(function(tok){
+    if(tok.type==='t'){
+      pre.appendChild(document.createTextNode(tok.t));
+    } else {
+      var span=document.createElement('span');
+      span.className=tok.type;
+      span.textContent=tok.t;
+      pre.appendChild(span);
+    }
+  });
+}
+
+function showCode(key,btn){
+  currentCode=key;
+  buildCodeDOM(key);
+  document.querySelectorAll('#code + div .btn, section#code .btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('[id^="btn-prefix"],[id^="btn-subk"],[id^="btn-kadane"],[id^="btn-diffarray"]').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+
+function copyCode(){
+  navigator.clipboard.writeText(rawCodes[currentCode]).then(function(){
+    var btn=document.getElementById('copy-btn');
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent='Copy';},1500);
+  });
+}
+
+// ── Stepper ──
+var stepperState={steps:[],idx:0,playing:false,timer:null};
+var ARR=[3,1,4,1,5,9,2,6];
+
+function buildPrefixSteps(qL,qR){
+  var arr=ARR;
+  var prefix=[0];
+  var steps=[];
+  steps.push({phase:'build',i:-1,arr:arr.slice(),prefix:prefix.slice(),qL:qL,qR:qR,queryResult:null,msg:'Original array. Building prefix sum array.'});
+  for(var i=0;i<arr.length;i++){
+    prefix.push(prefix[prefix.length-1]+arr[i]);
+    steps.push({phase:'build',i:i,arr:arr.slice(),prefix:prefix.slice(),qL:qL,qR:qR,queryResult:null,msg:'prefix['+(i+1)+'] = prefix['+i+'] + arr['+i+'] = '+(prefix[i])+' + '+arr[i]+' = '+prefix[i+1]});
+  }
+  var result=prefix[qR+1]-prefix[qL];
+  steps.push({phase:'query',i:null,arr:arr.slice(),prefix:prefix.slice(),qL:qL,qR:qR,queryResult:result,msg:'Query ['+qL+','+qR+']: prefix['+(qR+1)+'] - prefix['+qL+'] = '+prefix[qR+1]+' - '+prefix[qL]+' = '+result});
+  return steps;
+}
+
+function buildTwoPtrSteps(){
+  var arr=[-3,-1,0,1,2,4,5,8];
+  var target=7;
+  var steps=[];
+  var L=0,R=arr.length-1;
+  steps.push({L:L,R:R,sum:null,arr:arr.slice(),target:target,msg:'Sorted array. Find pair summing to '+target});
+  while(L<R){
+    var s=arr[L]+arr[R];
+    steps.push({L:L,R:R,sum:s,arr:arr.slice(),target:target,msg:'arr['+L+']+arr['+R+']='+arr[L]+'+'+arr[R]+'='+s+' vs target='+target});
+    if(s===target){steps.push({L:L,R:R,sum:s,arr:arr.slice(),target:target,msg:'Found! ['+arr[L]+','+arr[R]+']',found:true});break;}
+    else if(s<target){L++;steps.push({L:L,R:R,sum:s,arr:arr.slice(),target:target,msg:'sum<target, advance L to '+L});}
+    else{R--;steps.push({L:L,R:R,sum:s,arr:arr.slice(),target:target,msg:'sum>target, retreat R to '+R});}
+  }
+  if(L>=R&&steps[steps.length-1].found!==true)steps.push({L:L,R:R,sum:null,arr:arr.slice(),target:target,msg:'Pointers crossed - no pair found.'});
+  return steps;
+}
+
+function buildDiffSteps(){
+  var n=8;
+  var diff=new Array(n).fill(0);
+  var ops=[[1,4,3],[2,6,2]];
+  var steps=[];
+  steps.push({diff:diff.slice(),result:null,phase:'init',msg:'Difference array, all zeros. Array size '+n});
+  ops.forEach(function(op){
+    diff[op[0]]+=op[2];
+    if(op[1]+1<n)diff[op[1]+1]-=op[2];
+    steps.push({diff:diff.slice(),result:null,phase:'update',msg:'rangeAdd(diff,'+op[0]+','+op[1]+','+op[2]+'): diff['+op[0]+']+='+op[2]+', diff['+(op[1]+1)+']-='+op[2]});
+  });
+  var result=new Array(n).fill(0);
+  result[0]=diff[0];
+  for(var i=1;i<n;i++)result[i]=result[i-1]+diff[i];
+  steps.push({diff:diff.slice(),result:result.slice(),phase:'rebuild',msg:'Prefix sum of diff array = final array. Range updates applied!'});
+  return steps;
+}
+
+var svgSel=d3.select('#stepper-svg');
+
+function renderStep(step){
+  svgSel.selectAll('*').remove();
+  var el=document.getElementById('stepper-svg');
+  var W=el.clientWidth||700;
+  var mode=document.getElementById('mode-select').value;
+
+  if(mode==='prefix'){
+    var arr=step.arr;
+    var prefix=step.prefix||[];
+    var n=arr.length;
+    var cellW=Math.min(55,(W-60)/n);
+    var startX=(W-n*cellW)/2;
+    // Row labels
+    svgSel.append('text').attr('x',startX-8).attr('y',44).attr('text-anchor','end').attr('fill','#8b949e').attr('font-size',11).text('arr:');
+    svgSel.append('text').attr('x',startX-8).attr('y',124).attr('text-anchor','end').attr('fill','#facc15').attr('font-size',11).text('prefix:');
+    arr.forEach(function(v,ix){
+      var isActive=(step.i===ix);
+      var inQuery=(step.qL!==null&&ix>=step.qL&&ix<=step.qR);
+      var fill=inQuery?'rgba(250,204,21,0.25)':(isActive?'rgba(250,204,21,0.5)':'#1c2330');
+      svgSel.append('rect').attr('x',startX+ix*cellW+2).attr('y',24).attr('width',cellW-4).attr('height',32).attr('rx',5)
+        .attr('fill',fill).attr('stroke',isActive?'#facc15':'#30363d').attr('stroke-width',1);
+      svgSel.append('text').attr('x',startX+ix*cellW+cellW/2).attr('y',45)
+        .attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',12).attr('font-family','JetBrains Mono').text(v);
+    });
+    prefix.forEach(function(v,ix){
+      var inQuery=(step.qL!==null&&(ix===step.qL||ix===step.qR+1));
+      var px=startX+(ix-0.5)*cellW;
+      if(ix===0)px=startX-cellW/2;
+      var fill=inQuery?'rgba(250,204,21,0.4)':'rgba(250,204,21,0.15)';
+      svgSel.append('rect').attr('x',px+2).attr('y',104).attr('width',cellW-4).attr('height',32).attr('rx',5)
+        .attr('fill',fill).attr('stroke',inQuery?'#facc15':'#30363d').attr('stroke-width',1);
+      svgSel.append('text').attr('x',px+cellW/2).attr('y',125)
+        .attr('text-anchor','middle').attr('fill','#facc15').attr('font-size',12).attr('font-family','JetBrains Mono').text(v);
+    });
+    // Index labels
+    arr.forEach(function(v,ix){
+      svgSel.append('text').attr('x',startX+ix*cellW+cellW/2).attr('y',14)
+        .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',9).text(ix);
+    });
+    if(step.queryResult!==null){
+      svgSel.append('text').attr('x',W/2).attr('y',165)
+        .attr('text-anchor','middle').attr('fill','#4ade80').attr('font-size',13).attr('font-weight','600')
+        .text('Query result: '+step.queryResult);
+    }
+    svgSel.append('text').attr('x',W/2).attr('y',190)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',12).text(step.msg);
+    document.getElementById('tr-a').textContent=step.i!==null&&step.i>=0?step.i:'-';
+    document.getElementById('tr-b').textContent=step.i!==null&&step.i>=0?step.arr[step.i]:'-';
+    document.getElementById('tr-c').textContent=step.prefix&&step.prefix.length>0?step.prefix[step.prefix.length-1]:'-';
+    document.getElementById('tr-d').textContent=step.queryResult!==null?step.queryResult:'pending';
+    document.getElementById('lbl-a').textContent='i';
+    document.getElementById('lbl-b').textContent='arr[i]';
+    document.getElementById('lbl-c').textContent='prefix so far';
+    document.getElementById('lbl-d').textContent='query result';
+  }
+
+  if(mode==='twoptr'){
+    var arr=step.arr;
+    var n=arr.length;
+    var cellW=Math.min(55,(W-60)/n);
+    var startX=(W-n*cellW)/2;
+    var y=80;
+    arr.forEach(function(v,ix){
+      var fill='#1c2330';
+      if(ix===step.L)fill='#4ade80';
+      else if(ix===step.R)fill='#f87171';
+      svgSel.append('rect').attr('x',startX+ix*cellW+2).attr('y',y).attr('width',cellW-4).attr('height',36).attr('rx',5)
+        .attr('fill',fill).attr('stroke','#30363d').attr('stroke-width',1);
+      svgSel.append('text').attr('x',startX+ix*cellW+cellW/2).attr('y',y+23)
+        .attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',12).attr('font-family','JetBrains Mono').text(v);
+    });
+    svgSel.append('text').attr('x',startX+step.L*cellW+cellW/2).attr('y',y-8)
+      .attr('text-anchor','middle').attr('fill','#4ade80').attr('font-size',11).text('L');
+    svgSel.append('text').attr('x',startX+step.R*cellW+cellW/2).attr('y',y-8)
+      .attr('text-anchor','middle').attr('fill','#f87171').attr('font-size',11).text('R');
+    svgSel.append('text').attr('x',W/2).attr('y',155)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',12).text(step.msg);
+    svgSel.append('text').attr('x',W/2).attr('y',175)
+      .attr('text-anchor','middle').attr('fill','#facc15').attr('font-size',11).text('target = '+step.target);
+    document.getElementById('lbl-a').textContent='L';
+    document.getElementById('lbl-b').textContent='R';
+    document.getElementById('lbl-c').textContent='arr[L]';
+    document.getElementById('lbl-d').textContent='arr[R]';
+    document.getElementById('tr-a').textContent=step.L;
+    document.getElementById('tr-b').textContent=step.R;
+    document.getElementById('tr-c').textContent=step.arr[step.L];
+    document.getElementById('tr-d').textContent=step.arr[step.R];
+  }
+
+  if(mode==='diff'){
+    var diff=step.diff;
+    var result=step.result;
+    var n=diff.length;
+    var cellW=Math.min(55,(W-60)/n);
+    var startX=(W-n*cellW)/2;
+    var y1=40,y2=130;
+    svgSel.append('text').attr('x',startX-8).attr('y',y1+20).attr('text-anchor','end').attr('fill','#8b949e').attr('font-size',11).text('diff:');
+    diff.forEach(function(v,ix){
+      var fill=v!==0?'rgba(250,204,21,0.3)':'#1c2330';
+      svgSel.append('rect').attr('x',startX+ix*cellW+2).attr('y',y1).attr('width',cellW-4).attr('height',32).attr('rx',5)
+        .attr('fill',fill).attr('stroke',v!==0?'#facc15':'#30363d').attr('stroke-width',1);
+      svgSel.append('text').attr('x',startX+ix*cellW+cellW/2).attr('y',y1+21)
+        .attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',12).attr('font-family','JetBrains Mono').text(v);
+    });
+    if(result){
+      svgSel.append('text').attr('x',startX-8).attr('y',y2+20).attr('text-anchor','end').attr('fill','#4ade80').attr('font-size',11).text('result:');
+      result.forEach(function(v,ix){
+        svgSel.append('rect').attr('x',startX+ix*cellW+2).attr('y',y2).attr('width',cellW-4).attr('height',32).attr('rx',5)
+          .attr('fill','rgba(74,222,128,0.2)').attr('stroke','#4ade80').attr('stroke-width',1);
+        svgSel.append('text').attr('x',startX+ix*cellW+cellW/2).attr('y',y2+21)
+          .attr('text-anchor','middle').attr('fill','#4ade80').attr('font-size',12).attr('font-family','JetBrains Mono').text(v);
+      });
+    }
+    svgSel.append('text').attr('x',W/2).attr('y',195)
+      .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',12).text(step.msg);
+    document.getElementById('lbl-a').textContent='phase';
+    document.getElementById('lbl-b').textContent='diff[0]';
+    document.getElementById('lbl-c').textContent='result ready';
+    document.getElementById('lbl-d').textContent='msg';
+    document.getElementById('tr-a').textContent=step.phase;
+    document.getElementById('tr-b').textContent=step.diff[0];
+    document.getElementById('tr-c').textContent=step.result?'yes':'no';
+    document.getElementById('tr-d').textContent=step.msg;
+  }
+
+  document.getElementById('step-info').textContent='Step '+stepperState.idx+' / '+(stepperState.steps.length-1);
+}
+
+function initStepper(){
+  var mode=document.getElementById('mode-select').value;
+  var queryRow=document.getElementById('query-row');
+  queryRow.style.display=(mode==='prefix')?'flex':'none';
+  if(mode==='prefix'){
+    var qL=parseInt(document.getElementById('q-l').value)||0;
+    var qR=parseInt(document.getElementById('q-r').value)||5;
+    stepperState.steps=buildPrefixSteps(qL,qR);
+  } else if(mode==='twoptr'){
+    stepperState.steps=buildTwoPtrSteps();
+  } else {
+    stepperState.steps=buildDiffSteps();
+  }
+  stepperState.idx=0;
+  clearInterval(stepperState.timer);
+  stepperState.playing=false;
+  document.getElementById('btn-play').textContent='Play';
+  renderStep(stepperState.steps[0]);
+}
+
+document.getElementById('mode-select').addEventListener('change',initStepper);
+document.getElementById('btn-query').addEventListener('click',initStepper);
+
+document.getElementById('btn-step').addEventListener('click',function(){
+  if(stepperState.idx<stepperState.steps.length-1){stepperState.idx++;renderStep(stepperState.steps[stepperState.idx]);}
+});
+document.getElementById('btn-reset').addEventListener('click',function(){
+  clearInterval(stepperState.timer);stepperState.playing=false;
+  document.getElementById('btn-play').textContent='Play';
+  stepperState.idx=0;renderStep(stepperState.steps[0]);
+});
+document.getElementById('btn-play').addEventListener('click',function(){
+  if(stepperState.playing){
+    clearInterval(stepperState.timer);stepperState.playing=false;this.textContent='Play';
+  } else {
+    stepperState.playing=true;this.textContent='Pause';
+    var self=this;
+    stepperState.timer=setInterval(function(){
+      if(stepperState.idx<stepperState.steps.length-1){stepperState.idx++;renderStep(stepperState.steps[stepperState.idx]);}
+      else{clearInterval(stepperState.timer);stepperState.playing=false;self.textContent='Play';}
+    },850);
+  }
+});
+
+var observer=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(!e.isIntersecting)return;
+    e.target.querySelectorAll('.bar-fill').forEach(function(bar){
+      var w=parseFloat(bar.getAttribute('data-w'));
+      anime({targets:bar,duration:800,easing:'easeOutCubic',
+        update:function(anim){bar.style.transform='scaleX('+w*anim.progress/100+')';}});
+    });
+    var items=e.target.querySelectorAll('.problem-list li');
+    if(items.length>0)anime({targets:items,opacity:[0,1],translateY:[20,0],duration:400,delay:anime.stagger(60),easing:'easeOutCubic'});
+  });
+},{threshold:0.25});
+document.querySelectorAll('section').forEach(function(s){observer.observe(s);});
+
+buildCodeDOM('prefix');
+initStepper();
+</script>
+</body>
+</html>

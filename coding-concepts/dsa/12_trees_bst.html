@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12 · Trees + BST — DSA Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2330; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #86efac; --accent-dim: rgba(134,239,172,0.15);
+  --good: #4ade80; --bad: #f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-back{color:var(--text-muted);text-decoration:none;font-size:0.8rem;white-space:nowrap}
+.nav-back:hover{color:var(--accent)}
+.nav-pager{display:flex;align-items:center;gap:0.75rem;margin:0 auto;font-size:0.8rem}
+.nav-pager a{color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-pager span{color:var(--text);font-weight:600}
+.nav-anchors{display:flex;gap:0.5rem;margin-left:auto}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.75rem;padding:3px 8px;border-radius:4px}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 3rem}
+section{margin-bottom:4rem;opacity:0;transform:translateY(32px);transition:opacity 0.6s ease,transform 0.6s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.hero{text-align:center;padding:3rem 0 2rem;opacity:1!important;transform:none!important}
+.hero .pattern-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.5rem}
+.hero h1{font-size:3.5rem;font-weight:700;margin-bottom:0.75rem;background:linear-gradient(135deg,var(--accent),#bbf7d0);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{color:var(--text-muted);font-size:1.1rem;max-width:640px;margin:0 auto}
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card:hover{background:var(--bg-card-hover)}
+.controls{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+#viz-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+#viz-svg{width:100%;overflow:visible}
+#interact-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+#interact-svg{width:100%;overflow:visible}
+.trace-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.trace-row{display:flex;gap:1rem;margin-bottom:0.4rem;flex-wrap:wrap}
+.trace-key{color:var(--text-muted)}
+.trace-val{color:var(--accent);font-weight:600}
+.code-panel{position:relative}
+.code-panel pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7}
+.copy-btn{position:absolute;top:0.75rem;right:0.75rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-family:'Inter',sans-serif}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}.hero h1{font-size:2.5rem}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.875rem 1rem}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.problem-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:0.75rem;margin-bottom:0.25rem}
+.problem-name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}
+.problem-note{color:var(--text-muted);font-size:0.8rem}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;margin-right:0.35rem;margin-bottom:0.35rem}
+.tag-hard{background:rgba(248,113,113,0.15);color:#f87171}
+.tag-medium{background:rgba(251,191,36,0.15);color:#fbbf24}
+.tag-easy{background:rgba(74,222,128,0.15);color:#4ade80}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.staff-card h3{color:#f59e0b;font-size:1rem;margin-bottom:0.75rem}
+.staff-card p{color:var(--text-muted);font-size:0.875rem;line-height:1.7}
+.staff-card .hint{color:var(--text);margin-top:0.5rem;font-size:0.875rem}
+footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border)}
+.input-row{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap}
+.text-input{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:0.875rem;width:120px;outline:none}
+.text-input:focus{border-color:var(--accent)}
+.node-label{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;pointer-events:none;user-select:none}
+select.text-input{width:160px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<nav>
+  <a class="nav-back" href="00_index.html">Problem Solving Home</a>
+<div class="nav-pager">
+    <a href="11_linked_lists.html">← 11</a>
+    <span>12 · Trees + BST</span>
+    <a href="13_trie.html">13 →</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#s-concept">Concept</a>
+    <a href="#s-stepper">Stepper</a>
+    <a href="#s-code">Code</a>
+    <a href="#s-problems">Problems</a>
+    <a href="#s-staff">Staff</a>
+    <a href="#s-interact">Interactive</a>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="pattern-num">PATTERN 12</div>
+    <h1>Trees + BST</h1>
+    <p class="tagline">Hierarchical recursive divide-and-conquer. BST: left &lt; root &lt; right. Master DFS (pre/in/post-order), BFS (level-order), and reconstruction from traversals.</p>
+  </section>
+
+  <!-- CORE CONCEPT -->
+  <section id="s-concept">
+    <h2>Core Concept — BST Structure</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+      <div class="card">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:0.5rem">BST Property</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">For every node: all values in left subtree &lt; node.val &lt; all values in right subtree. Inorder traversal yields sorted sequence.</div>
+      </div>
+      <div class="card">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:0.5rem">DFS Traversals</div>
+        <div style="color:var(--text-muted);font-size:0.875rem"><strong>Pre-order</strong>: root → left → right (copy/serialize). <strong>In-order</strong>: sorted output. <strong>Post-order</strong>: delete/evaluate (children first).</div>
+      </div>
+      <div class="card">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:0.5rem">BFS / Level-Order</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">Queue-based. Process level by level. Use queue size snapshot to group by level (LC 102).</div>
+      </div>
+    </div>
+    <div class="card" style="border-color:rgba(134,239,172,0.3)">
+      <div style="font-weight:600;margin-bottom:0.75rem">BST [8, 3, 10, 1, 6, 14, 4, 7, 13] — D3 Layout</div>
+      <div id="concept-container" style="width:100%;overflow:hidden">
+        <svg id="concept-svg" height="280"></svg>
+      </div>
+      <div style="display:flex;gap:2rem;margin-top:0.75rem;font-size:0.8rem;flex-wrap:wrap">
+        <span><span style="color:var(--accent)">●</span> <span style="color:var(--text-muted)">Normal node</span></span>
+        <span><span style="color:#f59e0b">●</span> <span style="color:var(--text-muted)">Root</span></span>
+        <span style="color:var(--text-muted)">Inorder: 1, 3, 4, 6, 7, 8, 10, 13, 14 (sorted)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEPPER -->
+  <section id="s-stepper">
+    <h2>BST Search Stepper — Find 23</h2>
+    <div class="controls">
+      <button class="btn primary" id="btn-play">&#9654; Play</button>
+      <button class="btn" id="btn-step">Step &rarr;</button>
+      <button class="btn" id="btn-reset">Reset</button>
+      <span id="step-label" style="color:var(--text-muted);font-size:0.875rem">Step 0 / 7</span>
+    </div>
+    <div id="viz-container">
+      <svg id="viz-svg" height="300"></svg>
+    </div>
+    <div class="trace-panel" style="margin-bottom:1rem">
+      <div class="trace-row">
+        <span class="trace-key">Current node:</span><span class="trace-val" id="tr-node">—</span>
+        <span class="trace-key" style="margin-left:1.5rem">Depth:</span><span class="trace-val" id="tr-depth">—</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">Comparison:</span><span class="trace-val" id="tr-cmp">—</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">Direction:</span><span class="trace-val" id="tr-dir">—</span>
+        <span class="trace-key" style="margin-left:1.5rem">Path:</span><span class="trace-val" id="tr-path">—</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">Result:</span><span class="trace-val" id="tr-result">searching...</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- JAVA CODE -->
+  <section id="s-code">
+    <h2>Java Implementation</h2>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">// TreeNode definition</span>
+<span class="kw">class</span> <span class="tp">TreeNode</span> {
+    <span class="kw">int</span> val; <span class="tp">TreeNode</span> left, right;
+    <span class="tp">TreeNode</span>(<span class="kw">int</span> v) { val = v; }
+}
+
+<span class="cm">// ── Inorder Iterative (explicit stack) ──────────────────────────────────────</span>
+<span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; <span class="fn">inorderIter</span>(<span class="tp">TreeNode</span> root) {
+    <span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; res = <span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;();
+    <span class="tp">ArrayDeque</span>&lt;<span class="tp">TreeNode</span>&gt; s = <span class="kw">new</span> <span class="tp">ArrayDeque</span>&lt;&gt;();
+    <span class="tp">TreeNode</span> c = root;
+    <span class="kw">while</span> (c != <span class="kw">null</span> || !s.<span class="fn">isEmpty</span>()) {
+        <span class="kw">while</span> (c != <span class="kw">null</span>) { s.<span class="fn">push</span>(c); c = c.left; }  <span class="cm">// go left</span>
+        c = s.<span class="fn">pop</span>(); res.<span class="fn">add</span>(c.val);                  <span class="cm">// visit</span>
+        c = c.right;                                      <span class="cm">// go right</span>
+    }
+    <span class="kw">return</span> res;
+}
+
+<span class="cm">// ── Lowest Common Ancestor (LC 236) ─────────────────────────────────────────</span>
+<span class="tp">TreeNode</span> <span class="fn">lca</span>(<span class="tp">TreeNode</span> r, <span class="tp">TreeNode</span> p, <span class="tp">TreeNode</span> q) {
+    <span class="kw">if</span> (r == <span class="kw">null</span> || r == p || r == q) <span class="kw">return</span> r;
+    <span class="tp">TreeNode</span> l  = <span class="fn">lca</span>(r.left,  p, q);
+    <span class="tp">TreeNode</span> ri = <span class="fn">lca</span>(r.right, p, q);
+    <span class="kw">if</span> (l != <span class="kw">null</span> &amp;&amp; ri != <span class="kw">null</span>) <span class="kw">return</span> r;  <span class="cm">// found in both subtrees</span>
+    <span class="kw">return</span> l != <span class="kw">null</span> ? l : ri;
+}
+
+<span class="cm">// ── Validate BST (LC 98) — pass min/max bounds, NOT just child comparison ───</span>
+<span class="kw">boolean</span> <span class="fn">isValidBST</span>(<span class="tp">TreeNode</span> r, <span class="kw">long</span> min, <span class="kw">long</span> max) {
+    <span class="kw">if</span> (r == <span class="kw">null</span>) <span class="kw">return true</span>;
+    <span class="kw">if</span> (r.val &lt;= min || r.val &gt;= max) <span class="kw">return false</span>;
+    <span class="kw">return</span> <span class="fn">isValidBST</span>(r.left,  min,    r.val)
+        &amp;&amp; <span class="fn">isValidBST</span>(r.right, r.val,  max);
+}
+<span class="cm">// Call: isValidBST(root, Long.MIN_VALUE, Long.MAX_VALUE)</span>
+
+<span class="cm">// ── Diameter of Binary Tree (LC 543) ────────────────────────────────────────</span>
+<span class="kw">int</span> maxDiam = <span class="num">0</span>;
+<span class="kw">int</span> <span class="fn">diameter</span>(<span class="tp">TreeNode</span> node) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">int</span> L = <span class="fn">diameter</span>(node.left);
+    <span class="kw">int</span> R = <span class="fn">diameter</span>(node.right);
+    maxDiam = <span class="tp">Math</span>.<span class="fn">max</span>(maxDiam, L + R);  <span class="cm">// path through this node</span>
+    <span class="kw">return</span> <span class="num">1</span> + <span class="tp">Math</span>.<span class="fn">max</span>(L, R);            <span class="cm">// height upward</span>
+}
+
+<span class="cm">// ── Binary Tree Max Path Sum (LC 124) ───────────────────────────────────────</span>
+<span class="kw">int</span> maxSum = <span class="tp">Integer</span>.MIN_VALUE;
+<span class="kw">int</span> <span class="fn">maxGain</span>(<span class="tp">TreeNode</span> node) {
+    <span class="kw">if</span> (node == <span class="kw">null</span>) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">int</span> L = <span class="tp">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="fn">maxGain</span>(node.left));   <span class="cm">// clamp negatives to 0</span>
+    <span class="kw">int</span> R = <span class="tp">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="fn">maxGain</span>(node.right));
+    maxSum = <span class="tp">Math</span>.<span class="fn">max</span>(maxSum, L + node.val + R);
+    <span class="kw">return</span> node.val + <span class="tp">Math</span>.<span class="fn">max</span>(L, R);  <span class="cm">// only ONE branch can go up</span>
+}
+
+<span class="cm">// ── Kth Smallest in BST (LC 230) — inorder counter ──────────────────────────</span>
+<span class="kw">int</span> kthCount = <span class="num">0</span>, kthResult = <span class="num">-1</span>;
+<span class="kw">void</span> <span class="fn">kthSmallest</span>(<span class="tp">TreeNode</span> node, <span class="kw">int</span> k) {
+    <span class="kw">if</span> (node == <span class="kw">null</span> || kthCount == k) <span class="kw">return</span>;
+    <span class="fn">kthSmallest</span>(node.left, k);
+    <span class="kw">if</span> (++kthCount == k) { kthResult = node.val; <span class="kw">return</span>; }
+    <span class="fn">kthSmallest</span>(node.right, k);
+}
+
+<span class="cm">// ── Serialize/Deserialize (LC 297) — preorder with null markers ─────────────</span>
+<span class="tp">String</span> <span class="fn">serialize</span>(<span class="tp">TreeNode</span> root) {
+    <span class="kw">if</span> (root == <span class="kw">null</span>) <span class="kw">return</span> <span class="str">"#"</span>;
+    <span class="kw">return</span> root.val + <span class="str">","</span> + <span class="fn">serialize</span>(root.left) + <span class="str">","</span> + <span class="fn">serialize</span>(root.right);
+}
+<span class="tp">TreeNode</span> <span class="fn">deserialize</span>(<span class="tp">String</span> data) {
+    <span class="tp">Queue</span>&lt;<span class="tp">String</span>&gt; q = <span class="kw">new</span> <span class="tp">LinkedList</span>&lt;&gt;(<span class="tp">Arrays</span>.<span class="fn">asList</span>(data.<span class="fn">split</span>(<span class="str">","</span>)));
+    <span class="kw">return</span> <span class="fn">buildTree</span>(q);
+}
+<span class="tp">TreeNode</span> <span class="fn">buildTree</span>(<span class="tp">Queue</span>&lt;<span class="tp">String</span>&gt; q) {
+    <span class="tp">String</span> val = q.<span class="fn">poll</span>();
+    <span class="kw">if</span> (<span class="str">"#"</span>.<span class="fn">equals</span>(val)) <span class="kw">return null</span>;
+    <span class="tp">TreeNode</span> node = <span class="kw">new</span> <span class="tp">TreeNode</span>(<span class="tp">Integer</span>.<span class="fn">parseInt</span>(val));
+    node.left  = <span class="fn">buildTree</span>(q);
+    node.right = <span class="fn">buildTree</span>(q);
+    <span class="kw">return</span> node;
+}
+
+<span class="cm">// ── Construct from Preorder + Inorder (LC 105) ──────────────────────────────</span>
+<span class="tp">TreeNode</span> <span class="fn">buildFromTraversals</span>(<span class="kw">int</span>[] pre, <span class="kw">int</span>[] in,
+                               <span class="kw">int</span> pL, <span class="kw">int</span> pR, <span class="kw">int</span> iL, <span class="kw">int</span> iR,
+                               <span class="tp">Map</span>&lt;<span class="tp">Integer</span>,<span class="tp">Integer</span>&gt; idx) {
+    <span class="kw">if</span> (pL > pR) <span class="kw">return null</span>;
+    <span class="kw">int</span> rootVal = pre[pL];
+    <span class="tp">TreeNode</span> root = <span class="kw">new</span> <span class="tp">TreeNode</span>(rootVal);
+    <span class="kw">int</span> m    = idx.<span class="fn">get</span>(rootVal);   <span class="cm">// index in inorder</span>
+    <span class="kw">int</span> leftSz = m - iL;
+    root.left  = <span class="fn">buildFromTraversals</span>(pre, in, pL+<span class="num">1</span>,       pL+leftSz, iL,   m-<span class="num">1</span>, idx);
+    root.right = <span class="fn">buildFromTraversals</span>(pre, in, pL+leftSz+<span class="num">1</span>, pR,        m+<span class="num">1</span>, iR,   idx);
+    <span class="kw">return</span> root;
+}
+
+<span class="cm">// ── Delete Node in BST (LC 450) — 3 cases ───────────────────────────────────</span>
+<span class="tp">TreeNode</span> <span class="fn">deleteNode</span>(<span class="tp">TreeNode</span> root, <span class="kw">int</span> key) {
+    <span class="kw">if</span> (root == <span class="kw">null</span>) <span class="kw">return null</span>;
+    <span class="kw">if</span>      (key &lt; root.val) root.left  = <span class="fn">deleteNode</span>(root.left,  key);
+    <span class="kw">else if</span> (key &gt; root.val) root.right = <span class="fn">deleteNode</span>(root.right, key);
+    <span class="kw">else</span> {
+        <span class="kw">if</span> (root.left  == <span class="kw">null</span>) <span class="kw">return</span> root.right;  <span class="cm">// leaf or one child</span>
+        <span class="kw">if</span> (root.right == <span class="kw">null</span>) <span class="kw">return</span> root.left;
+        <span class="tp">TreeNode</span> succ = root.right;                    <span class="cm">// inorder successor</span>
+        <span class="kw">while</span> (succ.left != <span class="kw">null</span>) succ = succ.left;
+        root.val   = succ.val;
+        root.right = <span class="fn">deleteNode</span>(root.right, succ.val);
+    }
+    <span class="kw">return</span> root;
+}</pre>
+    </div>
+  </section>
+
+  <!-- PROBLEMS -->
+  <section id="s-problems">
+    <h2>Problem Set</h2>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">Classic</div>
+        <div class="problem-name">Inorder / Preorder / Postorder</div>
+        <span class="tag tag-easy">Easy</span>
+        <div class="problem-note">Iterative (explicit stack) and recursive — know both cold. Inorder = sorted for BST.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 102</div>
+        <div class="problem-name">Level Order Traversal</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">BFS with queue; snapshot queue size before loop to collect by level into sublists.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 104</div>
+        <div class="problem-name">Maximum Depth of Binary Tree</div>
+        <span class="tag tag-easy">Easy</span>
+        <div class="problem-note">1 + max(leftDepth, rightDepth). Base case: null returns 0.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 543</div>
+        <div class="problem-name">Diameter of Binary Tree</div>
+        <span class="tag tag-easy">Easy</span>
+        <div class="problem-note">At each node: left_h + right_h is a candidate diameter; track global max separately.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 101</div>
+        <div class="problem-name">Symmetric Tree</div>
+        <span class="tag tag-easy">Easy</span>
+        <div class="problem-note">Compare mirror pairs: left.left vs right.right, left.right vs right.left recursively.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 113</div>
+        <div class="problem-name">Path Sum II</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Backtracking DFS; subtract node val from remaining target; add path when leaf + target==0.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 297</div>
+        <div class="problem-name">Serialize / Deserialize</div>
+        <span class="tag tag-hard">Hard</span>
+        <div class="problem-note">Preorder DFS with "#" null markers. Queue-based deserialization rebuilds structure exactly.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 236</div>
+        <div class="problem-name">Lowest Common Ancestor</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Return when found; if both subtrees return non-null, current node is LCA. O(n) time.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 124</div>
+        <div class="problem-name">Binary Tree Max Path Sum</div>
+        <span class="tag tag-hard">Hard</span>
+        <div class="problem-note">At each node: max(0,left) + val + max(0,right); clamp negatives to 0. Only one branch goes up.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 98</div>
+        <div class="problem-name">Validate BST</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Pass min/max bounds through recursion — comparing only with direct children misses cross-level violations.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 230</div>
+        <div class="problem-name">Kth Smallest in BST</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Inorder counter; early exit when counter reaches k. Iterative version avoids stack overflow.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 450</div>
+        <div class="problem-name">Delete Node in BST</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">3 cases: leaf (null), one child (return it), two children (replace val with inorder successor).</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 105</div>
+        <div class="problem-name">Construct from Preorder + Inorder</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">root = preorder[0]; find root in inorder to split left/right sizes; HashMap for O(1) lookup.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 114</div>
+        <div class="problem-name">Flatten Binary Tree to Linked List</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Reverse postorder (right, left, root) with a "prev" pointer; or Morris traversal for O(1) space.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAFF ANGLES -->
+  <section id="s-staff">
+    <h2>Staff-Level Angles</h2>
+    <div class="staff-card">
+      <h3>Q: BST degenerates to O(n) under sequential inserts — production fix?</h3>
+      <p>Inserting 1, 2, 3, 4… into a plain BST creates a linked list: every lookup is O(n). You need a <em>self-balancing</em> BST.</p>
+      <p class="hint">
+        <strong>AVL trees</strong> maintain |height(left) − height(right)| ≤ 1 via single/double rotations — guaranteed O(log n). <br>
+        <strong>Red-Black trees</strong> relax balance slightly (fewer rotations) — O(log n) amortised; Java's <code>TreeMap</code> / <code>TreeSet</code> are Red-Black.<br>
+        <strong>B+ trees</strong> minimise disk I/O (n-ary nodes); every RDBMS index is a B+ tree. <br>
+        In prod: never implement your own — use <code>TreeMap</code> for in-memory sorted maps or a DB index for disk. If you need concurrent access, <code>ConcurrentSkipListMap</code> (lock-free O(log n)) often beats synchronized Red-Black in Java.
+      </p>
+    </div>
+    <div class="staff-card">
+      <h3>Q: LCA queries on a 1B-node tree not fitting in memory — O(log n) without full load?</h3>
+      <p>A single DFS for each query is O(n) and requires the whole tree in RAM. Three production approaches:</p>
+      <p class="hint">
+        <strong>1. Binary Lifting / Sparse Tables</strong> — precompute ancestor[node][2^k] for each node. LCA in O(log n) per query, O(n log n) preprocessing. Requires O(n log n) space but fits on disk with on-demand page loading.<br>
+        <strong>2. Euler Tour + Range Minimum Query</strong> — DFS creates an Euler tour of length 2n−1; LCA(u,v) = minimum-depth node in the tour between u and v. RMQ answers in O(1) after O(n) preprocessing with sparse table. Elegant and cache-friendly.<br>
+        <strong>3. Batch DFS with precomputed DFS-in/out numbering</strong> — assign DFS timestamps; ancestor check becomes a range query. Batch 1000s of LCA queries per disk pass, amortising I/O. Used in Google's Dremel / Protobufs nested repetition levels.
+      </p>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE -->
+  <section id="s-interact">
+    <h2>Interactive — BST Operations</h2>
+    <div class="card" style="margin-bottom:1rem">
+      <div class="controls">
+        <label style="color:var(--text-muted);font-size:0.875rem">Operation:</label>
+        <select id="op-select" class="text-input">
+          <option value="search">Search</option>
+          <option value="insert">Insert</option>
+          <option value="inorder">Inorder Traversal</option>
+          <option value="lca">LCA (pick two values)</option>
+        </select>
+        <input type="number" id="op-val1" class="text-input" placeholder="value" min="0" max="99" style="width:90px">
+        <input type="number" id="op-val2" class="text-input" placeholder="val2 (LCA)" min="0" max="99" style="width:120px;display:none">
+        <button class="btn primary" id="btn-run">Run</button>
+        <button class="btn" id="btn-reset-tree">Reset Tree</button>
+      </div>
+      <div id="op-msg" style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--accent);min-height:1.2em"></div>
+    </div>
+    <div id="interact-container">
+      <svg id="interact-svg" height="300"></svg>
+    </div>
+  </section>
+</main>
+
+<footer>Clean Code — Robert C. Martin &nbsp;·&nbsp; The Pragmatic Programmer — Hunt &amp; Thomas &nbsp;·&nbsp; Refactoring — Martin Fowler &nbsp;·&nbsp; Working Effectively with Legacy Code — Michael Feathers</footer>
+
+<script>
+// ─── Scroll progress bar ────────────────────────────────────────────────────
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.documentElement.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+});
+
+// ─── IntersectionObserver for section reveal ────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// ─── Copy button ─────────────────────────────────────────────────────────────
+function copyCode(btn) {
+  const pre = btn.nextElementSibling;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ─── BST data ────────────────────────────────────────────────────────────────
+// BST: 8,3,10,1,6,14,4,7,13
+const BST_INIT = [8, 3, 10, 1, 6, 14, 4, 7, 13];
+
+function makeBST(vals) {
+  let root = null;
+  for (const v of vals) root = bstInsert(root, v);
+  return root;
+}
+
+function bstInsert(node, val) {
+  if (!node) return { val, left: null, right: null, id: val };
+  if (val < node.val) node.left  = bstInsert(node.left,  val);
+  else if (val > node.val) node.right = bstInsert(node.right, val);
+  return node;
+}
+
+function bstSearch(node, val, path) {
+  if (!node) return null;
+  path.push(node.val);
+  if (val === node.val) return node;
+  if (val < node.val)  return bstSearch(node.left,  val, path);
+  return                      bstSearch(node.right, val, path);
+}
+
+// ─── D3 tree helper ─────────────────────────────────────────────────────────
+function d3TreeLayout(rootNode, width, height) {
+  const hier = d3.hierarchy(rootNode, d => {
+    const ch = [];
+    if (d.left)  ch.push(d.left);
+    if (d.right) ch.push(d.right);
+    return ch.length ? ch : null;
+  });
+  const layout = d3.tree().size([width - 60, height - 60]);
+  layout(hier);
+  // Shift so root is centred and there's top padding
+  hier.descendants().forEach(d => { d.x += 30; d.y += 30; });
+  return hier;
+}
+
+// ─── Concept tree (static) ───────────────────────────────────────────────────
+(function() {
+  const svg = d3.select('#concept-svg');
+  const W = svg.node().parentNode.clientWidth || 700;
+  svg.attr('width', W);
+  const root = makeBST(BST_INIT);
+  const hier = d3TreeLayout(root, W, 260);
+
+  // Edges
+  svg.selectAll('.edge')
+    .data(hier.links())
+    .enter().append('line')
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+    .attr('stroke', '#30363d').attr('stroke-width', 2);
+
+  // Nodes
+  const g = svg.selectAll('.cnode')
+    .data(hier.descendants())
+    .enter().append('g')
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+
+  g.append('circle')
+    .attr('r', 18)
+    .attr('fill', d => d.depth === 0 ? '#f59e0b' : 'var(--bg-card)')
+    .attr('stroke', d => d.depth === 0 ? '#f59e0b' : 'var(--accent)')
+    .attr('stroke-width', 2)
+    .attr('opacity', 0)
+    .transition().duration(600).delay((_, i) => i * 80)
+    .attr('opacity', 1);
+
+  g.append('text')
+    .attr('text-anchor', 'middle').attr('dy', '0.35em')
+    .attr('fill', d => d.depth === 0 ? '#0d1117' : 'var(--text)')
+    .attr('font-family', 'JetBrains Mono, monospace')
+    .attr('font-size', 11).attr('font-weight', 600)
+    .attr('opacity', 0)
+    .text(d => d.data.val)
+    .transition().duration(600).delay((_, i) => i * 80)
+    .attr('opacity', 1);
+})();
+
+// ─── Search Stepper ──────────────────────────────────────────────────────────
+const SEARCH_TARGET = 23;
+// Steps for searching 23 in BST [8,3,10,1,6,14,4,7,13]
+// Path: 8 → right (23>8) → 10 → right (23>10) → 14 → right (23>14) → null (not found)
+const STEPS = [
+  { node: 8,  depth: 0, cmp: '23 > 8',  dir: 'go right', path: '8', result: 'searching...' },
+  { node: 10, depth: 1, cmp: '23 > 10', dir: 'go right', path: '8 → 10', result: 'searching...' },
+  { node: 14, depth: 2, cmp: '23 > 14', dir: 'go right', path: '8 → 10 → 14', result: 'searching...' },
+  { node: null, depth: 3, cmp: 'null reached', dir: '—', path: '8 → 10 → 14 → null', result: 'NOT FOUND (23 not in BST)' },
+];
+
+let stepIdx = 0;
+let playTimer = null;
+
+function renderStepperTree(highlightVal, foundNull) {
+  const svgEl = document.getElementById('viz-svg');
+  const svg = d3.select('#viz-svg');
+  svg.selectAll('*').remove();
+  const W = svgEl.parentNode.clientWidth || 700;
+  svgEl.setAttribute('width', W);
+
+  const root = makeBST(BST_INIT);
+  const hier = d3TreeLayout(root, W, 270);
+
+  // Edges
+  svg.selectAll('.edge')
+    .data(hier.links())
+    .enter().append('line')
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+    .attr('stroke', '#30363d').attr('stroke-width', 2);
+
+  // Null indicator when null reached
+  if (foundNull) {
+    const n14 = hier.descendants().find(d => d.data.val === 14);
+    if (n14) {
+      const nx = n14.x + 30, ny = n14.y + 50;
+      svg.append('circle').attr('cx', nx).attr('cy', ny).attr('r', 12)
+        .attr('fill', 'rgba(248,113,113,0.15)').attr('stroke', 'var(--bad)').attr('stroke-width', 2)
+        .attr('opacity', 0).transition().duration(400).attr('opacity', 1);
+      svg.append('text').attr('x', nx).attr('y', ny + 1)
+        .attr('text-anchor', 'middle').attr('dy', '0.35em')
+        .attr('fill', 'var(--bad)').attr('font-size', 10).attr('font-weight', 600)
+        .attr('font-family', 'JetBrains Mono, monospace').text('null');
+      svg.append('line')
+        .attr('x1', n14.x).attr('y1', n14.y).attr('x2', nx).attr('y2', ny - 12)
+        .attr('stroke', 'var(--bad)').attr('stroke-width', 1).attr('stroke-dasharray', '4,3');
+    }
+  }
+
+  const g = svg.selectAll('.snode')
+    .data(hier.descendants())
+    .enter().append('g')
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+
+  g.append('circle')
+    .attr('r', 18)
+    .attr('fill', d => d.data.val === highlightVal ? 'var(--accent)' : 'var(--bg-card)')
+    .attr('stroke', d => d.data.val === highlightVal ? 'var(--accent)' : '#30363d')
+    .attr('stroke-width', d => d.data.val === highlightVal ? 3 : 2);
+
+  g.append('text')
+    .attr('text-anchor', 'middle').attr('dy', '0.35em')
+    .attr('fill', d => d.data.val === highlightVal ? '#0d1117' : 'var(--text)')
+    .attr('font-family', 'JetBrains Mono, monospace')
+    .attr('font-size', 11).attr('font-weight', 600)
+    .text(d => d.data.val);
+
+  if (highlightVal !== null) {
+    const hn = hier.descendants().find(d => d.data.val === highlightVal);
+    if (hn) {
+      anime({
+        targets: svgEl.querySelectorAll('circle'),
+        opacity: [0.6, 1], duration: 300, easing: 'easeOutSine'
+      });
+    }
+  }
+}
+
+function updateTrace(idx) {
+  const s = STEPS[idx];
+  document.getElementById('tr-node').textContent   = s.node !== null ? s.node : 'null';
+  document.getElementById('tr-depth').textContent  = s.depth;
+  document.getElementById('tr-cmp').textContent    = s.cmp;
+  document.getElementById('tr-dir').textContent    = s.dir;
+  document.getElementById('tr-path').textContent   = s.path;
+  const res = document.getElementById('tr-result');
+  res.textContent = s.result;
+  res.style.color = s.result.includes('NOT FOUND') ? 'var(--bad)' : 'var(--accent)';
+  document.getElementById('step-label').textContent = `Step ${idx + 1} / ${STEPS.length}`;
+}
+
+function goToStep(idx) {
+  if (idx >= STEPS.length) {
+    stopPlay();
+    return;
+  }
+  stepIdx = idx;
+  const s = STEPS[idx];
+  renderStepperTree(s.node, s.node === null);
+  updateTrace(idx);
+}
+
+function stopPlay() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  document.getElementById('btn-play').textContent = '▶ Play';
+}
+
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (playTimer) { stopPlay(); return; }
+  if (stepIdx >= STEPS.length - 1) stepIdx = 0;
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+  playTimer = setInterval(() => {
+    goToStep(stepIdx);
+    stepIdx++;
+    if (stepIdx >= STEPS.length) stopPlay();
+  }, 1200);
+});
+
+document.getElementById('btn-step').addEventListener('click', () => {
+  stopPlay();
+  if (stepIdx < STEPS.length) { goToStep(stepIdx); stepIdx++; }
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  stopPlay();
+  stepIdx = 0;
+  renderStepperTree(null, false);
+  document.getElementById('tr-node').textContent = '—';
+  document.getElementById('tr-depth').textContent = '—';
+  document.getElementById('tr-cmp').textContent = '—';
+  document.getElementById('tr-dir').textContent = '—';
+  document.getElementById('tr-path').textContent = '—';
+  document.getElementById('tr-result').textContent = 'searching...';
+  document.getElementById('tr-result').style.color = 'var(--accent)';
+  document.getElementById('step-label').textContent = 'Step 0 / ' + STEPS.length;
+});
+
+// Initial render
+renderStepperTree(null, false);
+
+// ─── Interactive BST section ─────────────────────────────────────────────────
+let interactTree = makeBST(BST_INIT);
+let highlightNodes = [];
+let lcaNode = null;
+
+function renderInteractTree(highlights, lcaVal) {
+  const svgEl = document.getElementById('interact-svg');
+  const svg = d3.select('#interact-svg');
+  svg.selectAll('*').remove();
+  const W = svgEl.parentNode.clientWidth || 700;
+  svgEl.setAttribute('width', W);
+
+  const hier = d3TreeLayout(interactTree, W, 270);
+  const hset = new Set(highlights);
+
+  // Edges
+  svg.selectAll('.edge')
+    .data(hier.links())
+    .enter().append('line')
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+    .attr('stroke', '#30363d').attr('stroke-width', 2);
+
+  const g = svg.selectAll('.inode')
+    .data(hier.descendants())
+    .enter().append('g')
+    .attr('transform', d => `translate(${d.x},${d.y})`);
+
+  g.append('circle')
+    .attr('r', 18)
+    .attr('fill', d => {
+      if (d.data.val === lcaVal) return '#f59e0b';
+      if (hset.has(d.data.val)) return 'var(--accent)';
+      return 'var(--bg-card)';
+    })
+    .attr('stroke', d => {
+      if (d.data.val === lcaVal) return '#f59e0b';
+      if (hset.has(d.data.val)) return 'var(--accent)';
+      return '#30363d';
+    })
+    .attr('stroke-width', d => (hset.has(d.data.val) || d.data.val === lcaVal) ? 3 : 2)
+    .attr('opacity', 0)
+    .transition().duration(400).delay((_, i) => i * 40)
+    .attr('opacity', 1);
+
+  g.append('text')
+    .attr('text-anchor', 'middle').attr('dy', '0.35em')
+    .attr('fill', d => (hset.has(d.data.val) || d.data.val === lcaVal) ? '#0d1117' : 'var(--text)')
+    .attr('font-family', 'JetBrains Mono, monospace')
+    .attr('font-size', 11).attr('font-weight', 600)
+    .text(d => d.data.val);
+}
+
+function findLCA(node, p, q) {
+  if (!node) return null;
+  if (node.val === p || node.val === q) return node;
+  const l = findLCA(node.left, p, q);
+  const r = findLCA(node.right, p, q);
+  if (l && r) return node;
+  return l || r;
+}
+
+function inorderList(node, arr) {
+  if (!node) return;
+  inorderList(node.left, arr);
+  arr.push(node.val);
+  inorderList(node.right, arr);
+}
+
+document.getElementById('op-select').addEventListener('change', function() {
+  const v2 = document.getElementById('op-val2');
+  v2.style.display = this.value === 'lca' ? 'inline-block' : 'none';
+  document.getElementById('op-val1').placeholder = this.value === 'inorder' ? '—' : 'value';
+});
+
+document.getElementById('btn-run').addEventListener('click', () => {
+  const op    = document.getElementById('op-select').value;
+  const v1raw = parseInt(document.getElementById('op-val1').value);
+  const v2raw = parseInt(document.getElementById('op-val2').value);
+  const msg   = document.getElementById('op-msg');
+
+  if (op === 'search') {
+    if (isNaN(v1raw)) { msg.textContent = 'Enter a value to search.'; return; }
+    const path = [];
+    const found = bstSearch(interactTree, v1raw, path);
+    if (found) {
+      msg.textContent = `Found ${v1raw}! Path: ${path.join(' → ')}`;
+      renderInteractTree(path, null);
+    } else {
+      msg.textContent = `${v1raw} not in BST. Searched: ${path.join(' → ')} → null`;
+      renderInteractTree(path, null);
+    }
+  } else if (op === 'insert') {
+    if (isNaN(v1raw) || v1raw < 0 || v1raw > 999) { msg.textContent = 'Enter a valid value (0–999).'; return; }
+    interactTree = bstInsert(interactTree, v1raw);
+    msg.textContent = `Inserted ${v1raw} into BST.`;
+    renderInteractTree([v1raw], null);
+  } else if (op === 'inorder') {
+    const arr = [];
+    inorderList(interactTree, arr);
+    msg.textContent = `Inorder: [${arr.join(', ')}]`;
+    renderInteractTree(arr, null);
+  } else if (op === 'lca') {
+    if (isNaN(v1raw) || isNaN(v2raw)) { msg.textContent = 'Enter both values for LCA.'; return; }
+    const res = findLCA(interactTree, v1raw, v2raw);
+    if (res) {
+      msg.textContent = `LCA(${v1raw}, ${v2raw}) = ${res.val}`;
+      renderInteractTree([v1raw, v2raw], res.val);
+    } else {
+      msg.textContent = `One or both values not found in tree.`;
+      renderInteractTree([], null);
+    }
+  }
+});
+
+document.getElementById('btn-reset-tree').addEventListener('click', () => {
+  interactTree = makeBST(BST_INIT);
+  document.getElementById('op-msg').textContent = 'Tree reset to [8,3,10,1,6,14,4,7,13].';
+  renderInteractTree([], null);
+});
+
+// Initial render
+renderInteractTree([], null);
+
+// Redraw on resize
+window.addEventListener('resize', () => {
+  // Concept tree
+  const csvg = d3.select('#concept-svg');
+  const W = csvg.node().parentNode.clientWidth || 700;
+  csvg.attr('width', W);
+  csvg.selectAll('*').remove();
+  const root = makeBST(BST_INIT);
+  const hier = d3TreeLayout(root, W, 260);
+  csvg.selectAll('.edge').data(hier.links()).enter().append('line')
+    .attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+    .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y)
+    .attr('stroke','#30363d').attr('stroke-width',2);
+  const g = csvg.selectAll('.cnode').data(hier.descendants()).enter().append('g')
+    .attr('transform', d=>`translate(${d.x},${d.y})`);
+  g.append('circle').attr('r',18)
+    .attr('fill', d=>d.depth===0?'#f59e0b':'var(--bg-card)')
+    .attr('stroke', d=>d.depth===0?'#f59e0b':'var(--accent)').attr('stroke-width',2);
+  g.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('fill', d=>d.depth===0?'#0d1117':'var(--text)')
+    .attr('font-family','JetBrains Mono, monospace').attr('font-size',11).attr('font-weight',600)
+    .text(d=>d.data.val);
+
+  // Stepper and interact just re-render current state
+  const cs = STEPS[Math.max(0, stepIdx - 1)];
+  if (cs) renderStepperTree(cs.node, cs.node === null);
+  else renderStepperTree(null, false);
+  renderInteractTree([], null);
+});
+</script>
+</body>
+</html>

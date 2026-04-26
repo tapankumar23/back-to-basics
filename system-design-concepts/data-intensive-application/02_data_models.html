@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Models — DDIA Ch. 2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #f472b6;
+      --accent-dim: rgba(244,114,182,0.15);
+      --red: #f87171;
+      --green: #4ade80;
+      --amber: #fbbf24;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+
+    #progress-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.93);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      text-decoration: none;
+      margin-right: 1.2rem;
+    }
+    #navbar a { color: var(--text-muted); text-decoration: none; font-size: 12px; }
+    #navbar a:hover { color: var(--accent); }
+    #navbar .chapter-pager {
+      display: flex; align-items: stretch; gap: 6px;
+      margin-right: 12px; padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    .chapter-nav-chip {
+      min-height: 34px; padding: 5px 10px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      display: flex; flex-direction: column; justify-content: center; gap: 1px;
+      color: var(--text); text-decoration: none;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .chapter-nav-chip:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-chip.current { background: rgba(255,255,255,0.07); text-align: center; align-items: center; }
+    .nav-kicker { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; }
+    .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+    #navbar .nav-sections { display: flex; align-items: center; gap: 2px; flex: 1; }
+    #navbar .nav-sections a { padding: 0 8px; height: 48px; display: flex; align-items: center; }
+    #navbar .nav-links { display: flex; align-items: center; gap: 2px; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 8px; }
+    #navbar .nav-links a { padding: 0 8px; height: 48px; display: flex; align-items: center; white-space: nowrap; }
+
+    main { padding: 80px 1.5rem 4rem; max-width: 1100px; margin: 0 auto; }
+
+    .hero { text-align: center; padding: 4rem 0 3rem; }
+    .hero-badge {
+      display: inline-block; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--accent); background: var(--accent-dim);
+      border: 1px solid var(--accent); border-radius: 20px;
+      padding: 3px 12px; margin-bottom: 1rem; letter-spacing: 0.06em;
+    }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; line-height: 1.1; margin-bottom: 1rem; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+    section { margin-bottom: 5rem; }
+    .section-header { margin-bottom: 2rem; }
+    .section-kicker { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+    .section-title { font-size: 1.8rem; font-weight: 700; }
+    .section-desc { color: var(--text-muted); margin-top: 0.5rem; max-width: 700px; }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .card:hover { border-color: var(--accent); background: var(--bg-card-hover); }
+    .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--accent); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    svg { display: block; overflow: visible; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 8px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.05);
+      color: var(--text); font-size: 13px; cursor: pointer;
+      transition: border-color 0.18s, background 0.18s, transform 0.1s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn:hover { border-color: var(--accent); background: var(--accent-dim); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-accent { background: var(--accent); color: #0d1117; border-color: var(--accent); font-weight: 600; }
+    .btn-accent:hover { background: #ec4899; border-color: #ec4899; }
+
+    pre, code { font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; }
+    .code-block {
+      background: #010409; border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.2rem; overflow-x: auto;
+    }
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; }
+    .num { color: #79c0ff; }
+    .tp  { color: #ffa657; }
+
+    .control-row { display: flex; align-items: center; gap: 10px; margin-top: 1rem; flex-wrap: wrap; }
+    .status-text { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); }
+
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    .tbl td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid rgba(48,54,61,0.5); }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-green { background: rgba(74,222,128,0.15); color: var(--green); }
+    .badge-red   { background: rgba(248,113,113,0.15); color: var(--red); }
+
+    .toggle-container { position: relative; overflow: hidden; min-height: 200px; }
+    .toggle-panel { position: absolute; top: 0; left: 0; right: 0; }
+    .panel-b { transform: translateX(100%); }
+    .toggle-wrapper { display: flex; justify-content: center; margin-bottom: 1rem; gap: 8px; align-items: center; }
+
+    .flow-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px; text-align: center;
+      font-size: 13px; font-family: 'JetBrains Mono', monospace;
+      display: inline-block; min-width: 80px;
+    }
+    .flow-arrow { color: var(--accent); margin: 0 8px; font-size: 18px; display: inline-block; }
+
+    .timeline-row { display: flex; align-items: stretch; gap: 1.5rem; }
+    .timeline-col { flex: 1; }
+    .timeline-col h4 { font-size: 13px; font-weight: 600; margin-bottom: 1rem; color: var(--accent); }
+
+    .schema-gate {
+      width: 80px; height: 44px; border: 2px solid var(--accent);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--accent);
+      margin-bottom: 1rem; transition: border-color 0.3s, color 0.3s;
+    }
+
+    .anim-target { opacity: 0; }
+    .sow-event { margin-bottom: 6px; opacity: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .sor-event { margin-bottom: 6px; opacity: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .anim-row  { opacity: 0; }
+
+    footer { text-align: center; padding: 3rem 1.5rem 2rem; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <a href="00_index.html" class="nav-brand">DDIA</a>
+  <div class="chapter-pager">
+    <a href="01_reliability_scalability.html" class="chapter-nav-chip">
+      <span class="nav-kicker">← prev</span>
+      <span class="nav-title">Reliability &amp; Scalability</span>
+    </a>
+    <span class="chapter-nav-chip current">
+      <span class="nav-kicker">ch 2</span>
+      <span class="nav-title">Data Models</span>
+    </span>
+    <a href="03_storage_retrieval_encoding.html" class="chapter-nav-chip">
+      <span class="nav-kicker">next →</span>
+      <span class="nav-title">Storage &amp; Encoding</span>
+    </a>
+  </div>
+  <div class="nav-sections">
+    <a href="#s1">History</a>
+    <a href="#s2">Relational</a>
+    <a href="#s3">Document</a>
+    <a href="#s4">Comparison</a>
+    <a href="#s5">Graph</a>
+    <a href="#s6">Query Languages</a>
+    <a href="#s7">Schema</a>
+    <a href="#s8">Datalog</a>
+  </div>
+  <div class="nav-links">
+    <a href="../system-design-concepts/00_index.html">System Design</a>
+    <a href="../coding-concepts/00_index.html">Coding Concepts</a>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Chapter 2 · DDIA</div>
+    <h1>Data <span>Models</span> &amp; Query Languages</h1>
+    <p>From IMS hierarchical trees to graph databases — how we model data shapes the problems we can solve and the questions we can ask.</p>
+  </div>
+
+  <!-- ======== S1: History ======== -->
+  <section id="s1">
+    <div class="section-header">
+      <div class="section-kicker">Section 1</div>
+      <div class="section-title">Historical Models &amp; Many-to-Many</div>
+      <div class="section-desc">IBM's IMS (1968) used a hierarchical tree. CODASYL offered a network model. The relational model replaced both — but why?</div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">IMS Hierarchical Tree</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Parent → child only. Many-to-many = impossible.</p>
+        <svg id="ims-svg" width="100%" height="250" viewBox="0 0 380 250"></svg>
+      </div>
+      <div class="card">
+        <div class="card-title">CODASYL Network Model</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Pointer-based graph. The app must know the access path.</p>
+        <svg id="codasyl-svg" width="100%" height="210" viewBox="0 0 380 210"></svg>
+        <div class="control-row">
+          <button class="btn" id="btn-traverse">Manual Traversal</button>
+          <span class="status-text" id="traverse-status">Click to start</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Why Relational Won — No Explicit Access Path</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:1.2rem;" id="relational-won-flow">
+        <div class="flow-box anim-target" id="fw1">App</div>
+        <span class="flow-arrow anim-target" id="fw-a1">&#8594;</span>
+        <div class="flow-box anim-target" id="fw2" style="border-color:var(--accent);">SQL Query</div>
+        <span class="flow-arrow anim-target" id="fw-a2">&#8594;</span>
+        <div class="flow-box anim-target" id="fw3" style="background:#1c2330;border-style:dashed;">Optimizer<br><span style="font-size:10px;color:var(--text-muted)">(black box)</span></div>
+        <span class="flow-arrow anim-target" id="fw-a3">&#8594;</span>
+        <div class="flow-box anim-target" id="fw4">Exec Plan</div>
+        <span class="flow-arrow anim-target" id="fw-a4">&#8594;</span>
+        <div class="flow-box anim-target" id="fw5" style="border-color:var(--green);color:var(--green);">Result</div>
+      </div>
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px;">Relational: Declarative SQL</div>
+          <div class="code-block"><pre><span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">JOIN</span> products <span class="kw">USING</span> (product_id)
+<span class="kw">WHERE</span> customer_id = <span class="num">42</span>;</pre></div>
+          <p style="font-size:12px;color:var(--green);margin-top:6px;">&#10003; App says <em>what</em>, not <em>how</em></p>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:6px;">CODASYL: Imperative Path</div>
+          <div class="code-block"><pre><span class="cm">// App must know the path</span>
+cursor.<span class="fn">findOwner</span>(<span class="str">"CUSTOMER"</span>);
+cursor.<span class="fn">findMember</span>(<span class="str">"ORDER"</span>);
+<span class="kw">while</span> (cursor.<span class="fn">next</span>()) {
+  cursor.<span class="fn">findMember</span>(<span class="str">"PRODUCT"</span>);
+}</pre></div>
+          <p style="font-size:12px;color:var(--red);margin-top:6px;">&#10007; Hardcoded navigation</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S2: Relational Model ======== -->
+  <section id="s2">
+    <div class="section-header">
+      <div class="section-kicker">Section 2</div>
+      <div class="section-title">The Relational Model</div>
+      <div class="section-desc">Tables, joins, normalization — and the impedance mismatch between relational rows and in-memory objects.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-title">Tables &amp; Joins — Users, Companies, Positions</div>
+      <svg id="relational-svg" width="100%" height="270" viewBox="0 0 900 270"></svg>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">ORM Impedance Mismatch</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Objects nest naturally; rows are flat. ORMs bridge the gap.</p>
+        <div class="grid-2" style="gap:1rem;">
+          <div>
+            <div style="font-size:11px;color:var(--accent);margin-bottom:6px;">In-Memory Object</div>
+            <div class="code-block" style="font-size:11px;"><pre>{
+  <span class="str">"name"</span>: <span class="str">"Alice"</span>,
+  <span class="str">"positions"</span>: [
+    {
+      <span class="str">"title"</span>: <span class="str">"Engineer"</span>,
+      <span class="str">"company"</span>: <span class="str">"Acme"</span>
+    }
+  ]
+}</pre></div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--amber);margin-bottom:6px;">Relational Rows</div>
+            <div class="code-block" style="font-size:11px;"><pre>users:
+  id=1 name=Alice
+
+positions:
+  id=5 user=1
+  title=Engineer
+  company_id=10
+
+companies:
+  id=10 name=Acme</pre></div>
+          </div>
+        </div>
+        <p id="mismatch-arrows" style="text-align:center;margin-top:8px;font-size:20px;color:var(--accent);opacity:0;">&#8644; ORM mapping</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Normalization — Split the Redundancy</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">One denormalized row splits into two tables to eliminate duplication.</p>
+        <svg id="norm-svg" width="100%" height="200" viewBox="0 0 360 200"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S3: Document Model ======== -->
+  <section id="s3">
+    <div class="section-header">
+      <div class="section-kicker">Section 3</div>
+      <div class="section-title">The Document Model</div>
+      <div class="section-desc">JSON documents store related data together. One fetch, self-contained, schema flexible.</div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">JSON Tree Expansion — Resume Document</div>
+        <div class="code-block" style="min-height:210px;"><pre id="json-pre"></pre></div>
+        <div class="control-row">
+          <button class="btn" id="btn-expand-json">Expand Tree</button>
+          <button class="btn" id="btn-reset-json">Reset</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Locality Advantage — Fetch Comparison</div>
+        <svg id="locality-svg" width="100%" height="220" viewBox="0 0 360 220"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Schema Flexibility — Adding a Field</div>
+      <div class="grid-2" style="gap:1.5rem;">
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Document A (old format)</div>
+          <div class="code-block"><pre>{
+  <span class="str">"name"</span>: <span class="str">"Alice"</span>,
+  <span class="str">"email"</span>: <span class="str">"alice@ex.com"</span>
+}</pre></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Document B (new field added)</div>
+          <div class="code-block"><pre id="doc-b-pre">{
+  "name": "Bob",
+  "email": "bob@ex.com"
+}</pre></div>
+          <div class="control-row">
+            <button class="btn" id="btn-add-field">Add Field</button>
+            <span class="status-text">No migration needed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S4: Toggle Comparison ======== -->
+  <section id="s4">
+    <div class="section-header">
+      <div class="section-kicker">Section 4</div>
+      <div class="section-title">Relational vs Document — Interactive</div>
+      <div class="section-desc">Same resume data, two models. Toggle to see how each represents it.</div>
+    </div>
+
+    <div class="toggle-wrapper">
+      <button class="btn btn-accent" id="btn-toggle-model">Switch to Document Model</button>
+      <span class="status-text" id="current-model-label">Currently: Relational</span>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="toggle-container" id="toggle-container">
+        <div class="toggle-panel panel-a" id="panel-relational">
+          <div style="font-size:12px;font-weight:600;color:var(--amber);margin-bottom:10px;">Relational Model</div>
+          <div class="grid-3" style="gap:1rem;">
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">users</div>
+              <div class="code-block" style="font-size:11px;"><pre>id | name  | city
+1  | Alice | SF</pre></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">positions</div>
+              <div class="code-block" style="font-size:11px;"><pre>uid | title    | co_id
+1   | Engineer | 10
+1   | Intern   | 11</pre></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">companies</div>
+              <div class="code-block" style="font-size:11px;"><pre>id | name
+10 | Acme
+11 | Beta</pre></div>
+            </div>
+          </div>
+        </div>
+        <div class="toggle-panel panel-b" id="panel-document">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:10px;">Document Model</div>
+          <div class="code-block"><pre>{
+  <span class="str">"id"</span>: <span class="num">1</span>, <span class="str">"name"</span>: <span class="str">"Alice"</span>, <span class="str">"city"</span>: <span class="str">"SF"</span>,
+  <span class="str">"positions"</span>: [
+    { <span class="str">"title"</span>: <span class="str">"Engineer"</span>, <span class="str">"company"</span>: <span class="str">"Acme"</span> },
+    { <span class="str">"title"</span>: <span class="str">"Intern"</span>,   <span class="str">"company"</span>: <span class="str">"Beta"</span> }
+  ]
+}</pre></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pros-cons-area">
+      <div id="pros-cons-relational">
+        <table class="tbl">
+          <thead><tr><th>Aspect</th><th>Relational</th></tr></thead>
+          <tbody id="pc-rel-body"></tbody>
+        </table>
+      </div>
+      <div id="pros-cons-document" style="display:none;">
+        <table class="tbl">
+          <thead><tr><th>Aspect</th><th>Document</th></tr></thead>
+          <tbody id="pc-doc-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S5: Graph Model ======== -->
+  <section id="s5">
+    <div class="section-header">
+      <div class="section-kicker">Section 5</div>
+      <div class="section-title">The Graph Model</div>
+      <div class="section-desc">When everything is related to everything — social networks, roads, dependencies. Property graphs and triple-stores.</div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">Property Graph — People &amp; Places</div>
+        <svg id="graph-svg" width="100%" height="300" viewBox="0 0 380 300"></svg>
+        <div class="control-row">
+          <button class="btn" id="btn-run-cypher">Run Cypher Query</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Triple-Store Representation</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Same facts as (subject, predicate, object) triples.</p>
+        <table class="tbl">
+          <thead><tr><th>Subject</th><th>Predicate</th><th>Object</th></tr></thead>
+          <tbody id="triple-tbody"></tbody>
+        </table>
+        <div style="margin-top:1.2rem;">
+          <div style="font-size:12px;color:var(--accent);margin-bottom:6px;">Cypher Query</div>
+          <div class="code-block"><pre><span class="kw">MATCH</span> (p:<span class="tp">Person</span>)-[:<span class="fn">BORN_IN</span>]->(c:<span class="tp">Country</span>)
+<span class="kw">RETURN</span> p.name, c.name</pre></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cypher vs SPARQL — Same Query, Two Languages</div>
+      <div class="grid-2" style="gap:1.5rem;">
+        <div>
+          <div style="font-size:12px;color:var(--accent);margin-bottom:6px;">Cypher (Neo4j)</div>
+          <div class="code-block"><pre><span class="kw">MATCH</span> (person:<span class="tp">Person</span>)
+  -[:<span class="fn">BORN_IN</span>]->()-[:<span class="fn">WITHIN</span>*0..]->(us:<span class="tp">Location</span>)
+<span class="kw">WHERE</span> us.name = <span class="str">"United States"</span>
+<span class="kw">RETURN</span> person.name</pre></div>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--amber);margin-bottom:6px;">SPARQL (W3C standard)</div>
+          <div class="code-block"><pre><span class="kw">PREFIX</span> : &lt;<span class="str">urn:example:</span>&gt;
+<span class="kw">SELECT</span> ?personName <span class="kw">WHERE</span> {
+  ?person :<span class="fn">bornIn</span> ?place .
+  ?place  :<span class="fn">within</span>* :<span class="tp">USA</span> .
+  ?person :<span class="fn">name</span> ?personName .
+}</pre></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S6: Query Languages ======== -->
+  <section id="s6">
+    <div class="section-header">
+      <div class="section-kicker">Section 6</div>
+      <div class="section-title">Declarative vs Imperative Query Languages</div>
+      <div class="section-desc">SQL hides the <em>how</em>. MapReduce exposes it. The declarative/imperative divide runs through all of computing.</div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">SQL — Declarative</div>
+        <div class="code-block" style="margin-bottom:1rem;"><pre><span class="kw">SELECT</span> family, <span class="fn">count</span>(*) <span class="kw">AS</span> cnt
+<span class="kw">FROM</span>   animals
+<span class="kw">WHERE</span>  family = <span class="str">'Sharks'</span>
+<span class="kw">GROUP BY</span> family;</pre></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;" id="sql-flow">
+          <div class="flow-box anim-target" id="sf1" style="font-size:11px;">All Rows</div>
+          <span class="flow-arrow anim-target" id="sf-a1">&#8594;</span>
+          <div class="flow-box anim-target" id="sf2" style="font-size:11px;border-color:var(--accent);">Filter Sharks</div>
+          <span class="flow-arrow anim-target" id="sf-a2">&#8594;</span>
+          <div class="flow-box anim-target" id="sf3" style="font-size:11px;">Aggregate</div>
+          <span class="flow-arrow anim-target" id="sf-a3">&#8594;</span>
+          <div class="flow-box anim-target" id="sf4" style="font-size:11px;border-color:var(--green);color:var(--green);">Result</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">MapReduce — Imperative</div>
+        <div class="code-block" style="margin-bottom:1rem;font-size:11px;"><pre>db.animals.<span class="fn">mapReduce</span>(
+  <span class="kw">function</span> <span class="fn">map</span>() {
+    <span class="kw">if</span> (<span class="kw">this</span>.family === <span class="str">'Sharks'</span>)
+      <span class="fn">emit</span>(<span class="kw">this</span>.family, <span class="num">1</span>);
+  },
+  <span class="kw">function</span> <span class="fn">reduce</span>(key, vals) {
+    <span class="kw">return</span> Array.<span class="fn">sum</span>(vals);
+  }
+);</pre></div>
+        <svg id="mr-svg" width="100%" height="70" viewBox="0 0 360 70"></svg>
+        <div class="control-row">
+          <button class="btn" id="btn-run-mr">Animate MapReduce</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S7: Schema ======== -->
+  <section id="s7">
+    <div class="section-header">
+      <div class="section-kicker">Section 7</div>
+      <div class="section-title">Schema-on-write vs Schema-on-read</div>
+      <div class="section-desc">Relational databases enforce schema at write time. Document databases check at read time. Each has costs and benefits.</div>
+    </div>
+
+    <div class="control-row" style="justify-content:center;margin-bottom:1.5rem;">
+      <button class="btn btn-accent" id="btn-add-field-schema">Add New Field — See Both Timelines</button>
+    </div>
+
+    <div class="timeline-row">
+      <div class="timeline-col">
+        <div class="card">
+          <h4>Schema-on-write (Relational)</h4>
+          <div class="schema-gate" id="sow-gate">GATE</div>
+          <div id="sow-events">
+            <div class="sow-event" id="sow-e1" style="color:var(--red);">&#10007; Invalid doc bounces back</div>
+            <div class="sow-event" id="sow-e2" style="color:var(--green);">&#10003; Valid doc passes gate</div>
+            <div class="sow-event" id="sow-e3" style="color:var(--amber);">&#9881; ALTER TABLE — add column (migration required, may lock table)</div>
+          </div>
+        </div>
+      </div>
+      <div class="timeline-col">
+        <div class="card">
+          <h4>Schema-on-read (Document)</h4>
+          <div id="sor-events">
+            <div class="sor-event" id="sor-e1" style="color:var(--green);">&#10003; All docs accepted at write time</div>
+            <div class="sor-event" id="sor-e2" style="color:var(--accent);">Read time — branch on field:</div>
+            <div class="sor-event" id="sor-e3">
+              <div class="code-block" style="font-size:11px;margin-top:6px;"><pre><span class="kw">if</span> (doc.phone != <span class="kw">null</span>) {
+  <span class="cm">// new code path</span>
+  <span class="fn">usePhone</span>(doc.phone);
+} <span class="kw">else</span> {
+  <span class="cm">// old code path</span>
+  <span class="fn">useEmail</span>(doc.email);
+}</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== S8: Datalog ======== -->
+  <section id="s8">
+    <div class="section-header">
+      <div class="section-kicker">Section 8</div>
+      <div class="section-title">Datalog — Rules &amp; Derived Facts</div>
+      <div class="section-desc">Datalog is the ancestor of SPARQL. Facts + rules = derived knowledge, computed step by step.</div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">Facts, Rules, Derivations</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Base facts:</div>
+        <div class="code-block" style="margin-bottom:1rem;"><pre><span class="fn">within</span>(<span class="tp">Idaho</span>, <span class="tp">USA</span>).
+<span class="fn">within</span>(<span class="tp">USA</span>, <span class="tp">NorthAmerica</span>).
+<span class="fn">born_in</span>(<span class="tp">Alice</span>, <span class="tp">Idaho</span>).</pre></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Rule (recursive):</div>
+        <div class="code-block" style="margin-bottom:1rem;"><pre><span class="fn">within_r</span>(<span class="tp">X</span>,<span class="tp">Y</span>) :- <span class="fn">within</span>(<span class="tp">X</span>,<span class="tp">Y</span>).
+<span class="fn">within_r</span>(<span class="tp">X</span>,<span class="tp">Z</span>) :- <span class="fn">within</span>(<span class="tp">X</span>,<span class="tp">Y</span>), <span class="fn">within_r</span>(<span class="tp">Y</span>,<span class="tp">Z</span>).
+<span class="fn">lives_in</span>(<span class="tp">P</span>,<span class="tp">Z</span>) :- <span class="fn">born_in</span>(<span class="tp">P</span>,<span class="tp">X</span>), <span class="fn">within_r</span>(<span class="tp">X</span>,<span class="tp">Z</span>).</pre></div>
+        <button class="btn" id="btn-fire-rules">Fire Rules Step by Step</button>
+        <div style="margin-top:1rem;">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">Derived facts:</div>
+          <table class="tbl">
+            <thead><tr><th>Fact</th><th>Derived by</th></tr></thead>
+            <tbody id="derived-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Three-Way Query Comparison</div>
+        <div style="display:flex;flex-direction:column;gap:1.2rem;">
+          <div>
+            <div style="font-size:11px;color:var(--accent);margin-bottom:4px;">Cypher</div>
+            <div class="code-block" style="font-size:11px;"><pre><span class="kw">MATCH</span> (p:<span class="tp">Person</span>)
+  -[:<span class="fn">BORN_IN</span>]->()
+  -[:<span class="fn">WITHIN</span>*0..]->(na:<span class="tp">Location</span>)
+<span class="kw">WHERE</span> na.name = <span class="str">"NorthAmerica"</span>
+<span class="kw">RETURN</span> p.name</pre></div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--amber);margin-bottom:4px;">SPARQL</div>
+            <div class="code-block" style="font-size:11px;"><pre><span class="kw">SELECT</span> ?name <span class="kw">WHERE</span> {
+  ?p :<span class="fn">bornIn</span> ?place .
+  ?place :<span class="fn">within</span>* :<span class="tp">NorthAmerica</span> .
+  ?p :<span class="fn">name</span> ?name .
+}</pre></div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--green);margin-bottom:4px;">Datalog</div>
+            <div class="code-block" style="font-size:11px;"><pre><span class="fn">in_na</span>(<span class="tp">X</span>) :- <span class="fn">within_r</span>(<span class="tp">X</span>, <span class="tp">NorthAmerica</span>).
+<span class="fn">answer</span>(<span class="tp">N</span>) :- <span class="fn">born_in</span>(<span class="tp">P</span>,<span class="tp">X</span>), <span class="fn">in_na</span>(<span class="tp">X</span>),
+             <span class="fn">name</span>(<span class="tp">P</span>, <span class="tp">N</span>).</pre></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>Designing Data-Intensive Applications — Martin Kleppmann</footer>
+
+<script>
+// ==================== PROGRESS BAR ====================
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+});
+
+// ==================== INTERSECTION OBSERVER ====================
+const observed = new Set();
+function observe(id, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !observed.has(id)) {
+        observed.add(id);
+        fn();
+        io.unobserve(el);
+      }
+    });
+  }, { threshold: 0.25 });
+  io.observe(el);
+}
+
+// ==================== SVG HELPERS ====================
+const NS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+function svgText(parent, x, y, text, attrs) {
+  const t = svgEl('text', Object.assign({ x, y, 'text-anchor': 'middle', fill: '#e6edf3', 'font-size': '11', 'font-family': 'JetBrains Mono, monospace' }, attrs));
+  t.textContent = text;
+  parent.appendChild(t);
+  return t;
+}
+function addArrowMarker(svg, id, color) {
+  const defs = svgEl('defs', {});
+  const marker = svgEl('marker', { id, markerWidth: '7', markerHeight: '7', refX: '5', refY: '3', orient: 'auto' });
+  const poly = svgEl('polygon', { points: '0 0,5 3,0 6', fill: color });
+  marker.appendChild(poly); defs.appendChild(marker); svg.appendChild(defs);
+}
+
+// ==================== S1: IMS Hierarchical Tree ====================
+function buildIMSTree() {
+  const svg = document.getElementById('ims-svg');
+  addArrowMarker(svg, 'ims-arr', '#8b949e');
+  addArrowMarker(svg, 'ims-arr-red', '#f87171');
+
+  const nodes = [
+    { id: 0, x: 190, y: 28,  label: 'CUSTOMER',  color: '#f472b6' },
+    { id: 1, x: 80,  y: 100, label: 'ORDER-1',   color: '#fbbf24' },
+    { id: 2, x: 300, y: 100, label: 'ORDER-2',   color: '#fbbf24' },
+    { id: 3, x: 30,  y: 175, label: 'LINE_ITEM', color: '#60a5fa' },
+    { id: 4, x: 130, y: 175, label: 'LINE_ITEM', color: '#60a5fa' },
+    { id: 5, x: 250, y: 175, label: 'LINE_ITEM', color: '#60a5fa' },
+  ];
+  const edges = [[0,1],[0,2],[1,3],[1,4],[2,5]];
+
+  edges.forEach(([a,b]) => {
+    const na = nodes[a], nb = nodes[b];
+    svg.appendChild(svgEl('line', { x1: na.x, y1: na.y+13, x2: nb.x, y2: nb.y-13, stroke: '#30363d', 'stroke-width': '1.5', 'marker-end': 'url(#ims-arr)' }));
+  });
+
+  // dashed many-to-many
+  const dm = svgEl('line', { id: 'dashed-m2m', x1: 130, y1: 175, x2: 250, y2: 100, stroke: '#f87171', 'stroke-width': '1.5', 'stroke-dasharray': '5,4', 'marker-end': 'url(#ims-arr-red)', opacity: 0 });
+  svg.appendChild(dm);
+  const dx = svgEl('text', { id: 'dashed-x', x: 220, y: 150, 'text-anchor': 'middle', fill: '#f87171', 'font-size': '10', 'font-family': 'JetBrains Mono, monospace', opacity: 0 });
+  dx.textContent = "Can't cross branches!";
+  svg.appendChild(dx);
+
+  const nodeEls = nodes.map((n, i) => {
+    const g = svgEl('g', { id: 'ims-n'+i, opacity: 0 });
+    const w = 76, h = 26;
+    g.appendChild(svgEl('rect', { x: n.x-w/2, y: n.y-h/2, width: w, height: h, rx: 5, fill: '#161b22', stroke: n.color, 'stroke-width': '1.5' }));
+    svgText(g, n.x, n.y+4, n.label, { fill: n.color, 'font-size': '9' });
+    svg.appendChild(g);
+    return g;
+  });
+
+  return nodeEls;
+}
+
+function animateHistory() {
+  const nodeEls = buildIMSTree();
+  nodeEls.forEach((el, i) => {
+    anime({ targets: el, opacity: [0,1], translateY: [-8,0], delay: i*120, duration: 400, easing: 'easeOutCubic' });
+  });
+  setTimeout(() => {
+    anime({ targets: ['#dashed-m2m','#dashed-x'], opacity: [0,1], duration: 600, easing: 'easeOutCubic' });
+    setTimeout(() => {
+      anime({ targets: '#dashed-x', opacity: [1,0,1], duration: 700, loop: 3, easing: 'easeInOutSine' });
+    }, 600);
+  }, nodeEls.length*120 + 300);
+
+  // "Why Relational Won" flow
+  ['fw1','fw-a1','fw2','fw-a2','fw3','fw-a3','fw4','fw-a4','fw5'].forEach((id, i) => {
+    anime({ targets: '#'+id, opacity: [0,1], translateX: [-8,0], delay: 900+i*140, duration: 400, easing: 'easeOutCubic' });
+  });
+
+  buildCODASYLGraph();
+}
+
+observe('s1', animateHistory);
+
+// ==================== S1: CODASYL Graph ====================
+let codasylBuilt = false;
+function buildCODASYLGraph() {
+  if (codasylBuilt) return;
+  codasylBuilt = true;
+  const svg = document.getElementById('codasyl-svg');
+  addArrowMarker(svg, 'co-arr', '#8b949e');
+
+  const nodes = [
+    { x: 190, y: 28,  label: 'CUSTOMER', color: '#f472b6' },
+    { x: 60,  y: 105, label: 'ORDER',    color: '#fbbf24' },
+    { x: 190, y: 185, label: 'PRODUCT',  color: '#60a5fa' },
+    { x: 310, y: 105, label: 'CATEGORY', color: '#4ade80' },
+    { x: 320, y: 185, label: 'SUPPLIER', color: '#a78bfa' },
+  ];
+  const edges = [[0,1,'has'],[1,2,'contains'],[2,3,'in'],[2,4,'from']];
+
+  edges.forEach(([a,b,lbl]) => {
+    const na = nodes[a], nb = nodes[b];
+    const dx = nb.x-na.x, dy = nb.y-na.y;
+    const len = Math.sqrt(dx*dx+dy*dy);
+    const x1 = na.x+dx/len*28, y1 = na.y+dy/len*14;
+    const x2 = nb.x-dx/len*28, y2 = nb.y-dy/len*14;
+    svg.appendChild(svgEl('line', { x1, y1, x2, y2, stroke: '#30363d', 'stroke-width': '1.5', 'marker-end': 'url(#co-arr)' }));
+    svgText(svg, (x1+x2)/2, (y1+y2)/2-4, lbl, { fill: '#8b949e', 'font-size': '9' });
+  });
+
+  nodes.forEach((n, i) => {
+    const g = svgEl('g', { id: 'co-n'+i });
+    const w = 70, h = 24;
+    g.appendChild(svgEl('rect', { x: n.x-w/2, y: n.y-h/2, width: w, height: h, rx: 5, fill: '#161b22', stroke: n.color, 'stroke-width': '1.5' }));
+    svgText(g, n.x, n.y+4, n.label, { fill: n.color, 'font-size': '9' });
+    svg.appendChild(g);
+  });
+
+  const dot = svgEl('circle', { id: 'codasyl-dot', cx: nodes[0].x, cy: nodes[0].y, r: 8, fill: '#f472b6', opacity: 0 });
+  svg.appendChild(dot);
+  window._coNodes = nodes;
+}
+
+let traversalStep = 0;
+const travPath = [0,1,2];
+const travLabels = ['Cursor at: CUSTOMER','Cursor at: ORDER','Cursor at: PRODUCT'];
+document.getElementById('btn-traverse').addEventListener('click', () => {
+  const nodes = window._coNodes;
+  if (!nodes) return;
+  const dot = document.getElementById('codasyl-dot');
+  const status = document.getElementById('traverse-status');
+  if (traversalStep === 0) dot.setAttribute('opacity','1');
+  if (traversalStep < travPath.length) {
+    const n = nodes[travPath[traversalStep]];
+    anime({ targets: dot, cx: n.x, cy: n.y, duration: 600, easing: 'easeInOutCubic' });
+    status.textContent = travLabels[traversalStep];
+    traversalStep++;
+  } else {
+    traversalStep = 0;
+    status.textContent = 'Reset. Click to start again.';
+    anime({ targets: dot, opacity: 0, duration: 300 });
+  }
+});
+
+// ==================== S2: Relational Tables ====================
+function animateRelational() {
+  buildRelationalTables();
+  buildNormDiagram();
+  setTimeout(() => {
+    anime({ targets: '#mismatch-arrows', opacity: [0,1], translateY: [4,0], duration: 600, easing: 'easeOutCubic' });
+  }, 900);
+}
+
+function buildRelationalTables() {
+  const svg = document.getElementById('relational-svg');
+  addArrowMarker(svg, 'tbl-arr', '#f472b6');
+
+  const tables = [
+    { name:'users',     x:20,  y:20, color:'#f472b6', cols:['id','name','city'],             rows:[['1','Alice','SF'],['2','Bob','NY']] },
+    { name:'positions', x:330, y:20, color:'#fbbf24', cols:['id','user_id','title','co_id'], rows:[['5','1','Engineer','10'],['6','1','Intern','11'],['7','2','Manager','10']] },
+    { name:'companies', x:640, y:20, color:'#60a5fa', cols:['id','name'],                   rows:[['10','Acme'],['11','Beta']] },
+  ];
+
+  tables.forEach((t, ti) => {
+    const cw = t.cols.length <= 3 ? 200 : 240;
+    const rowH = 24;
+    const g = svgEl('g', { id: 'tbl-'+ti, opacity: 0 });
+
+    // header
+    g.appendChild(svgEl('rect', { x: t.x, y: t.y, width: cw, height: rowH+4, rx: 4, fill: t.color+'33', stroke: t.color, 'stroke-width': '1.5' }));
+    svgText(g, t.x+cw/2, t.y-6, t.name, { fill: t.color, 'font-size': '11', 'font-weight': '600' });
+    t.cols.forEach((c, ci) => {
+      svgText(g, t.x + ci*(cw/t.cols.length) + cw/t.cols.length/2, t.y+rowH-4, c, { fill: t.color, 'font-size': '9' });
+    });
+
+    // body
+    const bodyH = t.rows.length*rowH + 4;
+    g.appendChild(svgEl('rect', { x: t.x, y: t.y+rowH+4, width: cw, height: bodyH, fill: '#161b22', stroke: '#30363d', 'stroke-width': '1' }));
+    t.rows.forEach((row, ri) => {
+      row.forEach((cell, ci) => {
+        svgText(g, t.x + ci*(cw/t.cols.length) + cw/t.cols.length/2, t.y+rowH+4+(ri+1)*rowH-6, cell, { fill: '#e6edf3', 'font-size': '9' });
+      });
+      if (ri < t.rows.length-1) {
+        g.appendChild(svgEl('line', { x1: t.x, y1: t.y+rowH+4+(ri+1)*rowH, x2: t.x+cw, y2: t.y+rowH+4+(ri+1)*rowH, stroke: '#30363d', 'stroke-width': '0.5' }));
+      }
+    });
+
+    svg.appendChild(g);
+    anime({ targets: g, opacity: [0,1], translateX: [-15,0], delay: ti*200, duration: 500, easing: 'easeOutCubic' });
+  });
+
+  // JOIN arrows
+  const joins = [
+    { x1: 220, y1: 55, x2: 330, y2: 55, label: 'JOIN user_id' },
+    { x1: 570, y1: 55, x2: 640, y2: 55, label: 'JOIN co_id' },
+  ];
+  joins.forEach((j, i) => {
+    const line = svgEl('line', { id:'jarr-'+i, x1:j.x1, y1:j.y1, x2:j.x2, y2:j.y2, stroke:'#f472b6', 'stroke-width':'1.5', 'stroke-dasharray':'4,3', 'marker-end':'url(#tbl-arr)', opacity:0 });
+    svg.appendChild(line);
+    const lt = svgEl('text', { id:'jlbl-'+i, x:(j.x1+j.x2)/2, y:j.y1-6, 'text-anchor':'middle', fill:'#f472b6', 'font-size':'9', 'font-family':'JetBrains Mono, monospace', opacity:0 });
+    lt.textContent = j.label;
+    svg.appendChild(lt);
+    anime({ targets: ['#jarr-'+i,'#jlbl-'+i], opacity:[0,1], delay:700+i*200, duration:400, easing:'easeOutCubic' });
+  });
+}
+
+function buildNormDiagram() {
+  const svg = document.getElementById('norm-svg');
+
+  // Denorm row
+  const dr = svgEl('rect', { x:10, y:10, width:340, height:38, rx:6, fill:'#1c2330', stroke:'#fbbf24', 'stroke-width':'1.5' });
+  svg.appendChild(dr);
+  svgText(svg, 180, 33, 'id=1 | name=Alice | company=Acme | city=SF', { fill:'#fbbf24', 'font-size':'9' });
+
+  const arrT = svgEl('text', { id:'norm-arr', x:180, y:74, 'text-anchor':'middle', fill:'#f472b6', 'font-size':'18', opacity:0 });
+  arrT.textContent = '\u2195 Normalize';
+  svg.appendChild(arrT);
+
+  // Table 1
+  const t1 = svgEl('g', { id:'norm-t1', opacity:0 });
+  t1.appendChild(svgEl('rect', { x:10, y:90, width:158, height:70, rx:6, fill:'#161b22', stroke:'#f472b6', 'stroke-width':'1.5' }));
+  svgText(t1, 89, 107, 'users', { fill:'#f472b6', 'font-size':'10', 'font-weight':'600' });
+  svgText(t1, 89, 127, 'id | name | company_id', { fill:'#e6edf3', 'font-size':'9' });
+  svgText(t1, 89, 148, '1  | Alice |     10',    { fill:'#e6edf3', 'font-size':'9' });
+  svg.appendChild(t1);
+
+  // Table 2
+  const t2 = svgEl('g', { id:'norm-t2', opacity:0 });
+  t2.appendChild(svgEl('rect', { x:192, y:90, width:158, height:70, rx:6, fill:'#161b22', stroke:'#60a5fa', 'stroke-width':'1.5' }));
+  svgText(t2, 271, 107, 'companies', { fill:'#60a5fa', 'font-size':'10', 'font-weight':'600' });
+  svgText(t2, 271, 127, 'id | name | city', { fill:'#e6edf3', 'font-size':'9' });
+  svgText(t2, 271, 148, '10 | Acme | SF',   { fill:'#e6edf3', 'font-size':'9' });
+  svg.appendChild(t2);
+
+  anime({ targets:'#norm-arr', opacity:[0,1], translateY:[-5,0], delay:300, duration:400, easing:'easeOutCubic' });
+  anime({ targets:'#norm-t1', opacity:[0,1], translateX:[-20,0], delay:600, duration:500, easing:'easeOutCubic' });
+  anime({ targets:'#norm-t2', opacity:[0,1], translateX:[20,0], delay:800, duration:500, easing:'easeOutCubic' });
+}
+
+observe('s2', animateRelational);
+
+// ==================== S3: Document Model ====================
+const jsonLines = [
+  '{',
+  '  "name": "Alice",',
+  '  "summary": "Software Engineer",',
+  '  "positions": [',
+  '    { "title": "Engineer", "company": "Acme" },',
+  '    { "title": "Intern",   "company": "Beta" }',
+  '  ],',
+  '  "education": [',
+  '    { "school": "MIT", "year": 2018 }',
+  '  ]',
+  '}'
+];
+
+let jsonStep = 1;
+function renderJsonLines(n) {
+  const pre = document.getElementById('json-pre');
+  // Build text nodes only — no HTML
+  pre.textContent = jsonLines.slice(0, n).join('\n');
+}
+
+function animateDocument() {
+  renderJsonLines(1);
+  buildLocalityDiagram();
+}
+
+document.getElementById('btn-expand-json').addEventListener('click', () => {
+  jsonStep = Math.min(jsonStep + 2, jsonLines.length);
+  renderJsonLines(jsonStep);
+  anime({ targets: '#json-pre', opacity: [0.5, 1], duration: 200, easing: 'easeOutCubic' });
+});
+
+document.getElementById('btn-reset-json').addEventListener('click', () => {
+  jsonStep = 1;
+  renderJsonLines(1);
+});
+
+function buildLocalityDiagram() {
+  const svg = document.getElementById('locality-svg');
+  addArrowMarker(svg, 'loc-arr-g', '#4ade80');
+  addArrowMarker(svg, 'loc-arr-a', '#fbbf24');
+
+  // Document side
+  svgText(svg, 90, 18, 'Document: 1 fetch', { fill:'#f472b6', 'font-size':'11' });
+  svg.appendChild(svgEl('rect', { x:40, y:30, width:70, height:28, rx:5, fill:'#161b22', stroke:'#f472b6', 'stroke-width':'1.5' }));
+  svgText(svg, 75, 48, 'App', { fill:'#f472b6', 'font-size':'10' });
+  svg.appendChild(svgEl('rect', { x:40, y:110, width:70, height:28, rx:5, fill:'#161b22', stroke:'#4ade80', 'stroke-width':'1.5' }));
+  svgText(svg, 75, 128, 'Document', { fill:'#4ade80', 'font-size':'9' });
+  const docArr = svgEl('line', { id:'doc-arr', x1:75, y1:58, x2:75, y2:110, stroke:'#4ade80', 'stroke-width':'2', 'marker-end':'url(#loc-arr-g)', opacity:0 });
+  svg.appendChild(docArr);
+
+  // Relational side
+  svgText(svg, 270, 18, 'Relational: 3 joins', { fill:'#fbbf24', 'font-size':'11' });
+  svg.appendChild(svgEl('rect', { x:230, y:30, width:70, height:28, rx:5, fill:'#161b22', stroke:'#fbbf24', 'stroke-width':'1.5' }));
+  svgText(svg, 265, 48, 'App', { fill:'#fbbf24', 'font-size':'10' });
+
+  const rtbls = [{ x:200,y:110,l:'users'},{ x:250,y:155,l:'pos.'},{ x:300,y:110,l:'co.'}];
+  rtbls.forEach((t, i) => {
+    const rb = svgEl('rect', { id:'rtbl-'+i, x:t.x, y:t.y, width:52, height:26, rx:4, fill:'#161b22', stroke:'#fbbf24', 'stroke-width':'1', opacity:0 });
+    svg.appendChild(rb);
+    const rt = svgEl('text', { id:'rtbl-t-'+i, x:t.x+26, y:t.y+17, 'text-anchor':'middle', fill:'#fbbf24', 'font-size':'9', 'font-family':'JetBrains Mono, monospace', opacity:0 });
+    rt.textContent = t.l;
+    svg.appendChild(rt);
+    const dx = t.x+26-265, dy = t.y-58;
+    const len = Math.sqrt(dx*dx+dy*dy);
+    const x1 = 265+dx/len*35, y1 = 58+dy/len*14;
+    const x2 = t.x+26-dx/len*26, y2 = t.y-dy/len*13;
+    const rl = svgEl('line', { id:'rarr-'+i, x1, y1, x2, y2, stroke:'#fbbf24', 'stroke-width':'1.5', 'stroke-dasharray':'4,3', 'marker-end':'url(#loc-arr-a)', opacity:0 });
+    svg.appendChild(rl);
+  });
+
+  anime({ targets:'#doc-arr', opacity:[0,1], delay:200, duration:500 });
+  [0,1,2].forEach(i => {
+    anime({ targets:['#rtbl-'+i,'#rtbl-t-'+i,'#rarr-'+i], opacity:[0,1], delay:300+i*200, duration:400 });
+  });
+}
+
+// Add field animation (S3)
+document.getElementById('btn-add-field').addEventListener('click', () => {
+  const pre = document.getElementById('doc-b-pre');
+  pre.textContent = '{\n  "name": "Bob",\n  "email": "bob@ex.com",\n  "phone": "555-1234"\n}';
+  anime({ targets: pre, opacity: [0.4, 1], duration: 500, easing: 'easeOutCubic' });
+});
+
+observe('s3', animateDocument);
+
+// ==================== S4: Toggle Comparison ====================
+const relData = [
+  ['Many-to-Many', 'Excellent — foreign keys + JOINs', true],
+  ['Schema',       'Rigid — ALTER TABLE required',      false],
+  ['Joins',        'Native SQL JOIN',                   true],
+  ['Locality',     'Multiple round-trips or JOINs',     false],
+  ['Best for',     'Interconnected data, reporting',    true],
+];
+const docData = [
+  ['Many-to-Many', 'Weak — denormalize or manual ref', false],
+  ['Schema',       'Flexible — schema-on-read',        true],
+  ['Joins',        'Poor — application-side joins',    false],
+  ['Locality',     'Excellent — one fetch',            true],
+  ['Best for',     'Self-contained documents, trees',  true],
+];
+
+function fillProsConsTable(tbodyId, rows) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.textContent = '';
+  rows.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.className = 'anim-row';
+    const td1 = document.createElement('td');
+    td1.textContent = r[0];
+    const td2 = document.createElement('td');
+    const span = document.createElement('span');
+    span.className = 'badge ' + (r[2] ? 'badge-green' : 'badge-red');
+    span.textContent = r[1];
+    td2.appendChild(span);
+    tr.appendChild(td1); tr.appendChild(td2);
+    tbody.appendChild(tr);
+    anime({ targets: tr, opacity: [0,1], translateX: [-8,0], delay: i*100, duration: 350, easing: 'easeOutCubic' });
+  });
+}
+
+let isDocument = false;
+const panelA = document.getElementById('panel-relational');
+const panelB = document.getElementById('panel-document');
+
+document.getElementById('btn-toggle-model').addEventListener('click', () => {
+  isDocument = !isDocument;
+  if (isDocument) {
+    anime({ targets: panelA, translateX: [0,'-100%'], duration: 380, easing: 'easeInCubic' });
+    anime({ targets: panelB, translateX: ['100%','0%'], duration: 380, easing: 'easeOutCubic' });
+    document.getElementById('btn-toggle-model').textContent = 'Switch to Relational Model';
+    document.getElementById('current-model-label').textContent = 'Currently: Document';
+    document.getElementById('pros-cons-relational').style.display = 'none';
+    document.getElementById('pros-cons-document').style.display = 'block';
+    fillProsConsTable('pc-doc-body', docData);
+  } else {
+    anime({ targets: panelA, translateX: ['-100%','0%'], duration: 380, easing: 'easeOutCubic' });
+    anime({ targets: panelB, translateX: ['0%','100%'], duration: 380, easing: 'easeInCubic' });
+    document.getElementById('btn-toggle-model').textContent = 'Switch to Document Model';
+    document.getElementById('current-model-label').textContent = 'Currently: Relational';
+    document.getElementById('pros-cons-relational').style.display = 'block';
+    document.getElementById('pros-cons-document').style.display = 'none';
+    fillProsConsTable('pc-rel-body', relData);
+  }
+});
+
+observe('s4', () => fillProsConsTable('pc-rel-body', relData));
+
+// ==================== S5: Graph Model ====================
+function animateGraph() {
+  buildPropertyGraph();
+  buildTripleTable();
+}
+
+function buildPropertyGraph() {
+  const svg = document.getElementById('graph-svg');
+  addArrowMarker(svg, 'g-arr', '#8b949e');
+
+  const nodes = [
+    { id:'Alice',        x:80,  y:75,  color:'#f472b6', type:'Person' },
+    { id:'Bob',          x:80,  y:200, color:'#f472b6', type:'Person' },
+    { id:'Idaho',        x:215, y:55,  color:'#60a5fa', type:'Location' },
+    { id:'USA',          x:300, y:145, color:'#60a5fa', type:'Location' },
+    { id:'NorthAmerica', x:215, y:245, color:'#4ade80', type:'Location' },
+    { id:'Europe',       x:340, y:55,  color:'#fbbf24', type:'Location' },
+  ];
+  const nm = {};
+  nodes.forEach(n => nm[n.id] = n);
+
+  const edges = [
+    { from:'Alice', to:'Idaho',        label:'BORN_IN' },
+    { from:'Alice', to:'Bob',          label:'MARRIED_TO' },
+    { from:'Bob',   to:'Europe',       label:'LIVES_IN' },
+    { from:'Idaho', to:'USA',          label:'WITHIN' },
+    { from:'USA',   to:'NorthAmerica', label:'WITHIN' },
+  ];
+
+  edges.forEach((e, ei) => {
+    const a = nm[e.from], b = nm[e.to];
+    const dx = b.x-a.x, dy = b.y-a.y;
+    const len = Math.sqrt(dx*dx+dy*dy);
+    const x1 = a.x+dx/len*24, y1 = a.y+dy/len*24;
+    const x2 = b.x-dx/len*24, y2 = b.y-dy/len*24;
+    const line = svgEl('line', { id:'ge-'+ei, x1, y1, x2, y2, stroke:'#30363d', 'stroke-width':'1.5', 'marker-end':'url(#g-arr)', opacity:0 });
+    svg.appendChild(line);
+    const lt = svgEl('text', { id:'gel-'+ei, x:(x1+x2)/2, y:(y1+y2)/2-4, 'text-anchor':'middle', fill:'#8b949e', 'font-size':'8', 'font-family':'JetBrains Mono, monospace', opacity:0 });
+    lt.textContent = e.label;
+    svg.appendChild(lt);
+  });
+
+  nodes.forEach((n, i) => {
+    const g = svgEl('g', { id:'gn-'+i, opacity:0 });
+    const circle = svgEl('circle', { id:'gnc-'+n.id, cx:n.x, cy:n.y, r:22, fill:'#161b22', stroke:n.color, 'stroke-width':'2' });
+    g.appendChild(circle);
+    svgText(g, n.x, n.y+2, n.id, { fill:n.color, 'font-size':'8' });
+    svgText(g, n.x, n.y+13, ':'+n.type, { fill:'#8b949e', 'font-size':'7' });
+    svg.appendChild(g);
+    anime({ targets: g, opacity:[0,1], delay:i*110, duration:400, easing:'easeOutCubic' });
+  });
+
+  edges.forEach((e, i) => {
+    anime({ targets:['#ge-'+i,'#gel-'+i], opacity:[0,1], delay:nodes.length*110+i*100, duration:400, easing:'easeOutCubic' });
+  });
+
+  window._gnodes = nodes;
+}
+
+function buildTripleTable() {
+  const tbody = document.getElementById('triple-tbody');
+  const triples = [
+    ['Alice','BORN_IN','Idaho'],
+    ['Alice','MARRIED_TO','Bob'],
+    ['Bob','LIVES_IN','Europe'],
+    ['Idaho','WITHIN','USA'],
+    ['USA','WITHIN','NorthAmerica'],
+  ];
+  triples.forEach((t, i) => {
+    const tr = document.createElement('tr');
+    const td1 = document.createElement('td'); td1.textContent = t[0];
+    const td2 = document.createElement('td');
+    td2.style.cssText = 'color:var(--accent);font-family:"JetBrains Mono",monospace;font-size:12px;';
+    td2.textContent = t[1];
+    const td3 = document.createElement('td'); td3.textContent = t[2];
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+    tr.style.opacity = '0';
+    tbody.appendChild(tr);
+    anime({ targets:tr, opacity:[0,1], translateX:[-8,0], delay:600+i*100, duration:350, easing:'easeOutCubic' });
+  });
+}
+
+document.getElementById('btn-run-cypher').addEventListener('click', () => {
+  ['Alice','Idaho'].forEach(id => {
+    const el = document.getElementById('gnc-'+id);
+    if (!el) return;
+    anime({ targets:el, strokeWidth:[2,4,2], opacity:[1,0.5,1], duration:900, loop:3, easing:'easeInOutSine' });
+  });
+});
+
+observe('s5', animateGraph);
+
+// ==================== S6: Query Languages ====================
+function animateQueryLanguages() {
+  ['sf1','sf-a1','sf2','sf-a2','sf3','sf-a3','sf4'].forEach((id, i) => {
+    anime({ targets:'#'+id, opacity:[0,1], translateX:[-8,0], delay:i*150, duration:400, easing:'easeOutCubic' });
+  });
+  buildMRVis();
+}
+
+function buildMRVis() {
+  const svg = document.getElementById('mr-svg');
+  const data = [
+    { x:20,  shark:false },
+    { x:60,  shark:true  },
+    { x:100, shark:false },
+    { x:140, shark:true  },
+    { x:180, shark:true  },
+    { x:220, shark:false },
+  ];
+  data.forEach((d, i) => {
+    const c = svgEl('circle', { id:'mrd-'+i, cx:d.x, cy:30, r:8, fill: d.shark ? '#f472b6' : '#60a5fa', opacity:'0.85' });
+    svg.appendChild(c);
+    const t = svgEl('text', { x:d.x, y:52, 'text-anchor':'middle', fill:'#8b949e', 'font-size':'10' });
+    t.textContent = d.shark ? 'S' : 'F';
+    svg.appendChild(t);
+  });
+  window._mrData = data;
+}
+
+document.getElementById('btn-run-mr').addEventListener('click', () => {
+  const data = window._mrData;
+  if (!data) return;
+  data.forEach((d, i) => {
+    if (!d.shark) {
+      anime({ targets:'#mrd-'+i, opacity:[0.85,0], translateY:[0,-12], duration:600, delay:i*80, easing:'easeInCubic' });
+    } else {
+      anime({ targets:'#mrd-'+i, translateX:[0,90], duration:800, delay:i*80, easing:'easeOutCubic' });
+    }
+  });
+});
+
+observe('s6', animateQueryLanguages);
+
+// ==================== S7: Schema ====================
+let schemaAnimated = false;
+document.getElementById('btn-add-field-schema').addEventListener('click', () => {
+  if (schemaAnimated) return;
+  schemaAnimated = true;
+  const gate = document.getElementById('sow-gate');
+
+  // bounce (shake)
+  gate.style.borderColor = '#f87171';
+  gate.style.color = '#f87171';
+  gate.textContent = 'GATE \u2717';
+  anime({ targets: gate, translateX:[0,-8,8,-5,5,0], duration:500, easing:'easeInOutSine' });
+  anime({ targets:'#sow-e1', opacity:[0,1], translateX:[-8,0], delay:200, duration:400, easing:'easeOutCubic' });
+
+  setTimeout(() => {
+    gate.style.borderColor = '#4ade80';
+    gate.style.color = '#4ade80';
+    gate.textContent = 'GATE \u2713';
+    anime({ targets:'#sow-e2', opacity:[0,1], translateX:[-8,0], duration:400, easing:'easeOutCubic' });
+  }, 900);
+
+  setTimeout(() => {
+    anime({ targets:'#sow-e3', opacity:[0,1], translateX:[-8,0], duration:400, easing:'easeOutCubic' });
+  }, 1600);
+
+  anime({ targets:'#sor-e1', opacity:[0,1], translateX:[-8,0], delay:100, duration:400, easing:'easeOutCubic' });
+  anime({ targets:'#sor-e2', opacity:[0,1], translateX:[-8,0], delay:600, duration:400, easing:'easeOutCubic' });
+  anime({ targets:'#sor-e3', opacity:[0,1], translateX:[-8,0], delay:1100, duration:400, easing:'easeOutCubic' });
+});
+
+observe('s7', () => {
+  anime({ targets:'#sow-gate', opacity:[0,1], translateY:[-8,0], duration:500, easing:'easeOutCubic' });
+});
+
+// ==================== S8: Datalog ====================
+const derivedFacts = [
+  ['within_r(Idaho, USA)',          'within(Idaho, USA) base fact'],
+  ['within_r(USA, NorthAmerica)',   'within(USA, NorthAmerica) base fact'],
+  ['within_r(Idaho, NorthAmerica)','within_r chain: Idaho→USA→NorthAmerica'],
+  ['lives_in(Alice, Idaho)',        'born_in(Alice,Idaho) + within_r(Idaho,.)'],
+  ['lives_in(Alice, NorthAmerica)','lives_in(Alice,Idaho) + within_r chain'],
+];
+let derivedStep = 0;
+
+document.getElementById('btn-fire-rules').addEventListener('click', () => {
+  if (derivedStep >= derivedFacts.length) {
+    derivedStep = 0;
+    document.getElementById('derived-tbody').textContent = '';
+    return;
+  }
+  const f = derivedFacts[derivedStep];
+  const tbody = document.getElementById('derived-tbody');
+  const tr = document.createElement('tr');
+  tr.style.opacity = '0';
+  const td1 = document.createElement('td');
+  td1.style.cssText = 'font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--accent);';
+  td1.textContent = f[0];
+  const td2 = document.createElement('td');
+  td2.style.cssText = 'font-size:11px;color:var(--text-muted);';
+  td2.textContent = f[1];
+  tr.appendChild(td1); tr.appendChild(td2);
+  tbody.appendChild(tr);
+  anime({ targets:tr, opacity:[0,1], translateX:[-8,0], duration:400, easing:'easeOutCubic' });
+  derivedStep++;
+});
+
+observe('s8', () => {
+  // user-driven, no auto animation
+});
+</script>
+</body>
+</html>

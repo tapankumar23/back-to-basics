@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · Sliding Window — DSA Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2330; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #4ade80; --accent-dim: rgba(74,222,128,0.15);
+  --good: #4ade80; --bad: #f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-back{color:var(--text-muted);text-decoration:none;font-size:0.8rem;white-space:nowrap}
+.nav-back:hover{color:var(--accent)}
+.nav-pager{display:flex;align-items:center;gap:0.75rem;margin:0 auto;font-size:0.8rem}
+.nav-pager a{color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-pager span{color:var(--text);font-weight:600}
+.nav-anchors{display:flex;gap:0.5rem;margin-left:auto}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.75rem;padding:3px 8px;border-radius:4px}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 3rem}
+section{margin-bottom:4rem;opacity:0;transform:translateY(32px);transition:opacity 0.6s ease,transform 0.6s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.hero{text-align:center;padding:3rem 0 2rem;opacity:1!important;transform:none!important}
+.hero .pattern-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.5rem}
+.hero h1{font-size:3.5rem;font-weight:700;margin-bottom:0.75rem;background:linear-gradient(135deg,var(--accent),#86efac);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{color:var(--text-muted);font-size:1.1rem;max-width:600px;margin:0 auto}
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card:hover{background:var(--bg-card-hover)}
+.controls{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+.slider-row{display:flex;align-items:center;gap:0.75rem;font-size:0.875rem;color:var(--text-muted)}
+input[type=range]{accent-color:var(--accent);width:120px}
+#viz-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+#viz-svg{width:100%;overflow:visible}
+.trace-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.trace-row{display:flex;gap:1rem;margin-bottom:0.4rem;flex-wrap:wrap}
+.trace-key{color:var(--text-muted)}
+.trace-val{color:var(--accent);font-weight:600}
+.trace-invariant{color:#f59e0b;font-size:0.75rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)}
+.code-panel{position:relative}
+.code-panel pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7}
+.copy-btn{position:absolute;top:0.75rem;right:0.75rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-family:'Inter',sans-serif}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.875rem 1rem}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.problem-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:0.75rem;margin-bottom:0.25rem}
+.problem-name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}
+.problem-note{color:var(--text-muted);font-size:0.8rem}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;margin-bottom:0.5rem}
+.tag-fixed{background:rgba(74,222,128,0.15);color:#4ade80}
+.tag-variable{background:rgba(167,139,250,0.15);color:#a78bfa}
+.section-label{font-size:1.1rem;font-weight:600;margin-bottom:0.75rem;margin-top:1.25rem;color:var(--text-muted)}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.staff-card h3{color:#f59e0b;font-size:1rem;margin-bottom:0.75rem}
+.staff-card p{color:var(--text-muted);font-size:0.875rem;line-height:1.7}
+.staff-card .hint{color:var(--text);margin-top:0.5rem;font-size:0.875rem}
+footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border)}
+.window-mode-label{font-size:0.85rem;color:var(--text-muted);padding:6px 12px;background:var(--accent-dim);border-radius:6px;border:1px solid var(--accent)}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<nav>
+  <a href="00_index.html" class="nav-back">Problem Solving Home</a>
+<div class="nav-pager">
+    <a href="21_designish_lru_lfu_stream.html">← LRU/LFU</a>
+    <span>Sliding Window</span>
+    <a href="02_binary_search.html">Binary Search →</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+</nav>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="pattern-num">PATTERN 01</div>
+    <h1>Sliding Window</h1>
+    <p class="tagline">Contiguous subarray/substring satisfying a constraint — O(n) by maintaining a window that expands right and contracts left.</p>
+  </section>
+
+  <section id="concept">
+    <h2>Core Concept</h2>
+    <div class="card">
+      <p style="margin-bottom:1rem;color:var(--text-muted)">Two variants share the same pointer-pair skeleton but differ in how the window contracts.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem">
+          <div class="tag tag-fixed">Fixed Window (size k)</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem">Advance left by 1 every time right advances past k.</p>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--text)">
+            <span class="kw">for</span> i = k → n:<br>
+            &nbsp;&nbsp;add arr[i]<br>
+            &nbsp;&nbsp;remove arr[i-k]<br>
+            &nbsp;&nbsp;update answer
+          </div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem">
+          <div class="tag tag-variable">Variable Window</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem">Shrink left while constraint violated, expand right freely.</p>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--text)">
+            <span class="kw">for</span> right = 0 → n:<br>
+            &nbsp;&nbsp;expand(arr[right])<br>
+            &nbsp;&nbsp;<span class="kw">while</span> violated:<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;shrink(arr[left++])<br>
+            &nbsp;&nbsp;update answer
+          </div>
+        </div>
+      </div>
+      <div id="concept-anim" style="margin-top:1.25rem;height:80px;position:relative;overflow:hidden"></div>
+    </div>
+  </section>
+
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <div class="controls">
+      <button class="btn active" id="btn-fixed" onclick="setMode('fixed')">Fixed Window</button>
+      <button class="btn" id="btn-variable" onclick="setMode('variable')">Variable Window</button>
+      <div class="slider-row">
+        <span>Array size:</span>
+        <input type="range" id="arr-size" min="5" max="15" value="10" oninput="onSizeChange(this.value)">
+        <span id="arr-size-label">10</span>
+      </div>
+      <div class="slider-row">
+        <span>Speed:</span>
+        <input type="range" id="speed-ctrl" min="200" max="1200" value="700" step="100">
+        <span>⚡</span>
+      </div>
+    </div>
+    <div id="viz-container">
+      <svg id="viz-svg" height="140"></svg>
+    </div>
+    <div class="controls" style="margin-top:0.75rem">
+      <button class="btn primary" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" onclick="stepForward()">Step →</button>
+      <button class="btn" onclick="resetStepper()">↺ Reset</button>
+      <span id="step-counter" style="color:var(--text-muted);font-size:0.85rem">Step 0 / 0</span>
+    </div>
+    <div class="trace-panel" id="trace-panel">
+      <div class="trace-row">
+        <span class="trace-key">left:</span><span class="trace-val" id="tr-left">0</span>
+        <span class="trace-key">right:</span><span class="trace-val" id="tr-right">-1</span>
+        <span class="trace-key">windowSum:</span><span class="trace-val" id="tr-sum">0</span>
+        <span class="trace-key">answer:</span><span class="trace-val" id="tr-ans">-∞</span>
+      </div>
+      <div class="trace-row" id="extra-trace"></div>
+      <div class="trace-invariant" id="trace-inv">Invariant: window [left..right] satisfies constraint at all times</div>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>Java Code Template</h2>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+      <pre id="code-pre"><span class="cm">// ===== FIXED WINDOW =====</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">maxSumFixed</span>(<span class="tp">int</span>[] arr, <span class="tp">int</span> k) {
+    <span class="tp">int</span> windowSum = <span class="num">0</span>, maxSum = <span class="tp">Integer</span>.MIN_VALUE;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; k; i++) windowSum += arr[i];
+    maxSum = windowSum;
+    <span class="kw">for</span> (<span class="tp">int</span> i = k; i &lt; arr.length; i++) {
+        windowSum += arr[i] - arr[i - k];
+        maxSum = <span class="tp">Math</span>.<span class="fn">max</span>(maxSum, windowSum);
+    }
+    <span class="kw">return</span> maxSum;
+}
+
+<span class="cm">// ===== VARIABLE WINDOW (general template) =====</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">variableWindow</span>(<span class="tp">int</span>[] arr) {
+    <span class="tp">Map</span>&lt;<span class="tp">Integer</span>, <span class="tp">Integer</span>&gt; freq = <span class="kw">new</span> <span class="tp">HashMap</span>&lt;&gt;();
+    <span class="tp">int</span> left = <span class="num">0</span>, result = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> right = <span class="num">0</span>; right &lt; arr.length; right++) {
+        <span class="cm">// EXPAND: add arr[right] to window state</span>
+        freq.<span class="fn">merge</span>(arr[right], <span class="num">1</span>, <span class="tp">Integer</span>::sum);
+        <span class="cm">// SHRINK: while constraint violated</span>
+        <span class="kw">while</span> (freq.<span class="fn">size</span>() &gt; <span class="num">2</span>) {  <span class="cm">// e.g., &gt;k distinct</span>
+            freq.<span class="fn">merge</span>(arr[left], <span class="num">-1</span>, <span class="tp">Integer</span>::sum);
+            <span class="kw">if</span> (freq.<span class="fn">get</span>(arr[left]) == <span class="num">0</span>) freq.<span class="fn">remove</span>(arr[left]);
+            left++;
+        }
+        result = <span class="tp">Math</span>.<span class="fn">max</span>(result, right - left + <span class="num">1</span>);
+    }
+    <span class="kw">return</span> result;
+}
+
+<span class="cm">// ===== SLIDING WINDOW MAXIMUM (monotonic deque) =====</span>
+<span class="kw">public</span> <span class="tp">int</span>[] <span class="fn">maxSlidingWindow</span>(<span class="tp">int</span>[] nums, <span class="tp">int</span> k) {
+    <span class="tp">int</span> n = nums.length;
+    <span class="tp">int</span>[] result = <span class="kw">new</span> <span class="tp">int</span>[n - k + <span class="num">1</span>];
+    <span class="tp">ArrayDeque</span>&lt;<span class="tp">Integer</span>&gt; dq = <span class="kw">new</span> <span class="tp">ArrayDeque</span>&lt;&gt;(); <span class="cm">// stores indices</span>
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; n; i++) {
+        <span class="kw">while</span> (!dq.<span class="fn">isEmpty</span>() &amp;&amp; dq.<span class="fn">peekFirst</span>() &lt; i - k + <span class="num">1</span>) dq.<span class="fn">pollFirst</span>();
+        <span class="kw">while</span> (!dq.<span class="fn">isEmpty</span>() &amp;&amp; nums[dq.<span class="fn">peekLast</span>()] &lt; nums[i]) dq.<span class="fn">pollLast</span>();
+        dq.<span class="fn">offerLast</span>(i);
+        <span class="kw">if</span> (i &gt;= k - <span class="num">1</span>) result[i - k + <span class="num">1</span>] = nums[dq.<span class="fn">peekFirst</span>()];
+    }
+    <span class="kw">return</span> result;
+}</pre>
+    </div>
+  </section>
+
+  <section id="problems">
+    <h2>Canonical Problems</h2>
+    <div class="section-label">Fixed Window</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">01 <span class="tag tag-fixed">Fixed</span></div>
+        <div class="problem-name">Maximum Sum Subarray of Size K</div>
+        <div class="problem-note">Foundational; O(n) vs O(nk) naive — the window eliminates recomputation</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">02 <span class="tag tag-fixed">Fixed</span></div>
+        <div class="problem-name">First Negative in Every Window of Size K</div>
+        <div class="problem-note">Track contents with deque; maintain a list of negative indices in window</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">03 <span class="tag tag-fixed">Fixed</span></div>
+        <div class="problem-name">Count Occurrences of Anagrams</div>
+        <div class="problem-note">Char freq map + fixed slide; match when both maps equal</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">04 <span class="tag tag-fixed">Fixed · HARD</span></div>
+        <div class="problem-name">Sliding Window Maximum (LC 239)</div>
+        <div class="problem-note">Monotonic deque for O(n); deque front always holds window max index</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">05 <span class="tag tag-fixed">Fixed</span></div>
+        <div class="problem-name">Maximum Average Subarray I (LC 643)</div>
+        <div class="problem-note">Sum/k with floating precision care; use integer sum, divide once at end</div>
+      </div>
+    </div>
+    <div class="section-label" style="margin-top:1.5rem">Variable Window</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">06 <span class="tag tag-variable">Variable</span></div>
+        <div class="problem-name">Longest Substring Without Repeating Chars (LC 3)</div>
+        <div class="problem-note">HashSet shrink on duplicate; classic expand/shrink template</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">07 <span class="tag tag-variable">Variable</span></div>
+        <div class="problem-name">Longest Substring with K Unique Characters</div>
+        <div class="problem-note">Freq map; shrink when distinct count exceeds K</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">08 <span class="tag tag-variable">Variable · HARD</span></div>
+        <div class="problem-name">Minimum Window Substring (LC 76)</div>
+        <div class="problem-note">Two maps, formed/required counters; shrink to minimize when formed</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">09 <span class="tag tag-variable">Variable</span></div>
+        <div class="problem-name">Fruits Into Baskets (LC 904)</div>
+        <div class="problem-note">Exactly-2-baskets; isomorphic to LC 3 with k=2 distinct</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">10 <span class="tag tag-variable">Variable · HARD</span></div>
+        <div class="problem-name">Longest Repeating Character Replacement (LC 424)</div>
+        <div class="problem-note">maxFreq trick; never decrement maxFreq — window size - maxFreq ≤ k</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">11 <span class="tag tag-variable">Variable · HARD</span></div>
+        <div class="problem-name">Subarrays with K Different Integers (LC 992)</div>
+        <div class="problem-note">Exactly K = atMost(K) - atMost(K-1); reuse variable template twice</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">12 <span class="tag tag-variable">Variable</span></div>
+        <div class="problem-name">Binary Subarrays with Sum (LC 930)</div>
+        <div class="problem-note">Same trick as LC 992; prefix sum approach also valid</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">13 <span class="tag tag-variable">Variable</span></div>
+        <div class="problem-name">Number of Nice Subarrays (LC 1248)</div>
+        <div class="problem-note">Count odds = exactly K; map odd indices to 1, evens to 0</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">14 <span class="tag tag-variable">Variable</span></div>
+        <div class="problem-name">Minimum Size Subarray Sum (LC 209)</div>
+        <div class="problem-note">Classic variable expand/shrink; first problem to learn the pattern</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">15 <span class="tag tag-fixed">Fixed</span></div>
+        <div class="problem-name">Permutation in String (LC 567)</div>
+        <div class="problem-note">Fixed window of length p + char freq comparison; O(26n)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="staff">
+    <h2>Staff Angles</h2>
+    <div class="staff-card">
+      <h3>Stream Context</h3>
+      <p>Count distinct users in any 24-hour sliding window over an infinite event stream that won't fit in memory — how?</p>
+      <p class="hint">→ Time-bucketed windows (e.g., 1-hour buckets, keep 24), approximate distinct count with <strong>HyperLogLog</strong> per bucket (merge with union), or <strong>Bloom filters</strong> for membership. Redis TimeSeries with EXPIRE handles eviction. For exact counts, event-sourcing with a sorted-set keyed by user+timestamp.</p>
+    </div>
+    <div class="staff-card">
+      <h3>Latency Context</h3>
+      <p>Sliding window median is O(n log k). Feed-ranking service needs sub-10ms p99 at 1M RPS — what do you precompute or approximate?</p>
+      <p class="hint">→ Offline sorted structure (two heaps offline), <strong>t-digest</strong> for streaming quantiles with tunable accuracy, <strong>reservoir sampling</strong> for approximate median. At 1M RPS precompute percentiles in a separate aggregation tier and serve cached values with TTL of 100–500ms. Use LMAX Disruptor or ring buffers to avoid GC pressure.</p>
+    </div>
+  </section>
+</main>
+
+<footer>Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt & Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers</footer>
+
+<script>
+// ─── Progress bar ───────────────────────────────────────────────
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+});
+
+// ─── Intersection observer for section entry ────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// ─── Concept animation ──────────────────────────────────────────
+function runConceptAnim() {
+  const container = document.getElementById('concept-anim');
+  const cells = [];
+  const arr = [3,1,4,1,5,9,2,6];
+  const w = container.offsetWidth;
+  const cw = Math.min(48, (w - 80) / arr.length);
+  const svg = d3.select(container).append('svg').attr('width', '100%').attr('height', 80);
+  const g = svg.append('g').attr('transform', `translate(${(w - arr.length * (cw+4)) / 2},10)`);
+  arr.forEach((v, i) => {
+    const cell = g.append('g').attr('transform', `translate(${i * (cw+4)},0)`);
+    cell.append('rect').attr('width', cw).attr('height', cw).attr('rx', 4)
+      .attr('fill', '#161b22').attr('stroke', '#30363d').attr('class', `cell-${i}`);
+    cell.append('text').attr('x', cw/2).attr('y', cw/2+5).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-size',13).attr('font-family','JetBrains Mono').text(v);
+    cells.push(cell);
+  });
+  const label = svg.append('text').attr('x', w/2).attr('y', 72).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',12).attr('font-family','Inter').text('window slides →');
+  let win = 0;
+  function animateStep() {
+    g.selectAll('rect').attr('fill','#161b22').attr('stroke','#30363d');
+    for (let i = win; i < win + 3 && i < arr.length; i++) {
+      g.select(`.cell-${i} rect`).attr('fill','rgba(74,222,128,0.2)').attr('stroke','#4ade80');
+    }
+    win = (win + 1) % (arr.length - 2);
+    setTimeout(animateStep, 900);
+  }
+  animateStep();
+}
+setTimeout(runConceptAnim, 400);
+
+// ─── Stepper state ──────────────────────────────────────────────
+let mode = 'fixed';
+let arr = [3,1,4,1,5,9,2,6,5,3];
+let steps = [];
+let stepIdx = 0;
+let playInterval = null;
+const K = 3;
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-fixed').classList.toggle('active', m === 'fixed');
+  document.getElementById('btn-variable').classList.toggle('active', m === 'variable');
+  document.getElementById('tr-sum').parentElement.children[4].textContent = m === 'fixed' ? 'windowSum:' : 'distinctCount:';
+  resetStepper();
+}
+
+function onSizeChange(val) {
+  document.getElementById('arr-size-label').textContent = val;
+  const n = parseInt(val);
+  arr = Array.from({length: n}, () => Math.floor(Math.random() * 9) + 1);
+  resetStepper();
+}
+
+function buildFixedSteps(a, k) {
+  const s = [];
+  let sum = 0;
+  for (let i = 0; i < k; i++) sum += a[i];
+  s.push({left:0, right:k-1, sum, ans:sum, action:'Initialize window', highlight:[...Array(k).keys()]});
+  let maxSum = sum;
+  for (let i = k; i < a.length; i++) {
+    sum = sum + a[i] - a[i-k];
+    maxSum = Math.max(maxSum, sum);
+    s.push({left:i-k+1, right:i, sum, ans:maxSum,
+      action:`Add arr[${i}]=${a[i]}, remove arr[${i-k}]=${a[i-k]}`,
+      highlight: Array.from({length:k}, (_,j) => i-k+1+j)
+    });
+  }
+  return s;
+}
+
+function buildVariableSteps(a) {
+  const s = [];
+  const freq = {};
+  let left = 0, result = 0;
+  s.push({left:0, right:-1, distinct:0, ans:0, action:'Start: empty window', highlight:[]});
+  for (let right = 0; right < a.length; right++) {
+    freq[a[right]] = (freq[a[right]] || 0) + 1;
+    let hl = Array.from({length: right - left + 1}, (_, i) => left + i);
+    s.push({left, right, distinct: Object.keys(freq).length, ans: result,
+      action: `Expand: add arr[${right}]=${a[right]}, distinct=${Object.keys(freq).length}`,
+      highlight: hl
+    });
+    while (Object.keys(freq).length > 2) {
+      freq[a[left]]--;
+      if (freq[a[left]] === 0) delete freq[a[left]];
+      left++;
+      hl = Array.from({length: right - left + 1}, (_, i) => left + i);
+      s.push({left, right, distinct: Object.keys(freq).length, ans: result,
+        action: `Shrink: left=${left}, distinct=${Object.keys(freq).length}`,
+        highlight: hl
+      });
+    }
+    result = Math.max(result, right - left + 1);
+    s[s.length-1].ans = result;
+  }
+  return s;
+}
+
+function resetStepper() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; document.getElementById('play-btn').textContent = '▶ Play'; }
+  steps = mode === 'fixed' ? buildFixedSteps(arr, K) : buildVariableSteps(arr);
+  stepIdx = 0;
+  drawArr();
+  applyStep(steps[0]);
+  updateCounter();
+}
+
+function drawArr() {
+  const svg = d3.select('#viz-svg');
+  svg.selectAll('*').remove();
+  const W = document.getElementById('viz-container').offsetWidth - 48;
+  const cellW = Math.min(54, (W - 20) / arr.length);
+  const cellH = 52;
+  const startX = (W - arr.length * (cellW + 4)) / 2 + 12;
+  const startY = 44;
+  svg.attr('height', 140);
+
+  arr.forEach((v, i) => {
+    const x = startX + i * (cellW + 4);
+    svg.append('rect').attr('x', x).attr('y', startY).attr('width', cellW).attr('height', cellH)
+      .attr('rx', 6).attr('fill', '#161b22').attr('stroke', '#30363d')
+      .attr('class', `cell-rect cell-${i}`);
+    svg.append('text').attr('x', x + cellW/2).attr('y', startY + cellH/2 + 6)
+      .attr('text-anchor','middle').attr('fill','#e6edf3')
+      .attr('font-size', 14).attr('font-family','JetBrains Mono').attr('class', `cell-text cell-t${i}`).text(v);
+    svg.append('text').attr('x', x + cellW/2).attr('y', startY - 8)
+      .attr('text-anchor','middle').attr('fill','#8b949e')
+      .attr('font-size', 10).attr('font-family','JetBrains Mono').text(i);
+  });
+  // L pointer
+  svg.append('text').attr('id','ptr-L').attr('y', startY + cellH + 20)
+    .attr('text-anchor','middle').attr('fill','#4ade80').attr('font-size',13).attr('font-weight','bold').attr('font-family','JetBrains Mono').text('L');
+  // R pointer
+  svg.append('text').attr('id','ptr-R').attr('y', startY + cellH + 20)
+    .attr('text-anchor','middle').attr('fill','#f59e0b').attr('font-size',13).attr('font-weight','bold').attr('font-family','JetBrains Mono').text('R');
+  // action label
+  svg.append('text').attr('id','action-label').attr('x', W/2+12).attr('y', 22)
+    .attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',12).attr('font-family','Inter').text('');
+  window._vizStartX = startX;
+  window._vizCellW = cellW;
+}
+
+function applyStep(st) {
+  if (!st) return;
+  const svg = d3.select('#viz-svg');
+  const startX = window._vizStartX;
+  const cellW = window._vizCellW;
+  const cellH = 52;
+  const startY = 44;
+
+  // reset cells
+  arr.forEach((_, i) => {
+    svg.select(`.cell-${i}`).attr('fill','#161b22').attr('stroke','#30363d');
+    svg.select(`.cell-t${i}`).attr('fill','#e6edf3');
+  });
+  // highlight window
+  (st.highlight || []).forEach(i => {
+    svg.select(`.cell-${i}`).attr('fill','rgba(74,222,128,0.18)').attr('stroke','#4ade80');
+    svg.select(`.cell-t${i}`).attr('fill','#4ade80');
+  });
+  // L pointer
+  const lx = startX + st.left * (cellW + 4) + cellW/2;
+  svg.select('#ptr-L').attr('x', lx);
+  // R pointer
+  const rx = startX + Math.max(0, st.right) * (cellW + 4) + cellW/2;
+  svg.select('#ptr-R').attr('x', rx);
+  // action label
+  svg.select('#action-label').text(st.action || '');
+
+  // trace panel
+  document.getElementById('tr-left').textContent = st.left;
+  document.getElementById('tr-right').textContent = st.right;
+  document.getElementById('tr-sum').textContent = mode === 'fixed' ? st.sum : (st.distinct !== undefined ? st.distinct : '-');
+  document.getElementById('tr-ans').textContent = st.ans !== undefined ? st.ans : '-';
+  document.getElementById('trace-inv').textContent = mode === 'fixed'
+    ? `Invariant: window size always = ${K}, sum = ${st.sum !== undefined ? st.sum : '?'}`
+    : `Invariant: window [left..right] has at most 2 distinct values`;
+}
+
+function updateCounter() {
+  document.getElementById('step-counter').textContent = `Step ${stepIdx} / ${steps.length - 1}`;
+}
+
+function stepForward() {
+  if (stepIdx < steps.length - 1) {
+    stepIdx++;
+    applyStep(steps[stepIdx]);
+    updateCounter();
+  }
+}
+
+function togglePlay() {
+  if (playInterval) {
+    clearInterval(playInterval);
+    playInterval = null;
+    document.getElementById('play-btn').textContent = '▶ Play';
+  } else {
+    document.getElementById('play-btn').textContent = '⏸ Pause';
+    playInterval = setInterval(() => {
+      if (stepIdx >= steps.length - 1) {
+        clearInterval(playInterval); playInterval = null;
+        document.getElementById('play-btn').textContent = '▶ Play';
+        return;
+      }
+      stepForward();
+    }, parseInt(document.getElementById('speed-ctrl').value));
+  }
+}
+
+function copyCode() {
+  const raw = `// ===== FIXED WINDOW =====
+public int maxSumFixed(int[] arr, int k) {
+    int windowSum = 0, maxSum = Integer.MIN_VALUE;
+    for (int i = 0; i < k; i++) windowSum += arr[i];
+    maxSum = windowSum;
+    for (int i = k; i < arr.length; i++) {
+        windowSum += arr[i] - arr[i - k];
+        maxSum = Math.max(maxSum, windowSum);
+    }
+    return maxSum;
+}
+
+// ===== VARIABLE WINDOW (general template) =====
+public int variableWindow(int[] arr) {
+    Map<Integer, Integer> freq = new HashMap<>();
+    int left = 0, result = 0;
+    for (int right = 0; right < arr.length; right++) {
+        freq.merge(arr[right], 1, Integer::sum);
+        while (freq.size() > 2) {
+            freq.merge(arr[left], -1, Integer::sum);
+            if (freq.get(arr[left]) == 0) freq.remove(arr[left]);
+            left++;
+        }
+        result = Math.max(result, right - left + 1);
+    }
+    return result;
+}
+
+// ===== SLIDING WINDOW MAXIMUM (monotonic deque) =====
+public int[] maxSlidingWindow(int[] nums, int k) {
+    int n = nums.length;
+    int[] result = new int[n - k + 1];
+    ArrayDeque<Integer> dq = new ArrayDeque<>();
+    for (int i = 0; i < n; i++) {
+        while (!dq.isEmpty() && dq.peekFirst() < i - k + 1) dq.pollFirst();
+        while (!dq.isEmpty() && nums[dq.peekLast()] < nums[i]) dq.pollLast();
+        dq.offerLast(i);
+        if (i >= k - 1) result[i - k + 1] = nums[dq.peekFirst()];
+    }
+    return result;
+}`;
+  navigator.clipboard.writeText(raw).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// Fix trace row label for mode
+document.addEventListener('DOMContentLoaded', () => {});
+
+// init
+resetStepper();
+window.addEventListener('resize', () => { drawArr(); if (steps[stepIdx]) applyStep(steps[stepIdx]); });
+</script>
+</body>
+</html>

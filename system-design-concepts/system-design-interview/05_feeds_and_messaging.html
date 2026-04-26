@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feeds &amp; Messaging — System Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #f472b6;
+      --accent-dim: rgba(244,114,182,0.15);
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --red: #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: var(--accent); width: 0%; z-index: 1000;
+      transition: width 0.1s linear;
+    }
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      margin-right: 1.5rem;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px;
+      padding-right: 16px;
+    }
+    #navbar a.back-link:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-pager {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-right: 12px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted);
+      font-size: 9px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title {
+      font-size: 11px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    #navbar .chapter-nav-chip .nav-arrow {
+      color: var(--accent);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+    .concept-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(244,114,182,0.25); }
+    .btn.danger { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.1); }
+    .btn.danger:hover { background: rgba(248,113,113,0.2); }
+    .btn.active { background: rgba(244,114,182,0.35); }
+    .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    input[type=range] { accent-color: var(--accent); width: 90px; }
+    .diagram-area {
+      padding: 20px;
+      min-height: 200px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .diagram-area svg { width: 100%; overflow: visible; }
+    .insight-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .chapter-nav-link,
+    .chapter-nav-disabled,
+    .chapter-nav-current {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 62px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .chapter-nav-link:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-nav-link.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-link .nav-kicker,
+    .chapter-nav-disabled .nav-kicker,
+    .chapter-nav-current .nav-kicker {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title,
+    .chapter-nav-disabled .nav-title,
+    .chapter-nav-current .nav-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .chapter-nav-link .nav-arrow,
+    .chapter-nav-disabled .nav-arrow {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .chapter-nav-disabled {
+      opacity: 0.38;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .chapter-nav-disabled.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-current {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav {
+        grid-template-columns: 1fr;
+      }
+      .chapter-nav-link.next,
+      .chapter-nav-disabled.next {
+        text-align: left;
+        align-items: flex-start;
+      }
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+
+    body.sidebar-open {
+      overflow: hidden;
+    }
+    #sidebar-toggle {
+      position: fixed;
+      top: 60px;
+      left: 16px;
+      z-index: 1001;
+      border: 1px solid var(--border);
+      background: rgba(22,27,34,0.92);
+      color: var(--accent, var(--text));
+      border-radius: 14px;
+      width: 46px;
+      height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+    }
+    #sidebar-toggle:hover {
+      transform: translateY(-1px);
+      background: rgba(28,35,48,0.98);
+      color: var(--text);
+    }
+    #sidebar-toggle .hamburger-line {
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) {
+      transform: translateY(6px) rotate(45deg);
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) {
+      opacity: 0;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) {
+      transform: translateY(-6px) rotate(-45deg);
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6,10,16,0.12);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+      z-index: 1001;
+    }
+    #sidebar-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #sidebar-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(340px, 86vw);
+      height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 18%), #0f141b;
+      border-right: 1px solid var(--border);
+      box-shadow: 24px 0 50px rgba(0,0,0,0.35);
+      padding: 22px 18px 24px;
+      transform: translateX(-102%);
+      transition: transform 0.24s ease;
+      z-index: 1002;
+      overflow-y: auto;
+    }
+    #sidebar-drawer.open {
+      transform: translateX(0);
+    }
+    .drawer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .drawer-title {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .drawer-kicker {
+      color: var(--accent, var(--text));
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .drawer-heading {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .drawer-close {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 999px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .drawer-close:hover {
+      color: var(--text);
+      border-color: var(--accent, var(--text));
+    }
+    .drawer-index-link {
+      display: block;
+      text-decoration: none;
+      color: var(--accent, var(--text));
+      background: var(--accent-dim, rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+    }
+    .drawer-index-link strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    .drawer-index-link span {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .drawer-group {
+      border: 1px solid rgba(48,54,61,0.9);
+      border-radius: 14px;
+      background: rgba(22,27,34,0.75);
+      overflow: hidden;
+    }
+    .drawer-group.current {
+      border-color: rgba(255,255,255,0.24);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .drawer-group-header {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(48,54,61,0.8);
+      background: rgba(255,255,255,0.02);
+    }
+    .drawer-group-title {
+      flex: 1;
+      min-width: 0;
+    }
+    .drawer-group-header .eyebrow {
+      display: block;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-group-header .name {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .drawer-group-header .name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .drawer-group-header .name a:hover {
+      color: var(--accent, var(--text));
+    }
+    .drawer-group-toggle {
+      flex: 0 0 auto;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .drawer-group-toggle:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .drawer-group-toggle:focus-visible {
+      outline: 2px solid var(--accent, var(--text));
+      outline-offset: 2px;
+    }
+    .drawer-chevron {
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-chevron {
+      transform: rotate(-45deg) translate(-1px, 1px);
+    }
+    .drawer-subnav {
+      list-style: none;
+      padding: 8px;
+      max-height: 640px;
+      opacity: 1;
+      overflow: hidden;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-subnav {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    .drawer-subnav li + li {
+      margin-top: 4px;
+    }
+    .drawer-subnav a {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+    }
+    .drawer-subnav a:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+    .drawer-subnav .sub-num {
+      color: var(--accent, var(--text));
+      font-size: 11px;
+      min-width: 42px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-subnav .sub-label {
+      font-size: 13px;
+    }
+
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="true" aria-label="Toggle navigation menu">
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="sr-only">Toggle navigation menu</span>
+</button>
+<div id="sidebar-overlay"></div>
+<aside id="sidebar-drawer" aria-hidden="true">
+  <div class="drawer-top">
+    <div class="drawer-title">
+      <span class="drawer-kicker">Navigation</span>
+      <span class="drawer-heading">05 Feeds & Messaging</span>
+    </div>
+    <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+  </div>
+<a class="drawer-index-link" href="00_index.html">
+  <strong>Galaxy Index</strong>
+  <span>Return to the system design constellation map</span>
+</a>
+  <nav class="drawer-nav" aria-label="System design outline">
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="01_scaling_fundamentals.html">01 Scaling</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="01_scaling_fundamentals.html#s-11"><span class="sub-num">1.1</span><span class="sub-label">Single Server</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-12"><span class="sub-num">1.2</span><span class="sub-label">Scaling</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-13"><span class="sub-num">1.3</span><span class="sub-label">Load Balancer</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-14"><span class="sub-num">1.4</span><span class="sub-label">DB Replication</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-15"><span class="sub-num">1.5</span><span class="sub-label">Cache</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-16"><span class="sub-num">1.6</span><span class="sub-label">CDN</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-17"><span class="sub-num">1.7</span><span class="sub-label">Stateless</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-18"><span class="sub-num">1.8</span><span class="sub-label">Msg Queue</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-19"><span class="sub-num">1.9</span><span class="sub-label">Sharding</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-110"><span class="sub-num">1.10</span><span class="sub-label">Data Centers</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="02_core_distributed_systems.html">02 Core Distributed Systems</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="02_core_distributed_systems.html#s-21"><span class="sub-num">2.1</span><span class="sub-label">Consistent Hashing</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-22"><span class="sub-num">2.2</span><span class="sub-label">KV Store</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-23"><span class="sub-num">2.3</span><span class="sub-label">CAP Theorem</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-24"><span class="sub-num">2.4</span><span class="sub-label">Gossip</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-25"><span class="sub-num">2.5</span><span class="sub-label">Quorum</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-26"><span class="sub-num">2.6</span><span class="sub-label">Merkle Trees</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="03_rate_limiter_and_id_gen.html">03 Rate Limiter & ID</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="03_rate_limiter_and_id_gen.html#s-31"><span class="sub-num">3.1</span><span class="sub-label">Token Bucket</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-32"><span class="sub-num">3.2</span><span class="sub-label">Leaky Bucket</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-33"><span class="sub-num">3.3</span><span class="sub-label">Fixed Window</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-34"><span class="sub-num">3.4</span><span class="sub-label">Sliding Window</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-35"><span class="sub-num">3.5</span><span class="sub-label">Distributed RL</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-36"><span class="sub-num">3.6</span><span class="sub-label">Snowflake ID</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-37"><span class="sub-num">3.7</span><span class="sub-label">UUID</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-38"><span class="sub-num">3.8</span><span class="sub-label">Ticket Server</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="04_storage_and_search.html">04 Storage & Search</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="04_storage_and_search.html#s-41"><span class="sub-num">4.1</span><span class="sub-label">URL Shortener</span></a></li>
+        <li><a href="04_storage_and_search.html#s-42"><span class="sub-num">4.2</span><span class="sub-label">Web Crawler</span></a></li>
+        <li><a href="04_storage_and_search.html#s-43"><span class="sub-num">4.3</span><span class="sub-label">Trie Autocomplete</span></a></li>
+        <li><a href="04_storage_and_search.html#s-44"><span class="sub-num">4.4</span><span class="sub-label">Google Drive</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group current">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="05_feeds_and_messaging.html">05 Feeds & Messaging</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Collapse chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="#s-51"><span class="sub-num">5.1</span><span class="sub-label">Push Feed</span></a></li>
+        <li><a href="#s-52"><span class="sub-num">5.2</span><span class="sub-label">Pull Feed</span></a></li>
+        <li><a href="#s-53"><span class="sub-num">5.3</span><span class="sub-label">Hybrid Feed</span></a></li>
+        <li><a href="#s-54"><span class="sub-num">5.4</span><span class="sub-label">Notifications</span></a></li>
+        <li><a href="#s-55"><span class="sub-num">5.5</span><span class="sub-label">Chat/WebSocket</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="06_video_and_object_storage.html">06 Video & Storage</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="06_video_and_object_storage.html#s-61"><span class="sub-num">6.1</span><span class="sub-label">Upload Pipeline</span></a></li>
+        <li><a href="06_video_and_object_storage.html#s-62"><span class="sub-num">6.2</span><span class="sub-label">Video Streaming</span></a></li>
+        <li><a href="06_video_and_object_storage.html#s-63"><span class="sub-num">6.3</span><span class="sub-label">Object Storage</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="07_geo_and_realtime.html">07 Geo & Realtime</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="07_geo_and_realtime.html#s-71"><span class="sub-num">7.1</span><span class="sub-label">Geohash</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-72"><span class="sub-num">7.2</span><span class="sub-label">Quadtree</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-73"><span class="sub-num">7.3</span><span class="sub-label">Nearby Friends</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-74"><span class="sub-num">7.4</span><span class="sub-label">Routing</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-75"><span class="sub-num">7.5</span><span class="sub-label">Map Tiles</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="08_data_pipelines.html">08 Data Pipelines</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="08_data_pipelines.html#s-81"><span class="sub-num">8.1</span><span class="sub-label">Kafka-like MQ</span></a></li>
+        <li><a href="08_data_pipelines.html#s-82"><span class="sub-num">8.2</span><span class="sub-label">Metrics Monitor</span></a></li>
+        <li><a href="08_data_pipelines.html#s-83"><span class="sub-num">8.3</span><span class="sub-label">Ad Click Agg</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="09_financial_systems.html">09 Financial Systems</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="09_financial_systems.html#s-91"><span class="sub-num">9.1</span><span class="sub-label">Hotel Reserve</span></a></li>
+        <li><a href="09_financial_systems.html#s-92"><span class="sub-num">9.2</span><span class="sub-label">Payment</span></a></li>
+        <li><a href="09_financial_systems.html#s-93"><span class="sub-num">9.3</span><span class="sub-label">Digital Wallet</span></a></li>
+        <li><a href="09_financial_systems.html#s-94"><span class="sub-num">9.4</span><span class="sub-label">Stock Exchange</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="10_interview_foundations.html">10 Interview Foundations</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="10_interview_foundations.html#s-101"><span class="sub-num">10.1</span><span class="sub-label">Back-of-Envelope</span></a></li>
+        <li><a href="10_interview_foundations.html#s-102"><span class="sub-num">10.2</span><span class="sub-label">Interview Framework</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="11_email_and_leaderboard.html">11 Email & Leaderboard</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="11_email_and_leaderboard.html#s-111"><span class="sub-num">11.1</span><span class="sub-label">Email Service</span></a></li>
+        <li><a href="11_email_and_leaderboard.html#s-112"><span class="sub-num">11.2</span><span class="sub-label">Leaderboard</span></a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<nav id="navbar">
+  <span class="nav-brand">05 — Feeds &amp; Messaging</span>
+  <a class="back-link" href="00_index.html">← Galaxy Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <a class="chapter-nav-chip" href="04_storage_and_search.html" aria-label="Previous Chapter: Storage & Search" title="Previous Chapter: Storage & Search">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Storage & Search<span class="nav-arrow" aria-hidden="true">←</span></span>
+    </a>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">05</span>
+    </span>
+    <a class="chapter-nav-chip" href="06_video_and_object_storage.html" aria-label="Next Chapter: Video & Object Storage" title="Next Chapter: Video & Object Storage">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Video & Object Storage<span class="nav-arrow" aria-hidden="true">→</span></span>
+    </a>
+  </div>
+  <a href="#s-51">Push Feed</a>
+  <a href="#s-52">Pull Feed</a>
+  <a href="#s-53">Hybrid Feed</a>
+  <a href="#s-54">Notifications</a>
+  <a href="#s-55">Chat/WebSocket</a>
+</nav>
+
+<main>
+  <div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">Feeds &amp; Messaging</h1>
+    <p style="color:var(--text-muted);margin-top:4px;">Chapters 10–12 — News Feed, Notifications, Chat System</p>
+  </div>
+
+  <!-- Section 5.1 -->
+  <section id="s-51" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.1 —</span>
+          <span class="section-title">News Feed: Fan-out on Write (Push)</span>
+          <span class="section-desc">Pre-computed feeds written to every follower's cache</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.publishPost_s51()">Publish Post</button>
+          <button class="btn danger" onclick="window.hotCelebrity_s51()">Hot Celebrity</button>
+          <button class="btn" onclick="window.animate_s51()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-51" viewBox="0 0 700 260" height="260"></svg>
+      </div>
+      <div class="insight-panel">
+        Fan-out on write (push) pre-computes each user's feed. Reads are fast (O(1)) but writes for celebrities with millions of followers create hot spots — a single post can trigger 500K+ cache writes simultaneously.
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5.2 -->
+  <section id="s-52" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.2 —</span>
+          <span class="section-title">News Feed: Fan-out on Read (Pull)</span>
+          <span class="section-desc">Feed computed at read time by querying all followees</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.openFeed_s52()">Open Feed</button>
+          <button class="btn" onclick="window.animate_s52()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-52" viewBox="0 0 700 240" height="240"></svg>
+      </div>
+      <div class="insight-panel">
+        Fan-out on read (pull) computes the feed at read time. Always fresh data, but latency increases with followee count (~500ms for many followees). Heavy for popular users who follow many people.
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5.3 -->
+  <section id="s-53" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.3 —</span>
+          <span class="section-title">Hybrid Fan-out</span>
+          <span class="section-desc">Push for regular users, pull for celebrities (&gt;10K followers)</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-s53-toggle" onclick="window.toggleMode_s53()">Toggle Mode</button>
+          <button class="btn" onclick="window.publish_s53()">Publish</button>
+          <button class="btn" onclick="window.animate_s53()">Reset</button>
+          <span id="s53-mode-lbl" style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace;">REGULAR USER</span>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-53" viewBox="0 0 700 240" height="240"></svg>
+      </div>
+      <div class="insight-panel">
+        Hybrid approach: push for regular users (fast reads, pre-written feeds), pull for celebrities (avoid hot spots). The threshold is typically ~10K followers. On feed open, both pre-written posts and on-demand celebrity posts are merged.
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5.4 -->
+  <section id="s-54" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.4 —</span>
+          <span class="section-title">Notification System</span>
+          <span class="section-desc">Multi-channel fan-out with retry and exponential backoff</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.sendNotification_s54()">Send Notification</button>
+          <button class="btn danger" onclick="window.simulateFailure_s54()">Simulate Failure</button>
+          <button class="btn" onclick="window.animate_s54()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-54" viewBox="0 0 700 280" height="280"></svg>
+      </div>
+      <div class="insight-panel">
+        Notifications are fire-and-forget with retry. Exponential backoff prevents overloading a struggling downstream provider. Idempotency keys prevent duplicate notifications on retries.
+      </div>
+    </div>
+  </section>
+
+  <!-- Section 5.5 -->
+  <section id="s-55" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">5.5 —</span>
+          <span class="section-title">Chat System (WebSocket)</span>
+          <span class="section-desc">Persistent bidirectional connections via WebSocket</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.sendMessage_s55()">Send Message</button>
+          <button class="btn danger" onclick="window.goOffline_s55()">Go Offline</button>
+          <button class="btn" onclick="window.animate_s55()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-55" viewBox="0 0 700 260" height="260"></svg>
+      </div>
+      <div class="insight-panel">
+        WebSocket provides persistent bidirectional connections — no polling overhead. Chat servers are stateful (they know which users are connected). A message queue decouples the two chat servers so they don't need direct connections.
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="chapter-page-nav" aria-label="Chapter navigation">
+  <a class="chapter-nav-link prev" href="04_storage_and_search.html" aria-label="Previous Chapter: Storage & Search">
+    <span class="nav-kicker">Previous Chapter</span>
+    <span class="nav-title">Storage & Search</span>
+    <span class="nav-arrow" aria-hidden="true">←</span>
+  </a>
+  <div class="chapter-nav-current">
+    <span class="nav-kicker">Current Chapter</span>
+    <span class="nav-title">05 — Feeds & Messaging</span>
+  </div>
+  <a class="chapter-nav-link next" href="06_video_and_object_storage.html" aria-label="Next Chapter: Video & Object Storage">
+    <span class="nav-kicker">Next Chapter</span>
+    <span class="nav-title">Video & Object Storage</span>
+    <span class="nav-arrow" aria-hidden="true">→</span>
+  </a>
+</div>
+
+
+<footer>System Design Concepts</footer>
+
+<script>
+  // Progress bar
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  });
+
+  // ─── SVG helpers (verbatim from template) ───────────────────────────────────
+
+  function makeSVGEl(tag) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag);
+  }
+
+  function svgRect(x, y, w, h, fill, stroke, r) {
+    const el = makeSVGEl('rect');
+    el.setAttribute('x', x); el.setAttribute('y', y);
+    el.setAttribute('width', w); el.setAttribute('height', h);
+    el.setAttribute('fill', fill || 'none');
+    if (stroke) el.setAttribute('stroke', stroke);
+    if (r) el.setAttribute('rx', r);
+    return el;
+  }
+
+  function svgText(x, y, txt, fill, size, anchor, family) {
+    const el = makeSVGEl('text');
+    el.setAttribute('x', x); el.setAttribute('y', y);
+    el.setAttribute('fill', fill || '#e6edf3');
+    el.setAttribute('font-size', size || 11);
+    el.setAttribute('text-anchor', anchor || 'middle');
+    el.setAttribute('dominant-baseline', 'middle');
+    if (family) el.setAttribute('font-family', family);
+    el.textContent = txt;
+    return el;
+  }
+
+  function drawNode(svgEl, x, y, w, h, label, fill, stroke, textColor) {
+    const g = makeSVGEl('g');
+    const rect = svgRect(x - w/2, y - h/2, w, h, fill || '#161b22', stroke || '#f472b6', 6);
+    g.appendChild(rect);
+    if (label) {
+      const t = svgText(x, y, label, textColor || '#e6edf3', 11, 'middle', "'JetBrains Mono',monospace");
+      g.appendChild(t);
+    }
+    svgEl.appendChild(g);
+    return g;
+  }
+
+  function clearSVG(svgEl) {
+    svgEl._gen = (svgEl._gen || 0) + 1;
+    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+  }
+
+  function animatePacket(svgEl, x1, y1, x2, y2, color, size, duration, onComplete) {
+    if (!svgEl._gen) svgEl._gen = 0;
+    const capturedGen = svgEl._gen;
+    const circle = makeSVGEl('circle');
+    circle.setAttribute('r', size || 6);
+    circle.setAttribute('fill', color);
+    circle.setAttribute('cx', x1);
+    circle.setAttribute('cy', y1);
+    svgEl.appendChild(circle);
+    anime({
+      targets: circle, cx: x2, cy: y2,
+      duration: duration || 700, easing: 'easeInOutSine',
+      complete: () => {
+        if (svgEl.contains(circle)) svgEl.removeChild(circle);
+        if (svgEl._gen === capturedGen && onComplete) onComplete();
+      }
+    });
+  }
+
+  function pulseStroke(svgEl, x, y, r, color, duration) {
+    const circle = makeSVGEl('circle');
+    circle.setAttribute('cx', x); circle.setAttribute('cy', y);
+    circle.setAttribute('r', r || 20);
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', color);
+    circle.setAttribute('stroke-width', 2);
+    circle.setAttribute('opacity', 1);
+    svgEl.appendChild(circle);
+    anime({
+      targets: circle, r: (r || 20) + 15, opacity: 0,
+      duration: duration || 600, easing: 'easeOutSine',
+      complete: () => { if (svgEl.contains(circle)) svgEl.removeChild(circle); }
+    });
+  }
+
+  // ─── Helper: SVG line ────────────────────────────────────────────────────────
+  function svgLine(x1, y1, x2, y2, stroke, sw, dash) {
+    const el = makeSVGEl('line');
+    el.setAttribute('x1', x1); el.setAttribute('y1', y1);
+    el.setAttribute('x2', x2); el.setAttribute('y2', y2);
+    el.setAttribute('stroke', stroke || '#30363d');
+    el.setAttribute('stroke-width', sw || 1.5);
+    if (dash) el.setAttribute('stroke-dasharray', dash);
+    return el;
+  }
+
+  // ─── IntersectionObserver ────────────────────────────────────────────────────
+  window.sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        const fnName = 'animate_' + entry.target.id.replace('-', '');
+        const fn = window[fnName];
+        if (typeof fn === 'function') fn();
+        window.sectionObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.25 });
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Section 5.1 — Fan-out on Write (Push)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  window.animate_s51 = function() {
+    const svg = document.getElementById('svg-51');
+    clearSVG(svg);
+
+    // Celebrity user (left)
+    drawNode(svg, 70, 130, 90, 38, 'User', '#161b22', '#f472b6');
+    svg.appendChild(svgText(70, 153, '(author)', '#8b949e', 9, 'middle', 'Inter,sans-serif'));
+
+    // Fan-out service (center)
+    const fsG = makeSVGEl('g');
+    fsG.setAttribute('id', 's51-fanout');
+    const fsRect = svgRect(245, 111, 110, 38, '#161b22', '#f472b6', 6);
+    fsRect.setAttribute('id', 's51-fanout-rect');
+    fsG.appendChild(fsRect);
+    fsG.appendChild(svgText(300, 130, 'Fan-out Svc', '#e6edf3', 11, 'middle', "'JetBrains Mono',monospace"));
+    svg.appendChild(fsG);
+
+    // Lines from user to fan-out
+    svg.appendChild(svgLine(115, 130, 245, 130, '#30363d', 1.5));
+
+    // 6 follower feed caches (right)
+    const followerYs = [40, 80, 120, 160, 200, 240];
+    followerYs.forEach((fy, i) => {
+      svg.appendChild(svgLine(355, 130, 530, fy, '#30363d', 1));
+      const cg = makeSVGEl('g');
+      cg.setAttribute('id', 's51-cache-' + i);
+      const cr = svgRect(530, fy - 14, 110, 28, '#161b22', '#30363d', 4);
+      cg.appendChild(cr);
+      cg.appendChild(svgText(585, fy, 'Feed Cache ' + (i + 1), '#8b949e', 10, 'middle', "'JetBrains Mono',monospace"));
+      svg.appendChild(cg);
+    });
+
+    // Follower list label
+    svg.appendChild(svgText(300, 158, '(reads follower list)', '#8b949e', 9, 'middle', 'Inter,sans-serif'));
+  };
+
+  window.publishPost_s51 = function() {
+    const svg = document.getElementById('svg-51');
+    // Reset fanout rect color first
+    const fsRect = document.getElementById('s51-fanout-rect');
+    if (fsRect) {
+      fsRect.setAttribute('stroke', '#f472b6');
+      fsRect.setAttribute('fill', '#161b22');
+    }
+    // Remove any hot label
+    const hotLbl = document.getElementById('s51-hot-label');
+    if (hotLbl && svg.contains(hotLbl)) svg.removeChild(hotLbl);
+
+    // Post travels from user to fan-out service
+    animatePacket(svg, 115, 130, 245, 130, '#f472b6', 7, 500, () => {
+      pulseStroke(svg, 300, 130, 20, '#f472b6', 400);
+      // Fan out to all 6 caches simultaneously
+      const followerYs = [40, 80, 120, 160, 200, 240];
+      followerYs.forEach((fy, i) => {
+        setTimeout(() => {
+          animatePacket(svg, 355, 130, 530, fy, '#f472b6', 5, 450, () => {
+            const cg = document.getElementById('s51-cache-' + i);
+            if (cg) {
+              const rect = cg.querySelector('rect');
+              if (rect) anime({ targets: rect, stroke: '#f472b6', duration: 300 });
+            }
+          });
+        }, i * 60);
+      });
+    });
+  };
+
+  window.hotCelebrity_s51 = function() {
+    const svg = document.getElementById('svg-51');
+    const fsRect = document.getElementById('s51-fanout-rect');
+
+    // Remove existing hot label if any
+    const oldLbl = document.getElementById('s51-hot-label');
+    if (oldLbl && svg.contains(oldLbl)) svg.removeChild(oldLbl);
+
+    // Flash fan-out service red
+    if (fsRect) {
+      anime({ targets: fsRect, stroke: '#f87171', fill: 'rgba(248,113,113,0.12)', duration: 400 });
+    }
+
+    // Hot label
+    const hotG = makeSVGEl('g');
+    hotG.setAttribute('id', 's51-hot-label');
+    hotG.setAttribute('opacity', '0');
+    const hotBg = svgRect(235, 72, 130, 24, 'rgba(248,113,113,0.2)', '#f87171', 4);
+    hotG.appendChild(hotBg);
+    hotG.appendChild(svgText(300, 84, '500K writes!', '#f87171', 11, 'middle', "'JetBrains Mono',monospace"));
+    svg.appendChild(hotG);
+    anime({ targets: hotG, opacity: [0, 1], duration: 400 });
+
+    // Rapidly fire many packets into fan-out to simulate overload
+    const followerYs = [40, 80, 120, 160, 200, 240];
+    for (let wave = 0; wave < 3; wave++) {
+      followerYs.forEach((fy, i) => {
+        setTimeout(() => {
+          animatePacket(svg, 115, 130, 245, 130, '#f87171', 5, 300, () => {
+            animatePacket(svg, 355, 130, 530, fy, '#f87171', 4, 350);
+          });
+        }, wave * 400 + i * 50);
+      });
+    }
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-51'));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Section 5.2 — Fan-out on Read (Pull)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  window.animate_s52 = function() {
+    const svg = document.getElementById('svg-52');
+    clearSVG(svg);
+
+    // User (left)
+    drawNode(svg, 60, 120, 80, 38, 'User', '#161b22', '#f472b6');
+
+    // Feed Service (center)
+    drawNode(svg, 280, 120, 110, 42, 'Feed Service', '#161b22', '#f472b6');
+    svg.appendChild(svgText(280, 136, '(merge+rank)', '#8b949e', 9, 'middle', 'Inter,sans-serif'));
+
+    // Arrow user -> feed service
+    svg.appendChild(svgLine(100, 120, 225, 120, '#30363d', 1.5));
+
+    // 5 followee post stores (right)
+    const followeeYs = [30, 75, 120, 165, 210];
+    followeeYs.forEach((fy, i) => {
+      svg.appendChild(svgLine(335, 120, 490, fy, '#30363d', 1));
+      const pg = makeSVGEl('g');
+      pg.setAttribute('id', 's52-post-' + i);
+      const pr = svgRect(490, fy - 13, 130, 26, '#161b22', '#30363d', 4);
+      pg.appendChild(pr);
+      pg.appendChild(svgText(555, fy, 'Posts: @user' + (i + 1), '#8b949e', 10, 'middle', "'JetBrains Mono',monospace"));
+      svg.appendChild(pg);
+    });
+
+    // Latency badge
+    const latG = makeSVGEl('g');
+    latG.setAttribute('id', 's52-latency');
+    latG.setAttribute('opacity', '0');
+    const latBg = svgRect(225, 188, 110, 24, 'rgba(251,146,60,0.15)', '#fb923c', 4);
+    latG.appendChild(latBg);
+    latG.appendChild(svgText(280, 200, '~500ms latency', '#fb923c', 10, 'middle', "'JetBrains Mono',monospace"));
+    svg.appendChild(latG);
+  };
+
+  window.openFeed_s52 = function() {
+    const svg = document.getElementById('svg-52');
+
+    // Reset latency label
+    const latG = document.getElementById('s52-latency');
+    if (latG) anime({ targets: latG, opacity: 0, duration: 100 });
+
+    // User requests feed
+    animatePacket(svg, 100, 120, 225, 120, '#60a5fa', 7, 400, () => {
+      pulseStroke(svg, 280, 120, 20, '#f472b6', 400);
+      // Fan out to all followees in parallel
+      const followeeYs = [30, 75, 120, 165, 210];
+      let done = 0;
+      followeeYs.forEach((fy, i) => {
+        setTimeout(() => {
+          animatePacket(svg, 335, 120, 490, fy, '#f472b6', 5, 450, () => {
+            const pg = document.getElementById('s52-post-' + i);
+            if (pg) {
+              const rect = pg.querySelector('rect');
+              if (rect) anime({ targets: rect, stroke: '#f472b6', duration: 300 });
+            }
+            // Return results back to feed service
+            animatePacket(svg, 490, fy, 335, 120, '#fb923c', 4, 400, () => {
+              done++;
+              if (done === followeeYs.length) {
+                // Feed returned to user
+                animatePacket(svg, 225, 120, 100, 120, '#f472b6', 7, 400);
+                // Show latency
+                const latG = document.getElementById('s52-latency');
+                if (latG) anime({ targets: latG, opacity: [0, 1], duration: 400 });
+              }
+            });
+          });
+        }, i * 80);
+      });
+    });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-52'));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Section 5.3 — Hybrid Fan-out
+  // ════════════════════════════════════════════════════════════════════════════
+
+  let s53_isCelebrity = false;
+
+  window.animate_s53 = function() {
+    s53_isCelebrity = false;
+    const lbl = document.getElementById('s53-mode-lbl');
+    if (lbl) { lbl.textContent = 'REGULAR USER'; lbl.style.color = 'var(--accent)'; }
+    s53_draw();
+  };
+
+  function s53_draw() {
+    const svg = document.getElementById('svg-53');
+    clearSVG(svg);
+
+    // Author node
+    const authorLabel = s53_isCelebrity ? 'Celebrity' : 'Regular User';
+    const authorColor = s53_isCelebrity ? '#fb923c' : '#f472b6';
+    drawNode(svg, 70, 120, 95, 38, authorLabel, '#161b22', authorColor);
+    if (s53_isCelebrity) {
+      svg.appendChild(svgText(70, 144, '>10K followers', '#fb923c', 9, 'middle', 'Inter,sans-serif'));
+    } else {
+      svg.appendChild(svgText(70, 144, '<10K followers', '#8b949e', 9, 'middle', 'Inter,sans-serif'));
+    }
+
+    // Fan-out / Post Store in center
+    if (s53_isCelebrity) {
+      // Celebrity: post goes to celebrity post store (no pre-fan-out)
+      drawNode(svg, 290, 120, 130, 38, 'Post Store', '#161b22', '#fb923c');
+      svg.appendChild(svgText(290, 142, '(celebrity posts)', '#8b949e', 9, 'middle', 'Inter,sans-serif'));
+      svg.appendChild(svgLine(118, 120, 225, 120, '#30363d', 1.5));
+
+      // On-demand pull label
+      const pullG = makeSVGEl('g');
+      pullG.setAttribute('id', 's53-pull-label');
+      const pullBg = svgRect(290, 168, 150, 22, 'rgba(251,146,60,0.12)', '#fb923c', 4);
+      pullG.appendChild(pullBg);
+      pullG.appendChild(svgText(290, 179, 'pulled on feed open', '#fb923c', 9, 'middle', 'Inter,sans-serif'));
+      svg.appendChild(pullG);
+
+      // Follower feed caches (right) showing they don't have celebrity post pre-written
+      const cacheYs = [50, 110, 170];
+      cacheYs.forEach((cy, i) => {
+        svg.appendChild(svgLine(355, 120, 490, cy, '#30363d', 1, '4,4'));
+        const cg = makeSVGEl('g');
+        cg.setAttribute('id', 's53-cache-' + i);
+        const cr = svgRect(490, cy - 14, 140, 28, '#161b22', '#30363d', 4);
+        cg.appendChild(cr);
+        cg.appendChild(svgText(560, cy, 'Feed Cache (pull)', '#8b949e', 9, 'middle', "'JetBrains Mono',monospace"));
+        svg.appendChild(cg);
+      });
+    } else {
+      // Regular user: fan-out pre-writes to all followers
+      drawNode(svg, 290, 120, 110, 38, 'Fan-out Svc', '#161b22', '#f472b6');
+      svg.appendChild(svgLine(118, 120, 235, 120, '#30363d', 1.5));
+
+      // 3 follower feed caches
+      const cacheYs = [50, 120, 190];
+      cacheYs.forEach((cy, i) => {
+        svg.appendChild(svgLine(345, 120, 490, cy, '#30363d', 1));
+        const cg = makeSVGEl('g');
+        cg.setAttribute('id', 's53-cache-' + i);
+        const cr = svgRect(490, cy - 14, 140, 28, '#161b22', '#30363d', 4);
+        cg.appendChild(cr);
+        cg.appendChild(svgText(560, cy, 'Feed Cache ' + (i + 1), '#8b949e', 9, 'middle', "'JetBrains Mono',monospace"));
+        svg.appendChild(cg);
+      });
+    }
+  }
+
+  window.toggleMode_s53 = function() {
+    s53_isCelebrity = !s53_isCelebrity;
+    const lbl = document.getElementById('s53-mode-lbl');
+    if (lbl) {
+      lbl.textContent = s53_isCelebrity ? 'CELEBRITY' : 'REGULAR USER';
+      lbl.style.color = s53_isCelebrity ? 'var(--orange)' : 'var(--accent)';
+    }
+    s53_draw();
+  };
+
+  window.publish_s53 = function() {
+    const svg = document.getElementById('svg-53');
+    if (s53_isCelebrity) {
+      // Celebrity: post goes to post store only (no pre-fanout)
+      animatePacket(svg, 118, 120, 225, 120, '#fb923c', 7, 500, () => {
+        pulseStroke(svg, 290, 120, 20, '#fb923c', 400);
+        // Dashed lines to caches light up to show "on demand"
+        const cacheYs = [50, 110, 170];
+        cacheYs.forEach((cy, i) => {
+          setTimeout(() => {
+            const cg = document.getElementById('s53-cache-' + i);
+            if (cg) {
+              const rect = cg.querySelector('rect');
+              if (rect) anime({ targets: rect, stroke: '#fb923c', duration: 300 });
+            }
+          }, i * 200 + 300);
+        });
+      });
+    } else {
+      // Regular user: fan out to all caches
+      animatePacket(svg, 118, 120, 235, 120, '#f472b6', 7, 500, () => {
+        pulseStroke(svg, 290, 120, 20, '#f472b6', 400);
+        const cacheYs = [50, 120, 190];
+        cacheYs.forEach((cy, i) => {
+          setTimeout(() => {
+            animatePacket(svg, 345, 120, 490, cy, '#f472b6', 5, 450, () => {
+              const cg = document.getElementById('s53-cache-' + i);
+              if (cg) {
+                const rect = cg.querySelector('rect');
+                if (rect) anime({ targets: rect, stroke: '#f472b6', duration: 300 });
+              }
+            });
+          }, i * 80);
+        });
+      });
+    }
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-53'));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Section 5.4 — Notification System
+  // ════════════════════════════════════════════════════════════════════════════
+
+  window.animate_s54 = function() {
+    const svg = document.getElementById('svg-54');
+    clearSVG(svg);
+
+    // Publisher
+    drawNode(svg, 60, 140, 80, 38, 'Publisher', '#161b22', '#f472b6');
+
+    // Notification Server
+    drawNode(svg, 220, 140, 120, 42, 'Notification', '#161b22', '#f472b6');
+    svg.appendChild(svgText(220, 156, 'Server', '#e6edf3', 11, 'middle', "'JetBrains Mono',monospace"));
+
+    // Arrow publisher -> notif server
+    svg.appendChild(svgLine(100, 140, 160, 140, '#30363d', 1.5));
+
+    // 4 branches: APNs, FCM, SMS, Email
+    const channels = [
+      { id: 's54-apns',    y: 50,  label: 'APNs (iOS)',     color: '#60a5fa'  },
+      { id: 's54-fcm',     y: 110, label: 'FCM (Android)',  color: '#f472b6'  },
+      { id: 's54-sms',     y: 170, label: 'SMS (Twilio)',   color: '#fb923c'  },
+      { id: 's54-email',   y: 230, label: 'Email (SendGrid)', color: '#a78bfa' },
+    ];
+
+    channels.forEach(ch => {
+      svg.appendChild(svgLine(280, 140, 450, ch.y, '#30363d', 1));
+      const cg = makeSVGEl('g');
+      cg.setAttribute('id', ch.id);
+      const cr = svgRect(450, ch.y - 15, 150, 30, '#161b22', '#30363d', 6);
+      cr.setAttribute('id', ch.id + '-rect');
+      cg.appendChild(cr);
+      cg.appendChild(svgText(525, ch.y, ch.label, '#8b949e', 10, 'middle', "'JetBrains Mono',monospace"));
+      svg.appendChild(cg);
+    });
+
+    // Retry queue node (hidden initially)
+    const retryG = makeSVGEl('g');
+    retryG.setAttribute('id', 's54-retry');
+    retryG.setAttribute('opacity', '0');
+    const retryBg = svgRect(450, 95, 150, 30, 'rgba(248,113,113,0.12)', '#f87171', 6);
+    retryG.appendChild(retryBg);
+    retryG.appendChild(svgText(525, 110, 'Retry Queue', '#f87171', 10, 'middle', "'JetBrains Mono',monospace"));
+    svg.appendChild(retryG);
+  };
+
+  window.sendNotification_s54 = function() {
+    const svg = document.getElementById('svg-54');
+
+    // Reset retry queue
+    const retryG = document.getElementById('s54-retry');
+    if (retryG) anime({ targets: retryG, opacity: 0, duration: 200 });
+
+    // Reset all channel rects
+    ['s54-apns-rect', 's54-fcm-rect', 's54-sms-rect', 's54-email-rect'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) anime({ targets: el, stroke: '#30363d', duration: 200 });
+    });
+
+    // Packet from publisher to notification server
+    animatePacket(svg, 100, 140, 160, 140, '#f472b6', 7, 400, () => {
+      pulseStroke(svg, 220, 140, 22, '#f472b6', 400);
+      // Fan out to all 4 channels simultaneously
+      const channels = [
+        { y: 50,  color: '#60a5fa', rectId: 's54-apns-rect'  },
+        { y: 110, color: '#f472b6', rectId: 's54-fcm-rect'   },
+        { y: 170, color: '#fb923c', rectId: 's54-sms-rect'   },
+        { y: 230, color: '#a78bfa', rectId: 's54-email-rect' },
+      ];
+      channels.forEach((ch, i) => {
+        setTimeout(() => {
+          animatePacket(svg, 280, 140, 450, ch.y, ch.color, 6, 500, () => {
+            const rect = document.getElementById(ch.rectId);
+            if (rect) anime({ targets: rect, stroke: ch.color, duration: 300 });
+            pulseStroke(svg, 525, ch.y, 18, ch.color, 500);
+          });
+        }, i * 100);
+      });
+    });
+  };
+
+  window.simulateFailure_s54 = function() {
+    const svg = document.getElementById('svg-54');
+
+    // Send to FCM channel — it fails
+    animatePacket(svg, 100, 140, 160, 140, '#f472b6', 7, 400, () => {
+      pulseStroke(svg, 220, 140, 22, '#f472b6', 400);
+      // Only FCM packet, in red
+      animatePacket(svg, 280, 140, 450, 110, '#f87171', 7, 500, () => {
+        const fcmRect = document.getElementById('s54-fcm-rect');
+        if (fcmRect) anime({ targets: fcmRect, stroke: '#f87171', fill: 'rgba(248,113,113,0.12)', duration: 300 });
+
+        // Show retry queue
+        const retryG = document.getElementById('s54-retry');
+        if (retryG) anime({ targets: retryG, opacity: [0, 1], duration: 400 });
+
+        // After a delay, backoff → retry → success
+        setTimeout(() => {
+          // Backoff timer: packet from FCM to retry queue
+          animatePacket(svg, 450, 110, 450, 95, '#fb923c', 5, 300, () => {
+            pulseStroke(svg, 525, 110, 12, '#fb923c', 400);
+            // Retry after backoff
+            setTimeout(() => {
+              animatePacket(svg, 280, 140, 450, 110, '#4ade80', 7, 600, () => {
+                if (fcmRect) anime({ targets: fcmRect, stroke: '#4ade80', fill: '#161b22', duration: 400 });
+                pulseStroke(svg, 525, 110, 18, '#4ade80', 500);
+                if (retryG) anime({ targets: retryG, opacity: 0, duration: 600 });
+              });
+            }, 900);
+          });
+        }, 700);
+      });
+    });
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-54'));
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // Section 5.5 — Chat System (WebSocket)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  let s55_online = true;
+  let s55_heartbeatInterval = null;
+
+  window.animate_s55 = function() {
+    s55_online = true;
+    if (s55_heartbeatInterval) clearInterval(s55_heartbeatInterval);
+    s55_heartbeatInterval = null;
+    s55_draw();
+    s55_startHeartbeat();
+  };
+
+  function s55_draw() {
+    const svg = document.getElementById('svg-55');
+    clearSVG(svg);
+
+    // Sender (left)
+    drawNode(svg, 50, 100, 75, 38, 'Sender', '#161b22', '#f472b6');
+
+    // Chat Server A
+    drawNode(svg, 190, 100, 100, 38, 'Chat Srv A', '#161b22', '#f472b6');
+
+    // Message Queue (center)
+    drawNode(svg, 350, 100, 110, 38, 'Msg Queue', '#161b22', '#30363d');
+
+    // Chat Server B
+    drawNode(svg, 510, 100, 100, 38, 'Chat Srv B', '#161b22', '#f472b6');
+
+    // Receiver (right)
+    drawNode(svg, 650, 100, 75, 38, 'Receiver', '#161b22', '#f472b6');
+
+    // WebSocket persistent lines (solid colored lines)
+    const wsLeft = svgLine(88, 100, 140, 100, '#f472b6', 2.5);
+    wsLeft.setAttribute('id', 's55-ws-left');
+    svg.appendChild(wsLeft);
+
+    const wsRight = svgLine(560, 100, 613, 100, '#f472b6', 2.5);
+    wsRight.setAttribute('id', 's55-ws-right');
+    svg.appendChild(wsRight);
+
+    // HTTP arrows between servers and queue
+    svg.appendChild(svgLine(240, 100, 295, 100, '#30363d', 1.5));
+    svg.appendChild(svgLine(405, 100, 460, 100, '#30363d', 1.5));
+
+    // WS label
+    svg.appendChild(svgText(113, 82, 'WS', '#f472b6', 9, 'middle', "'JetBrains Mono',monospace"));
+    svg.appendChild(svgText(587, 82, 'WS', '#f472b6', 9, 'middle', "'JetBrains Mono',monospace"));
+
+    // Presence indicator
+    const presG = makeSVGEl('g');
+    presG.setAttribute('id', 's55-presence');
+    const presBg = svgRect(350, 175, 180, 26, 'rgba(74,222,128,0.12)', '#4ade80', 4);
+    presG.appendChild(presBg);
+    const presTxt = svgText(350, 188, 'online', '#4ade80', 10, 'middle', "'JetBrains Mono',monospace");
+    presTxt.setAttribute('id', 's55-presence-txt');
+    presG.appendChild(presTxt);
+    svg.appendChild(presG);
+
+    // Group chat receiver labels
+    const grpYs = [210, 235, 260];
+    grpYs.forEach((gy, i) => {
+      const gg = makeSVGEl('g');
+      gg.setAttribute('id', 's55-grp-' + i);
+      const gr = svgRect(600, gy, 140, 20, '#161b22', '#30363d', 3);
+      gg.appendChild(gr);
+      gg.appendChild(svgText(600, gy, 'Group Member ' + (i + 1), '#8b949e', 9, 'middle', "'JetBrains Mono',monospace"));
+      svg.appendChild(gg);
+    });
+
+    // Lines to group members
+    grpYs.forEach(gy => {
+      svg.appendChild(svgLine(510, 119, 530, gy, '#30363d', 1, '3,3'));
+    });
+
+    // Heartbeat dot
+    const hbCircle = makeSVGEl('circle');
+    hbCircle.setAttribute('cx', 350);
+    hbCircle.setAttribute('cy', 145);
+    hbCircle.setAttribute('r', 5);
+    hbCircle.setAttribute('fill', '#4ade80');
+    hbCircle.setAttribute('id', 's55-hb');
+    svg.appendChild(hbCircle);
+    const hbLbl = svgText(350, 158, 'heartbeat', '#8b949e', 9, 'middle', 'Inter,sans-serif');
+    hbLbl.setAttribute('id', 's55-hb-lbl');
+    svg.appendChild(hbLbl);
+  }
+
+  function s55_startHeartbeat() {
+    const svg = document.getElementById('svg-55');
+    s55_heartbeatInterval = setInterval(() => {
+      if (!s55_online) return;
+      const hb = document.getElementById('s55-hb');
+      if (!hb || !svg.contains(hb)) return;
+      anime({ targets: hb, r: [5, 9, 5], opacity: [1, 0.4, 1], duration: 600, easing: 'easeInOutSine' });
+    }, 1200);
+  }
+
+  window.sendMessage_s55 = function() {
+    const svg = document.getElementById('svg-55');
+    if (!s55_online) return;
+
+    // Sender → Chat Srv A (WS)
+    animatePacket(svg, 88, 100, 140, 100, '#f472b6', 7, 300, () => {
+      pulseStroke(svg, 190, 100, 20, '#f472b6', 350);
+      // Chat Srv A → Msg Queue
+      animatePacket(svg, 240, 100, 295, 100, '#60a5fa', 6, 350, () => {
+        pulseStroke(svg, 350, 100, 20, '#60a5fa', 350);
+        // Msg Queue → Chat Srv B
+        animatePacket(svg, 405, 100, 460, 100, '#60a5fa', 6, 350, () => {
+          pulseStroke(svg, 510, 100, 20, '#f472b6', 350);
+          // Chat Srv B → Receiver (WS)
+          animatePacket(svg, 560, 100, 613, 100, '#f472b6', 7, 300, () => {
+            pulseStroke(svg, 650, 100, 18, '#f472b6', 400);
+            // Also fan out to group members
+            const grpYs = [210, 235, 260];
+            grpYs.forEach((gy, i) => {
+              setTimeout(() => {
+                animatePacket(svg, 530, gy, 600, gy, '#a78bfa', 4, 350, () => {
+                  const gg = document.getElementById('s55-grp-' + i);
+                  if (gg) {
+                    const r = gg.querySelector('rect');
+                    if (r) anime({ targets: r, stroke: '#a78bfa', duration: 300 });
+                  }
+                });
+              }, i * 120);
+            });
+          });
+        });
+      });
+    });
+  };
+
+  window.goOffline_s55 = function() {
+    const svg = document.getElementById('svg-55');
+    s55_online = false;
+    if (s55_heartbeatInterval) { clearInterval(s55_heartbeatInterval); s55_heartbeatInterval = null; }
+
+    // Dim WS lines
+    const wsLeft = document.getElementById('s55-ws-left');
+    const wsRight = document.getElementById('s55-ws-right');
+    if (wsLeft) anime({ targets: wsLeft, stroke: '#30363d', strokeWidth: 1, duration: 600 });
+    if (wsRight) anime({ targets: wsRight, stroke: '#30363d', strokeWidth: 1, duration: 600 });
+
+    // Stop heartbeat dot
+    const hb = document.getElementById('s55-hb');
+    if (hb) anime({ targets: hb, fill: '#30363d', r: 4, duration: 500 });
+
+    // Update presence label
+    const presTxt = document.getElementById('s55-presence-txt');
+    if (presTxt) {
+      anime({
+        targets: presTxt, opacity: [1, 0], duration: 400,
+        complete: () => {
+          presTxt.textContent = 'last seen 2s ago';
+          presTxt.setAttribute('fill', '#8b949e');
+          anime({ targets: presTxt, opacity: [0, 1], duration: 400 });
+        }
+      });
+    }
+
+    // Dim presence bg
+    const presG = document.getElementById('s55-presence');
+    if (presG) {
+      const bg = presG.querySelector('rect');
+      if (bg) anime({ targets: bg, stroke: '#8b949e', duration: 600 });
+    }
+  };
+
+  window.sectionObserver.observe(document.getElementById('s-55'));
+
+  // ─── Observe all sections ────────────────────────────────────────────────────
+  document.querySelectorAll('.concept-section').forEach(el => window.sectionObserver.observe(el));
+  // ─── Sidebar toggle ───────────────────────────────────────────────────────
+  (function() {
+    const body = document.body;
+    const toggle = document.getElementById("sidebar-toggle");
+    const overlay = document.getElementById("sidebar-overlay");
+    const drawer = document.getElementById("sidebar-drawer");
+    const closeBtn = document.getElementById("sidebar-close");
+
+    function openSidebar() {
+      body.classList.add("sidebar-open");
+      overlay.classList.add("open");
+      drawer.classList.add("open");
+      drawer.setAttribute("aria-hidden", "false");
+      toggle.setAttribute("aria-expanded", "true");
+    }
+    function closeSidebar() {
+      body.classList.remove("sidebar-open");
+      overlay.classList.remove("open");
+      drawer.classList.remove("open");
+      drawer.setAttribute("aria-hidden", "true");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+
+    toggle.addEventListener("click", function() {
+      body.classList.contains("sidebar-open") ? closeSidebar() : openSidebar();
+    });
+    overlay.addEventListener("click", closeSidebar);
+    if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+
+    // Chapter accordion
+    document.querySelectorAll(".drawer-group-toggle").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const group = btn.closest(".drawer-group");
+        const isCollapsed = group.classList.toggle("collapsed");
+        btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      });
+    });
+
+    // Close sidebar when a section link is clicked (mobile)
+    drawer.querySelectorAll('a[href^="#"]').forEach(function(a) {
+      a.addEventListener("click", closeSidebar);
+    });
+  })();
+</script>
+
+</body>
+</html>

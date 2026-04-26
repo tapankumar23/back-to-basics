@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Service & Leaderboard — System Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #f97316;
+      --accent-dim: rgba(249,115,22,0.15);
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --red: #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: var(--accent); width: 0%; z-index: 1000;
+      transition: width 0.1s linear;
+    }
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      margin-right: 1.5rem;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px;
+      padding-right: 16px;
+    }
+    #navbar a.back-link:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-pager {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-right: 12px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted);
+      font-size: 9px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title {
+      font-size: 11px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    #navbar .chapter-nav-chip .nav-arrow {
+      color: var(--accent);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+    .concept-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); }
+    .btn.danger { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.1); }
+    .btn.danger:hover { background: rgba(248,113,113,0.2); }
+    .diagram-area {
+      padding: 20px;
+      min-height: 220px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .diagram-area svg { width: 100%; overflow: visible; }
+    .insight-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .chapter-nav-link,
+    .chapter-nav-disabled,
+    .chapter-nav-current {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 62px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .chapter-nav-link:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-nav-link.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-link .nav-kicker,
+    .chapter-nav-disabled .nav-kicker,
+    .chapter-nav-current .nav-kicker {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title,
+    .chapter-nav-disabled .nav-title,
+    .chapter-nav-current .nav-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .chapter-nav-link .nav-arrow,
+    .chapter-nav-disabled .nav-arrow {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .chapter-nav-disabled {
+      opacity: 0.38;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .chapter-nav-disabled.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-current {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav {
+        grid-template-columns: 1fr;
+      }
+      .chapter-nav-link.next,
+      .chapter-nav-disabled.next {
+        text-align: left;
+        align-items: flex-start;
+      }
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+    body.sidebar-open { overflow: hidden; }
+    #sidebar-toggle {
+      position: fixed;
+      top: 60px;
+      left: 16px;
+      z-index: 1001;
+      border: 1px solid var(--border);
+      background: rgba(22,27,34,0.92);
+      color: var(--accent, var(--text));
+      border-radius: 14px;
+      width: 46px;
+      height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+    }
+    #sidebar-toggle:hover {
+      transform: translateY(-1px);
+      background: rgba(28,35,48,0.98);
+      color: var(--text);
+    }
+    #sidebar-toggle .hamburger-line {
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) { opacity: 0; }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #sidebar-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(6,10,16,0.12);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+      z-index: 1001;
+    }
+    #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+    #sidebar-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(340px, 86vw);
+      height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 18%), #0f141b;
+      border-right: 1px solid var(--border);
+      box-shadow: 24px 0 50px rgba(0,0,0,0.35);
+      padding: 22px 18px 24px;
+      transform: translateX(-102%);
+      transition: transform 0.24s ease;
+      z-index: 1002;
+      overflow-y: auto;
+    }
+    #sidebar-drawer.open { transform: translateX(0); }
+    .drawer-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .drawer-title {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .drawer-kicker {
+      color: var(--accent, var(--text));
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .drawer-heading {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .drawer-close {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 999px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .drawer-close:hover { color: var(--text); border-color: var(--accent, var(--text)); }
+    .drawer-index-link {
+      display: block;
+      text-decoration: none;
+      color: var(--accent, var(--text));
+      background: var(--accent-dim, rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+    }
+    .drawer-index-link strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .drawer-index-link span { color: var(--text-muted); font-size: 12px; }
+    .drawer-nav { display: flex; flex-direction: column; gap: 16px; }
+    .drawer-group {
+      border: 1px solid rgba(48,54,61,0.9);
+      border-radius: 14px;
+      background: rgba(22,27,34,0.75);
+      overflow: hidden;
+    }
+    .drawer-group.current {
+      border-color: rgba(255,255,255,0.24);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .drawer-group-header {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(48,54,61,0.8);
+      background: rgba(255,255,255,0.02);
+    }
+    .drawer-group-title { flex: 1; min-width: 0; }
+    .drawer-group-header .eyebrow {
+      display: block;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-group-header .name { color: var(--text); font-size: 14px; font-weight: 600; }
+    .drawer-group-header .name a { color: inherit; text-decoration: none; }
+    .drawer-group-header .name a:hover { color: var(--accent, var(--text)); }
+    .drawer-group-toggle {
+      flex: 0 0 auto;
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .drawer-group-toggle:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+    .drawer-group-toggle:focus-visible {
+      outline: 2px solid var(--accent, var(--text));
+      outline-offset: 2px;
+    }
+    .drawer-chevron {
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-chevron { transform: rotate(-45deg) translate(-1px, 1px); }
+    .drawer-subnav {
+      list-style: none;
+      padding: 8px;
+      max-height: 640px;
+      opacity: 1;
+      overflow: hidden;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-subnav {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    .drawer-subnav li + li { margin-top: 4px; }
+    .drawer-subnav a {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 10px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+    }
+    .drawer-subnav a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .drawer-subnav .sub-num {
+      color: var(--accent, var(--text));
+      font-size: 11px;
+      min-width: 52px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-subnav .sub-label { font-size: 13px; }
+  </style>
+</head>
+<body class="sidebar-open">
+<div id="progress-bar"></div>
+<button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="true" aria-label="Toggle navigation menu">
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="sr-only">Toggle navigation menu</span>
+</button>
+<div id="sidebar-overlay" class="open"></div>
+<aside id="sidebar-drawer" class="open" aria-hidden="false">
+  <div class="drawer-top">
+    <div class="drawer-title">
+      <span class="drawer-kicker">Navigation</span>
+      <span class="drawer-heading">11 Email & Leaderboard</span>
+    </div>
+    <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+  </div>
+<a class="drawer-index-link" href="00_index.html">
+  <strong>Galaxy Index</strong>
+  <span>Return to the system design constellation map</span>
+</a>
+  <nav class="drawer-nav" aria-label="System design outline">
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="01_scaling_fundamentals.html">01 Scaling</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="01_scaling_fundamentals.html#s-11"><span class="sub-num">1.1</span><span class="sub-label">Single Server</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-12"><span class="sub-num">1.2</span><span class="sub-label">Scaling</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-13"><span class="sub-num">1.3</span><span class="sub-label">Load Balancer</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-14"><span class="sub-num">1.4</span><span class="sub-label">DB Replication</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-15"><span class="sub-num">1.5</span><span class="sub-label">Cache</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-16"><span class="sub-num">1.6</span><span class="sub-label">CDN</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-17"><span class="sub-num">1.7</span><span class="sub-label">Stateless</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-18"><span class="sub-num">1.8</span><span class="sub-label">Msg Queue</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-19"><span class="sub-num">1.9</span><span class="sub-label">Sharding</span></a></li>
+        <li><a href="01_scaling_fundamentals.html#s-110"><span class="sub-num">1.10</span><span class="sub-label">Data Centers</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="02_core_distributed_systems.html">02 Core Distributed Systems</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="02_core_distributed_systems.html#s-21"><span class="sub-num">2.1</span><span class="sub-label">Consistent Hashing</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-22"><span class="sub-num">2.2</span><span class="sub-label">KV Store</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-23"><span class="sub-num">2.3</span><span class="sub-label">CAP Theorem</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-24"><span class="sub-num">2.4</span><span class="sub-label">Gossip</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-25"><span class="sub-num">2.5</span><span class="sub-label">Quorum</span></a></li>
+        <li><a href="02_core_distributed_systems.html#s-26"><span class="sub-num">2.6</span><span class="sub-label">Merkle Trees</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="03_rate_limiter_and_id_gen.html">03 Rate Limiter & ID</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="03_rate_limiter_and_id_gen.html#s-31"><span class="sub-num">3.1</span><span class="sub-label">Token Bucket</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-32"><span class="sub-num">3.2</span><span class="sub-label">Leaky Bucket</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-33"><span class="sub-num">3.3</span><span class="sub-label">Fixed Window</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-34"><span class="sub-num">3.4</span><span class="sub-label">Sliding Window</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-35"><span class="sub-num">3.5</span><span class="sub-label">Distributed RL</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-36"><span class="sub-num">3.6</span><span class="sub-label">Snowflake ID</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-37"><span class="sub-num">3.7</span><span class="sub-label">UUID</span></a></li>
+        <li><a href="03_rate_limiter_and_id_gen.html#s-38"><span class="sub-num">3.8</span><span class="sub-label">Ticket Server</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="04_storage_and_search.html">04 Storage & Search</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="04_storage_and_search.html#s-41"><span class="sub-num">4.1</span><span class="sub-label">URL Shortener</span></a></li>
+        <li><a href="04_storage_and_search.html#s-42"><span class="sub-num">4.2</span><span class="sub-label">Web Crawler</span></a></li>
+        <li><a href="04_storage_and_search.html#s-43"><span class="sub-num">4.3</span><span class="sub-label">Trie Autocomplete</span></a></li>
+        <li><a href="04_storage_and_search.html#s-44"><span class="sub-num">4.4</span><span class="sub-label">Google Drive</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="05_feeds_and_messaging.html">05 Feeds & Messaging</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="05_feeds_and_messaging.html#s-51"><span class="sub-num">5.1</span><span class="sub-label">Push Feed</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-52"><span class="sub-num">5.2</span><span class="sub-label">Pull Feed</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-53"><span class="sub-num">5.3</span><span class="sub-label">Hybrid Feed</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-54"><span class="sub-num">5.4</span><span class="sub-label">Notifications</span></a></li>
+        <li><a href="05_feeds_and_messaging.html#s-55"><span class="sub-num">5.5</span><span class="sub-label">Chat/WebSocket</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="06_video_and_object_storage.html">06 Video & Storage</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="06_video_and_object_storage.html#s-61"><span class="sub-num">6.1</span><span class="sub-label">Upload Pipeline</span></a></li>
+        <li><a href="06_video_and_object_storage.html#s-62"><span class="sub-num">6.2</span><span class="sub-label">Video Streaming</span></a></li>
+        <li><a href="06_video_and_object_storage.html#s-63"><span class="sub-num">6.3</span><span class="sub-label">Object Storage</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="07_geo_and_realtime.html">07 Geo & Realtime</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="07_geo_and_realtime.html#s-71"><span class="sub-num">7.1</span><span class="sub-label">Geohash</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-72"><span class="sub-num">7.2</span><span class="sub-label">Quadtree</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-73"><span class="sub-num">7.3</span><span class="sub-label">Nearby Friends</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-74"><span class="sub-num">7.4</span><span class="sub-label">Routing</span></a></li>
+        <li><a href="07_geo_and_realtime.html#s-75"><span class="sub-num">7.5</span><span class="sub-label">Map Tiles</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="08_data_pipelines.html">08 Data Pipelines</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="08_data_pipelines.html#s-81"><span class="sub-num">8.1</span><span class="sub-label">Kafka-like MQ</span></a></li>
+        <li><a href="08_data_pipelines.html#s-82"><span class="sub-num">8.2</span><span class="sub-label">Metrics Monitor</span></a></li>
+        <li><a href="08_data_pipelines.html#s-83"><span class="sub-num">8.3</span><span class="sub-label">Ad Click Agg</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="09_financial_systems.html">09 Financial Systems</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="09_financial_systems.html#s-91"><span class="sub-num">9.1</span><span class="sub-label">Hotel Reserve</span></a></li>
+        <li><a href="09_financial_systems.html#s-92"><span class="sub-num">9.2</span><span class="sub-label">Payment</span></a></li>
+        <li><a href="09_financial_systems.html#s-93"><span class="sub-num">9.3</span><span class="sub-label">Digital Wallet</span></a></li>
+        <li><a href="09_financial_systems.html#s-94"><span class="sub-num">9.4</span><span class="sub-label">Stock Exchange</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="10_interview_foundations.html">10 Interview Foundations</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="10_interview_foundations.html#s-101"><span class="sub-num">10.1</span><span class="sub-label">Back-of-Envelope</span></a></li>
+        <li><a href="10_interview_foundations.html#s-102"><span class="sub-num">10.2</span><span class="sub-label">Interview Framework</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group current">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="11_email_and_leaderboard.html">11 Email & Leaderboard</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Collapse chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="#s-111"><span class="sub-num">11.1</span><span class="sub-label">Email Service</span></a></li>
+        <li><a href="#s-112"><span class="sub-num">11.2</span><span class="sub-label">Leaderboard</span></a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+<nav id="navbar">
+  <span class="nav-brand">11 — Email & Leaderboard</span>
+  <a class="back-link" href="00_index.html">← Galaxy Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <a class="chapter-nav-chip" href="10_interview_foundations.html" aria-label="Previous Chapter: Interview Foundations" title="Previous Chapter: Interview Foundations">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Interview Foundations<span class="nav-arrow" aria-hidden="true">←</span></span>
+    </a>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">11</span>
+    </span>
+    <span class="chapter-nav-chip disabled" aria-hidden="true">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Next<span class="nav-arrow">→</span></span>
+    </span>
+  </div>
+  <a href="#s-111">Email Service</a>
+  <a href="#s-112">Leaderboard</a>
+</nav>
+<main>
+  <div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">Email Service & Leaderboard</h1>
+    <p style="color:var(--text-muted);margin-top:4px;">Distributed email delivery pipelines and real-time leaderboard design</p>
+  </div>
+<section id="s-111" class="concept-section">
+  <div class="section-card">
+    <div class="card-header">
+      <div class="header-left">
+        <span class="section-num">11.1 —</span>
+        <span class="section-title">Distributed Email Service</span>
+        <span class="section-desc">Campaign ingestion, delivery workers, and retry pipelines</span>
+      </div>
+      <div class="header-controls">
+        <button class="btn" onclick="window.sendBatch_s111()">Send Batch</button>
+        <button class="btn danger" onclick="window.retryFlow_s111()">Simulate Bounce</button>
+        <button class="btn" onclick="window.animate_s111()">Reset</button>
+      </div>
+    </div>
+    <div class="diagram-area">
+      <svg id="svg-111" viewBox="0 0 700 250" height="250"></svg>
+    </div>
+    <div class="insight-panel">
+      Email is a throughput-heavy, reputation-sensitive system. The pipeline needs ingestion APIs, durable queues, template rendering, rate-aware SMTP dispatch, feedback loops for bounces and complaints, and retry controls so one bad provider event does not stall the whole campaign.
+    </div>
+  </div>
+</section>
+
+<section id="s-112" class="concept-section">
+  <div class="section-card">
+    <div class="card-header">
+      <div class="header-left">
+        <span class="section-num">11.2 —</span>
+        <span class="section-title">Real-time Gaming Leaderboard</span>
+        <span class="section-desc">Hot-path ranking with sorted sets and durable event logs</span>
+      </div>
+      <div class="header-controls">
+        <button class="btn" onclick="window.newMatch_s112()">New Match</button>
+        <button class="btn" onclick="window.animate_s112()">Reset</button>
+      </div>
+    </div>
+    <div class="diagram-area">
+      <svg id="svg-112" viewBox="0 0 700 260" height="260"></svg>
+    </div>
+    <div class="insight-panel">
+      Leaderboards need ultra-fast score updates and reads, so the ranking lives in memory on the hot path, often using a sorted set. Durable logs and periodic snapshots protect against loss, while fanout layers cache top-N views for game clients around the world.
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="chapter-page-nav" aria-label="Chapter navigation">
+  <a class="chapter-nav-link prev" href="10_interview_foundations.html" aria-label="Previous Chapter: Interview Foundations">
+    <span class="nav-kicker">Previous Chapter</span>
+    <span class="nav-title">Interview Foundations</span>
+    <span class="nav-arrow" aria-hidden="true">←</span>
+  </a>
+  <div class="chapter-nav-current">
+    <span class="nav-kicker">Current Chapter</span>
+    <span class="nav-title">11 — Email Service & Leaderboard</span>
+  </div>
+  <div class="chapter-nav-disabled next" aria-hidden="true">
+    <span class="nav-kicker">Next Chapter</span>
+    <span class="nav-title">Not available</span>
+    <span class="nav-arrow">→</span>
+  </div>
+</div>
+
+<footer>System Design Concepts</footer>
+<script>
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+  });
+
+  window.sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        const fnName = 'animate_' + entry.target.id.replace('-', '');
+        const fn = window[fnName];
+        if (typeof fn === 'function') fn();
+        window.sectionObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.25 });
+
+  document.querySelectorAll('.concept-section').forEach(el => window.sectionObserver.observe(el));
+
+  function clearSVG(svgEl) {
+    svgEl._gen = (svgEl._gen || 0) + 1;
+    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+  }
+
+  function makeSVGEl(tag) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag);
+  }
+
+  function svgRect(x, y, w, h, opts) {
+    const r = makeSVGEl('rect');
+    r.setAttribute('x', x - w / 2);
+    r.setAttribute('y', y - h / 2);
+    r.setAttribute('width', w);
+    r.setAttribute('height', h);
+    r.setAttribute('rx', opts.rx || 6);
+    r.setAttribute('fill', opts.fill || '#161b22');
+    r.setAttribute('stroke', opts.stroke || '#30363d');
+    r.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.id) r.id = opts.id;
+    return r;
+  }
+
+  function svgText(x, y, content, fill, size, anchor, family) {
+    const t = makeSVGEl('text');
+    t.setAttribute('x', x);
+    t.setAttribute('y', y);
+    t.setAttribute('text-anchor', anchor || 'middle');
+    t.setAttribute('fill', fill || '#e6edf3');
+    t.setAttribute('font-size', size || 11);
+    if (family) t.setAttribute('font-family', family);
+    t.textContent = content;
+    return t;
+  }
+
+  function drawNode(svgEl, x, y, w, h, label, sub, opts) {
+    opts = opts || {};
+    const g = makeSVGEl('g');
+    const rect = svgRect(x, y, w, h, { stroke: opts.stroke || '#30363d', id: opts.id });
+    const t1 = svgText(x, y - 4, label, '#e6edf3', 11, 'middle', "'JetBrains Mono', monospace");
+    g.appendChild(rect);
+    g.appendChild(t1);
+    if (sub) {
+      const t2 = svgText(x, y + 11, sub, '#8b949e', 9, 'middle', 'Inter,sans-serif');
+      g.appendChild(t2);
+    }
+    svgEl.appendChild(g);
+    return { g, rect };
+  }
+
+  function animatePacket(svgEl, x1, y1, x2, y2, color, size, duration, onComplete) {
+    if (!svgEl._gen) svgEl._gen = 0;
+    const capturedGen = svgEl._gen;
+    const circle = makeSVGEl('circle');
+    circle.setAttribute('r', size || 6);
+    circle.setAttribute('fill', color);
+    circle.setAttribute('cx', x1);
+    circle.setAttribute('cy', y1);
+    svgEl.appendChild(circle);
+    anime({
+      targets: circle,
+      cx: x2,
+      cy: y2,
+      duration: duration || 700,
+      easing: 'easeInOutSine',
+      complete: () => {
+        if (svgEl.contains(circle)) svgEl.removeChild(circle);
+        if (svgEl._gen === capturedGen && onComplete) onComplete();
+      }
+    });
+  }
+
+  function pulseStroke(el, color) {
+    anime({ targets: el, stroke: [color || '#f97316', '#30363d'], duration: 600, easing: 'easeOutQuad' });
+  }
+
+let s112Players = [
+  ['Nova', 1780],
+  ['Aero', 1715],
+  ['Kite', 1680],
+  ['Rune', 1635],
+  ['Sage', 1590]
+];
+
+function s111_draw() {
+  const svg = document.getElementById('svg-111');
+  clearSVG(svg);
+  drawNode(svg, 80, 110, 115, 40, 'Composer UI', 'campaign request', { id: 's111-ui', stroke: '#f97316' });
+  drawNode(svg, 205, 110, 120, 40, 'Email API', 'auth + dedupe', { id: 's111-api', stroke: '#60a5fa' });
+  drawNode(svg, 340, 110, 130, 44, 'Delivery Queue', 'durable buffer', { id: 's111-queue', stroke: '#818cf8' });
+  drawNode(svg, 485, 65, 135, 40, 'Render Worker', 'template merge', { id: 's111-render', stroke: '#fb923c' });
+  drawNode(svg, 485, 155, 135, 40, 'SMTP Pool', 'provider routing', { id: 's111-smtp', stroke: '#4ade80' });
+  drawNode(svg, 635, 65, 110, 36, 'Inbox', 'delivered', { id: 's111-inbox', stroke: '#4ade80' });
+  drawNode(svg, 635, 165, 110, 36, 'Retry Queue', 'bounces', { id: 's111-retry', stroke: '#f87171' });
+  svg.appendChild(svgText(350, 20, 'Campaign ingestion stays decoupled from provider delivery', '#8b949e', 11, 'middle', 'Inter,sans-serif'));
+}
+
+window.animate_s111 = function() {
+  s111_draw();
+};
+
+window.sendBatch_s111 = function() {
+  s111_draw();
+  const svg = document.getElementById('svg-111');
+  animatePacket(svg, 135, 110, 145, 110, '#f97316', 6, 220, () => pulseStroke(document.getElementById('s111-api'), '#60a5fa'));
+  setTimeout(() => animatePacket(svg, 265, 110, 275, 110, '#60a5fa', 6, 220, () => pulseStroke(document.getElementById('s111-queue'), '#818cf8')), 180);
+  setTimeout(() => animatePacket(svg, 405, 110, 415, 70, '#818cf8', 6, 280, () => pulseStroke(document.getElementById('s111-render'), '#fb923c')), 360);
+  setTimeout(() => animatePacket(svg, 552, 80, 580, 70, '#fb923c', 6, 240, () => pulseStroke(document.getElementById('s111-inbox'), '#4ade80')), 620);
+  setTimeout(() => animatePacket(svg, 405, 110, 415, 150, '#818cf8', 6, 280, () => pulseStroke(document.getElementById('s111-smtp'), '#4ade80')), 360);
+};
+
+window.retryFlow_s111 = function() {
+  s111_draw();
+  const svg = document.getElementById('svg-111');
+  animatePacket(svg, 550, 155, 585, 165, '#f87171', 6, 260, () => pulseStroke(document.getElementById('s111-retry'), '#f87171'));
+  setTimeout(() => animatePacket(svg, 585, 165, 485, 155, '#facc15', 6, 360, () => pulseStroke(document.getElementById('s111-smtp'), '#facc15')), 320);
+};
+
+function s112_draw() {
+  const svg = document.getElementById('svg-112');
+  clearSVG(svg);
+  drawNode(svg, 130, 40, 145, 36, 'Game Events', 'score updates', { id: 's112-events', stroke: '#60a5fa' });
+  drawNode(svg, 350, 40, 165, 36, 'Redis Sorted Set', 'hot ranking path', { id: 's112-redis', stroke: '#f97316' });
+  drawNode(svg, 575, 40, 135, 36, 'Event Log', 'durable replay', { id: 's112-log', stroke: '#818cf8' });
+  svg.appendChild(svgText(350, 82, 'Top 5 leaderboard', '#8b949e', 11, 'middle', 'Inter,sans-serif'));
+
+  const maxScore = Math.max(...s112Players.map((player) => player[1]));
+  s112Players.forEach((player, idx) => {
+    const y = 115 + idx * 28;
+    const width = 160 + Math.round((player[1] / maxScore) * 180);
+    const bar = svgRect(260 + width / 2, y, width, 18, {
+      fill: idx === 0 ? 'rgba(249,115,22,0.22)' : 'rgba(255,255,255,0.05)',
+      stroke: idx === 0 ? '#f97316' : '#30363d',
+      rx: 5
+    });
+    svg.appendChild(bar);
+    svg.appendChild(svgText(90, y + 4, `#${idx + 1} ${player[0]}`, idx === 0 ? '#f97316' : '#e6edf3', 11, 'start', "'JetBrains Mono',monospace"));
+    svg.appendChild(svgText(450 + width / 2, y + 4, String(player[1]), '#8b949e', 10, 'end', "'JetBrains Mono',monospace"));
+  });
+}
+
+window.animate_s112 = function() {
+  s112Players = [
+    ['Nova', 1780],
+    ['Aero', 1715],
+    ['Kite', 1680],
+    ['Rune', 1635],
+    ['Sage', 1590]
+  ];
+  s112_draw();
+};
+
+window.newMatch_s112 = function() {
+  const winner = Math.floor(Math.random() * s112Players.length);
+  s112Players = s112Players.map((player, idx) => [player[0], player[1] + (idx === winner ? 55 : Math.floor(Math.random() * 18))]);
+  s112Players.sort((a, b) => b[1] - a[1]);
+  s112_draw();
+  const svg = document.getElementById('svg-112');
+  animatePacket(svg, 200, 40, 265, 40, '#60a5fa', 6, 260, () => pulseStroke(document.getElementById('s112-redis'), '#f97316'));
+  setTimeout(() => animatePacket(svg, 435, 40, 505, 40, '#818cf8', 6, 260, () => pulseStroke(document.getElementById('s112-log'), '#818cf8')), 220);
+};
+
+
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const sidebarDrawer = document.getElementById('sidebar-drawer');
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+  const sidebarClose = document.getElementById('sidebar-close');
+  const sidebarLinks = sidebarDrawer.querySelectorAll('a[href]');
+  const drawerGroupToggles = sidebarDrawer.querySelectorAll('.drawer-group-toggle');
+
+  function setSidebarState(open) {
+    document.body.classList.toggle('sidebar-open', open);
+    sidebarDrawer.classList.toggle('open', open);
+    sidebarOverlay.classList.toggle('open', open);
+    sidebarDrawer.setAttribute('aria-hidden', String(!open));
+    sidebarToggle.setAttribute('aria-expanded', String(open));
+  }
+
+  function setDrawerGroupState(group, expanded) {
+    group.classList.toggle('collapsed', !expanded);
+    const toggle = group.querySelector('.drawer-group-toggle');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.setAttribute('aria-label', expanded ? 'Collapse chapter section' : 'Expand chapter section');
+    }
+  }
+
+  drawerGroupToggles.forEach((toggle) => {
+    const group = toggle.closest('.drawer-group');
+    const expanded = !group.classList.contains('collapsed');
+    setDrawerGroupState(group, expanded);
+    toggle.addEventListener('click', () => {
+      const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
+      setDrawerGroupState(group, !isExpanded);
+    });
+  });
+
+  sidebarToggle.addEventListener('click', () => {
+    const isOpen = sidebarDrawer.classList.contains('open');
+    setSidebarState(!isOpen);
+  });
+
+  sidebarClose.addEventListener('click', () => setSidebarState(false));
+  sidebarOverlay.addEventListener('click', () => setSidebarState(false));
+  sidebarLinks.forEach((link) => link.addEventListener('click', () => setSidebarState(false)));
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && sidebarDrawer.classList.contains('open')) {
+      setSidebarState(false);
+    }
+  });
+</script>
+</body>
+</html>

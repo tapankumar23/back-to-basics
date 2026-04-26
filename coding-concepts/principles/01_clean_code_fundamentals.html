@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clean Code Fundamentals — Coding Concepts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #4ade80;
+      --accent-dim: rgba(74,222,128,0.15);
+      --good: #4ade80;
+      --bad: #f87171;
+      --neutral: #8b949e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Progress bar ── */
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: var(--accent); width: 0%; z-index: 2000;
+      transition: width 0.1s linear;
+    }
+
+    /* ── Navbar ── */
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      margin-right: 1.5rem;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px;
+      padding-right: 16px;
+    }
+    #navbar a.back-link:hover {
+      color: var(--text);
+      background: rgba(74,222,128,0.08);
+    }
+    #navbar .chapter-pager {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-right: 12px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted);
+      font-size: 9px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title {
+      font-size: 11px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    #navbar .chapter-nav-chip .nav-arrow {
+      color: var(--accent);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
+    /* ── Main layout ── */
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+
+    /* ── Concept sections ── */
+    .concept-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(74,222,128,0.25); }
+    .btn:focus-visible,
+    .expand-badge:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    input[type=range] { accent-color: var(--accent); width: 90px; }
+
+    /* ── Diagram area ── */
+    .diagram-area {
+      padding: 20px;
+      min-height: 160px;
+      display: flex; align-items: center; justify-content: center;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .diagram-area svg { width: 100%; overflow: visible; }
+
+    /* ── Insight panel ── */
+    .insight-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* ── Code comparison ── */
+    .code-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+    @media (max-width: 760px) {
+      .code-compare { grid-template-columns: 1fr; }
+    }
+    .code-block {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .code-block-header {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    .code-block-header.bad { color: var(--bad); background: rgba(248,113,113,0.08); }
+    .code-block-header.good { color: var(--good); background: rgba(74,222,128,0.08); }
+    .code-block pre {
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── Syntax highlight ── */
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num { color: #f2cc60; }
+    .tp  { color: #ffa657; }
+
+    /* ── Expandable panels (🟢 🔵) ── */
+    .expand-panels {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .expand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      transition: background 0.2s, border-color 0.2s;
+      user-select: none;
+    }
+    .expand-badge:hover { background: rgba(255,255,255,0.08); border-color: var(--text-muted); }
+    .expand-badge.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .expand-content {
+      display: none;
+      margin-top: 8px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.7;
+      width: 100%;
+    }
+    .expand-content.open { display: block; }
+
+    /* ── Chapter page nav ── */
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .chapter-nav-link,
+    .chapter-nav-disabled,
+    .chapter-nav-current {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 62px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .chapter-nav-link:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-nav-link.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-link .nav-kicker,
+    .chapter-nav-disabled .nav-kicker,
+    .chapter-nav-current .nav-kicker {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title,
+    .chapter-nav-disabled .nav-title,
+    .chapter-nav-current .nav-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .chapter-nav-link .nav-arrow,
+    .chapter-nav-disabled .nav-arrow {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .chapter-nav-disabled {
+      opacity: 0.38;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .chapter-nav-current {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav { grid-template-columns: 1fr; }
+      .chapter-nav-link.next { text-align: left; align-items: flex-start; }
+    }
+
+    /* ── Metric bar / gauge ── */
+    .metric-row {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .metric-label {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .metric-bar-track {
+      flex: 1;
+      min-width: 120px;
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .metric-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--bad);
+      width: 100%;
+      transform-origin: left center;
+      transition: transform 0.6s ease, background 0.6s ease;
+    }
+    .metric-value {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ── Function smell gauge ── */
+    .gauge-row {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .gauge-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); }
+    .gauge-status {
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      transition: color 0.4s;
+    }
+
+    /* ── Name focus animation overlay ── */
+    .name-focus-wrap {
+      position: relative;
+      display: flex;
+      gap: 20px;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      min-height: 120px;
+      justify-content: center;
+    }
+    .name-overlay {
+      position: relative;
+      width: 100%;
+      max-width: 540px;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .name-panel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .name-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+    .name-pill.bad-name  { color: var(--bad);  background: rgba(248,113,113,0.1);  border-color: var(--bad); }
+    .name-pill.good-name { color: var(--good); background: rgba(74,222,128,0.1); border-color: var(--good); }
+
+    /* ── SLA layer cake ── */
+    .layer-cake {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      width: 100%;
+      max-width: 460px;
+    }
+    .layer {
+      padding: 10px 20px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      border-radius: 6px;
+      margin-bottom: 4px;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    .layer.html-layer  { background: rgba(74,222,128,0.12); border: 1px solid var(--good); color: var(--good); }
+    .layer.biz-layer   { background: rgba(96,165,250,0.12); border: 1px solid #60a5fa;  color: #60a5fa; }
+    .layer.db-layer    { background: rgba(251,146,60,0.12);  border: 1px solid #fb923c;  color: #fb923c; }
+
+    /* ── Comment graveyard ── */
+    .graveyard {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 8px;
+      width: 100%;
+    }
+    .tombstone {
+      width: 120px;
+      background: #161b22;
+      border: 1px solid var(--border);
+      border-radius: 8px 8px 4px 4px;
+      padding: 10px 8px 8px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      text-align: center;
+      position: relative;
+    }
+    .tombstone.dead { border-color: var(--bad); }
+    .tombstone.alive { border-color: var(--good); }
+    .tombstone .rip {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--bad);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .tombstone .ok {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--good);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .tombstone .text-snippet {
+      font-size: 9px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    /* ── Regex interactive ── */
+    .regex-panel {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .regex-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #f2cc60;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    .regex-answer {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: rgba(74,222,128,0.08);
+      border: 1px solid var(--good);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .regex-answer.open { display: block; }
+
+    /* ── City street D3 ── */
+    #city-svg { border-radius: 8px; }
+
+    /* ── Info cards (section 1.5) ── */
+    .info-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 16px;
+    }
+    @media (max-width: 760px) {
+      .info-cards { grid-template-columns: 1fr; }
+    }
+    .info-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .info-card h4 {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .info-card ul {
+      list-style: none;
+      padding: 0;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+    .info-card ul li::before {
+      content: '→ ';
+      color: var(--accent);
+    }
+
+    /* ── Factory machine SVG area ── */
+    .factory-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+
+    /* ── Sidebar ── */
+    body.sidebar-open { overflow: hidden; }
+    #sidebar-toggle {
+      position: fixed; top: 60px; left: 16px; z-index: 1001;
+      border: 1px solid var(--border); background: rgba(22,27,34,0.92);
+      color: var(--accent); border-radius: 14px; width: 46px; height: 46px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+    }
+    #sidebar-toggle:hover { transform: translateY(-1px); background: rgba(28,35,48,0.98); color: var(--text); }
+    #sidebar-toggle .hamburger-line {
+      width: 18px; height: 2px; border-radius: 999px; background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) { opacity: 0; }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    #sidebar-overlay {
+      position: fixed; inset: 0; background: rgba(6,10,16,0.12);
+      opacity: 0; pointer-events: none; transition: opacity 0.22s ease; z-index: 1001;
+    }
+    #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+    #sidebar-drawer {
+      position: fixed; top: 0; left: 0; width: min(340px, 86vw); height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 18%), #0f141b;
+      border-right: 1px solid var(--border); box-shadow: 24px 0 50px rgba(0,0,0,0.35);
+      padding: 22px 18px 24px; transform: translateX(-102%);
+      transition: transform 0.24s ease; z-index: 1002; overflow-y: auto;
+    }
+    #sidebar-drawer.open { transform: translateX(0); }
+    .drawer-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .drawer-title { display: flex; flex-direction: column; gap: 3px; }
+    .drawer-kicker { color: var(--accent); font-size: 11px; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+    .drawer-heading { color: var(--text); font-size: 16px; font-weight: 700; }
+    .drawer-close { border: 1px solid var(--border); background: transparent; color: var(--text-muted); border-radius: 999px; width: 34px; height: 34px; cursor: pointer; font-size: 18px; line-height: 1; }
+    .drawer-close:hover { color: var(--text); border-color: var(--accent); }
+    .drawer-index-link { display: block; text-decoration: none; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
+    .drawer-index-link strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .drawer-index-link span { color: var(--text-muted); font-size: 12px; }
+    .drawer-nav { display: flex; flex-direction: column; gap: 16px; }
+    .drawer-group { border: 1px solid rgba(48,54,61,0.9); border-radius: 14px; background: rgba(22,27,34,0.75); overflow: hidden; }
+    .drawer-group.current { border-color: rgba(255,255,255,0.24); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04); }
+    .drawer-group-header { display: flex; align-items: stretch; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid rgba(48,54,61,0.8); background: rgba(255,255,255,0.02); }
+    .drawer-group-title { flex: 1; min-width: 0; }
+    .drawer-group-header .eyebrow { display: block; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-family: 'JetBrains Mono', monospace; }
+    .drawer-group-header .name { color: var(--text); font-size: 14px; font-weight: 600; }
+    .drawer-group-header .name a { color: inherit; text-decoration: none; }
+    .drawer-group-header .name a:hover { color: var(--accent); }
+    .drawer-group-toggle { flex: 0 0 auto; align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text-muted); cursor: pointer; transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease; }
+    .drawer-group-toggle:hover { background: rgba(255,255,255,0.08); color: var(--text); transform: translateY(-1px); }
+    .drawer-chevron { width: 10px; height: 10px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-1px); transition: transform 0.18s ease; }
+    .drawer-group.collapsed .drawer-chevron { transform: rotate(-45deg) translate(-1px, 1px); }
+    .drawer-subnav { list-style: none; padding: 8px; max-height: 640px; opacity: 1; overflow: hidden; transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease; }
+    .drawer-group.collapsed .drawer-subnav { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
+    .drawer-subnav li + li { margin-top: 4px; }
+    .drawer-subnav a { display: flex; align-items: baseline; gap: 10px; padding: 10px 10px; border-radius: 10px; color: var(--text-muted); text-decoration: none; transition: background 0.18s, color 0.18s; }
+    .drawer-subnav a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .drawer-subnav .sub-num { color: var(--accent); font-size: 11px; min-width: 42px; font-family: 'JetBrains Mono', monospace; }
+    .drawer-subnav .sub-label { font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="false" aria-label="Toggle navigation menu">
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="sr-only">Toggle navigation menu</span>
+</button>
+<div id="sidebar-overlay"></div>
+<aside id="sidebar-drawer" aria-hidden="true">
+  <div class="drawer-top">
+    <div class="drawer-title">
+      <span class="drawer-kicker">Navigation</span>
+      <span class="drawer-heading">01 Clean Code</span>
+    </div>
+    <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+  </div>
+  <a class="drawer-index-link" href="00_index.html">
+    <strong>Coding Concepts Index</strong>
+    <span>Return to the coding concepts index</span>
+  </a>
+  <nav class="drawer-nav" aria-label="Coding concepts outline">
+    <div class="drawer-group current">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="01_clean_code_fundamentals.html">01 Clean Code</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Collapse chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="#s-11"><span class="sub-num">1.1</span><span class="sub-label">Naming</span></a></li>
+        <li><a href="#s-12"><span class="sub-num">1.2</span><span class="sub-label">Functions</span></a></li>
+        <li><a href="#s-13"><span class="sub-num">1.3</span><span class="sub-label">Abstraction (SLA)</span></a></li>
+        <li><a href="#s-14"><span class="sub-num">1.4</span><span class="sub-label">Comments</span></a></li>
+        <li><a href="#s-15"><span class="sub-num">1.5</span><span class="sub-label">Formatting</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="02_solid_principles.html">02 SOLID Principles</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="02_solid_principles.html#s-21"><span class="sub-num">2.1</span><span class="sub-label">SRP</span></a></li>
+        <li><a href="02_solid_principles.html#s-22"><span class="sub-num">2.2</span><span class="sub-label">OCP</span></a></li>
+        <li><a href="02_solid_principles.html#s-23"><span class="sub-num">2.3</span><span class="sub-label">LSP</span></a></li>
+        <li><a href="02_solid_principles.html#s-24"><span class="sub-num">2.4</span><span class="sub-label">ISP</span></a></li>
+        <li><a href="02_solid_principles.html#s-25"><span class="sub-num">2.5</span><span class="sub-label">DIP</span></a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<nav id="navbar">
+  <span class="nav-brand">01 — Clean Code Fundamentals</span>
+  <a class="back-link" href="00_index.html">← Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <span class="chapter-nav-chip disabled" aria-hidden="true">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Previous<span class="nav-arrow">←</span></span>
+    </span>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">01</span>
+    </span>
+    <a class="chapter-nav-chip" href="02_solid_principles.html" aria-label="Next Chapter: SOLID Principles" title="Next Chapter: SOLID Principles">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">SOLID Principles<span class="nav-arrow" aria-hidden="true">→</span></span>
+    </a>
+  </div>
+  <a href="#s-11">Naming</a>
+  <a href="#s-12">Functions</a>
+  <a href="#s-13">Abstraction</a>
+  <a href="#s-14">Comments</a>
+  <a href="#s-15">Formatting</a>
+</nav>
+
+<main>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Section 1.1 — Naming
+  ══════════════════════════════════════════════════════════ -->
+  <section id="s-11" class="concept-section" data-section="s11">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.1 —</span>
+          <span class="section-title">Naming</span>
+          <span class="section-desc">Reveal intent, reduce cognitive load</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-bad-names" onclick="window.showBadNames()">Show Bad Names</button>
+          <button class="btn" id="btn-good-names" onclick="window.showGoodNames()">Show Good Names</button>
+        </div>
+      </div>
+
+      <!-- Name focus animation -->
+      <div class="diagram-area">
+        <div class="name-focus-wrap">
+          <div class="name-overlay" id="name-overlay" style="min-height:72px;">
+            <div class="name-panel" id="bad-names-panel">
+              <span class="name-pill bad-name" style="filter:blur(2px);">d</span>
+              <span class="name-pill bad-name" style="filter:blur(2px);">temp</span>
+              <span class="name-pill bad-name" style="filter:blur(2px);">x2</span>
+              <span class="name-pill bad-name" style="filter:blur(2px);">fn</span>
+              <span class="name-pill bad-name" style="filter:blur(2px);">data</span>
+            </div>
+            <div class="name-panel" id="good-names-panel" style="opacity:0;">
+              <span class="name-pill good-name">daysSinceLastLogin</span>
+              <span class="name-pill good-name">runningTotal</span>
+              <span class="name-pill good-name">discountedPrice</span>
+              <span class="name-pill good-name">userEmail</span>
+              <span class="name-pill good-name">getFlaggedCells</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cognitive Load Meter -->
+      <div class="metric-row">
+        <span class="metric-label">Cognitive Load:</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="cog-bar" style="transform:scaleX(0.8);background:var(--bad);"></div>
+        </div>
+        <span class="metric-value" id="cog-val">80%</span>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-block">
+          <div class="code-block-header bad">❌ Cryptic names</div>
+          <pre><span class="kw">int</span> d; <span class="cm">// days since last login</span>
+<span class="kw">int</span> t; <span class="cm">// temporary total</span>
+<span class="tp">List</span>&lt;<span class="kw">int</span>[]&gt; <span class="fn">getThem</span>() { ... }</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header good">✅ Intent-revealing names</div>
+          <pre><span class="kw">int</span> daysSinceLastLogin;
+<span class="kw">int</span> runningTotal;
+<span class="tp">List</span>&lt;<span class="tp">Cell</span>&gt; <span class="fn">getFlaggedCells</span>() { ... }</pre>
+        </div>
+      </div>
+
+      <!-- Expandable panels -->
+      <div class="expand-panels">
+        <button class="expand-badge" id="badge-11-new" onclick="window.togglePanel('panel-11-new','badge-11-new')">🟢 New to this?</button>
+        <button class="expand-badge" id="badge-11-deep" onclick="window.togglePanel('panel-11-deep','badge-11-deep')">🔵 Go deeper</button>
+        <div class="expand-content" id="panel-11-new">
+          <strong style="color:var(--text);">Analogy: labeling moving boxes "stuff."</strong><br>
+          When you return to unpack, you have no idea what's inside until you open each box. Bad variable names force every reader to mentally "open the box" every single time they encounter the variable — paying the cognitive tax repeatedly. Good names front-load the explanation once, in the name itself.
+        </div>
+        <div class="expand-content" id="panel-11-deep">
+          <strong style="color:var(--text);">Acceptable abbreviations and anti-patterns.</strong><br>
+          Short forms like <code style="color:var(--accent);">url</code>, <code style="color:var(--accent);">id</code>, <code style="color:var(--accent);">dto</code>, <code style="color:var(--accent);">ctx</code> carry universal meaning in their domain — they're fine. Hungarian notation (<code style="color:var(--bad);">strName</code>, <code style="color:var(--bad);">bIsValid</code>) is obsolete; the IDE already knows the type. The goal is to name for <em>intent</em>, not for type. A name like <code style="color:var(--accent);">activeUsers</code> reveals what the collection contains; <code style="color:var(--bad);">listOfUserObjects</code> just repeats the type.
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Good names are the cheapest documentation you can write. Every time you force a reader to pause and decode a name, you break their flow. Name for the reader who will encounter this code 6 months from now — often you.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Section 1.2 — Functions
+  ══════════════════════════════════════════════════════════ -->
+  <section id="s-12" class="concept-section" data-section="s12">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.2 —</span>
+          <span class="section-title">Functions</span>
+          <span class="section-desc">Do one thing, name it well, keep arguments minimal</span>
+        </div>
+        <div class="header-controls">
+          <span class="slider-row">
+            Args:
+            <input type="range" id="arg-slider" min="0" max="5" value="0" aria-label="Argument count" oninput="window.updateArgSmell(this.value)">
+            <span id="arg-count">0</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Factory machine SVG -->
+      <div class="diagram-area">
+        <div class="factory-wrap">
+          <svg id="factory-svg" viewBox="0 0 700 140" height="140" style="max-width:700px;"></svg>
+        </div>
+      </div>
+
+      <!-- Function Smell Meter -->
+      <div class="gauge-row">
+        <span class="gauge-label">Function Smell:</span>
+        <span class="gauge-status" id="smell-status" style="color:var(--good);">Ideal — zero arguments</span>
+        <div class="metric-bar-track" style="flex:1;margin-left:12px;">
+          <div class="metric-bar-fill" id="smell-bar" style="transform:scaleX(0);background:var(--good);"></div>
+        </div>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-block">
+          <div class="code-block-header bad">❌ Too many responsibilities</div>
+          <pre><span class="kw">void</span> <span class="fn">processUserData</span>(<span class="tp">String</span> name,
+    <span class="tp">String</span> email, <span class="kw">int</span> age,
+    <span class="kw">boolean</span> notify, <span class="tp">String</span> role) {
+  <span class="fn">validateInput</span>(name, email, age);
+  <span class="fn">saveToDatabase</span>(name, email, age, role);
+  <span class="kw">if</span> (notify) <span class="fn">sendWelcomeEmail</span>(email);
+  <span class="fn">updateAuditLog</span>(name, role);
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header good">✅ Single responsibility</div>
+          <pre><span class="kw">void</span> <span class="fn">registerUser</span>(<span class="tp">UserRegistrationRequest</span> req) {
+  <span class="fn">validate</span>(req);
+  <span class="fn">save</span>(req);
+  <span class="fn">notifyIfRequired</span>(req);
+  <span class="fn">audit</span>(req);
+}</pre>
+        </div>
+      </div>
+
+      <!-- Expandable panels -->
+      <div class="expand-panels">
+        <button class="expand-badge" id="badge-12-new" onclick="window.togglePanel('panel-12-new','badge-12-new')">🟢 New to this?</button>
+        <button class="expand-badge" id="badge-12-deep" onclick="window.togglePanel('panel-12-deep','badge-12-deep')">🔵 Go deeper</button>
+        <div class="expand-content" id="panel-12-new">
+          <strong style="color:var(--text);">The "and" test.</strong><br>
+          If you can't describe what a function does in one sentence without using the word "and", it does too much. <em>"This function validates the input AND saves to the database AND sends an email"</em> is three functions, not one. Split them.
+        </div>
+        <div class="expand-content" id="panel-12-deep">
+          <strong style="color:var(--text);">Pure functions vs. side effects.</strong><br>
+          When side effects are unavoidable (DB writes, emails, logging), isolate them at the system edges. The core business logic should be pure and testable without mocks. This is the core insight behind hexagonal architecture and functional core / imperative shell. Pure functions are trivially testable — no setup, no teardown, just input → output assertions.
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Functions are the primary unit of composition in most codebases. A function that does one thing is easy to name, easy to test, easy to reuse, and easy to delete.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Section 1.3 — Single Level of Abstraction (SLA)
+  ══════════════════════════════════════════════════════════ -->
+  <section id="s-13" class="concept-section" data-section="s13">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.3 —</span>
+          <span class="section-title">Single Level of Abstraction (SLA)</span>
+          <span class="section-desc">Every function operates at one consistent zoom level</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.fixAbstraction()">Fix Abstraction</button>
+          <button class="btn" onclick="window.resetAbstraction()">Reset</button>
+        </div>
+      </div>
+
+      <!-- Layer cake animation -->
+      <div class="diagram-area" style="flex-direction:column;gap:20px;">
+        <div id="mixed-block" style="width:100%;max-width:540px;padding:12px 16px;background:#0d1117;border:1px solid var(--bad);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;">
+          <div id="ml-0" style="color:#fb923c;"><span class="cm">// DB query — low level</span></div>
+          <div id="ml-1" style="color:#fb923c;"><span class="tp">ResultSet</span> rs = db.<span class="fn">query</span>(<span class="str">"SELECT * FROM users WHERE active=1"</span>);</div>
+          <div id="ml-2" style="color:#60a5fa;"><span class="cm">// Business logic — mid level</span></div>
+          <div id="ml-3" style="color:#60a5fa;"><span class="tp">List</span>&lt;<span class="tp">User</span>&gt; premiumUsers = <span class="fn">filterByPremium</span>(rs);</div>
+          <div id="ml-4" style="color:#4ade80;"><span class="cm">// HTML generation — high level</span></div>
+          <div id="ml-5" style="color:#4ade80;"><span class="tp">String</span> html = <span class="str">"&lt;ul&gt;"</span>;</div>
+          <div id="ml-6" style="color:#4ade80;"><span class="kw">for</span> (<span class="tp">User</span> u : premiumUsers) html += <span class="str">"&lt;li&gt;"</span> + u.name + <span class="str">"&lt;/li&gt;"</span>;</div>
+          <div id="ml-7" style="color:#4ade80;">response.<span class="fn">write</span>(html);</div>
+        </div>
+        <div id="clean-block" style="display:none;width:100%;max-width:540px;padding:12px 16px;background:#0d1117;border:1px solid var(--good);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;opacity:0;">
+          <div><span class="kw">void</span> <span class="fn">render</span>() {</div>
+          <div id="cl-0" style="opacity:0;">&nbsp;&nbsp;<span class="tp">List</span>&lt;<span class="tp">User</span>&gt; users = <span class="fn">fetchActivePremiumUsers</span>();&nbsp;&nbsp;<span class="cm">// high-level</span></div>
+          <div id="cl-1" style="opacity:0;">&nbsp;&nbsp;<span class="tp">String</span> html = <span class="fn">buildUserListHtml</span>(users);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// high-level</span></div>
+          <div id="cl-2" style="opacity:0;">&nbsp;&nbsp;response.<span class="fn">write</span>(html);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">// high-level</span></div>
+          <div>}</div>
+        </div>
+
+        <!-- Layer cake visual -->
+        <div class="layer-cake" id="layer-cake">
+          <div class="layer html-layer" id="layer-html">🟢 HTML Rendering — High Level</div>
+          <div class="layer biz-layer"  id="layer-biz" >🔵 Business Logic — Mid Level</div>
+          <div class="layer db-layer"   id="layer-db"  >🟠 Database Queries — Low Level</div>
+        </div>
+      </div>
+
+      <!-- SLA metric bar -->
+      <div class="metric-row">
+        <span class="metric-label">Abstraction Mixing:</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="sla-bar" style="transform:scaleX(0.85);background:var(--bad);"></div>
+        </div>
+        <span class="metric-value" id="sla-val">85%</span>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-block">
+          <div class="code-block-header bad">❌ Mixed abstraction levels</div>
+          <pre><span class="kw">void</span> <span class="fn">render</span>() {
+  <span class="tp">ResultSet</span> rs = db.<span class="fn">query</span>(<span class="str">"SELECT ..."</span>);
+  <span class="tp">List</span>&lt;<span class="tp">User</span>&gt; p = <span class="fn">filterByPremium</span>(rs);
+  <span class="tp">String</span> html = <span class="str">"&lt;ul&gt;"</span>;
+  <span class="kw">for</span> (<span class="tp">User</span> u : p)
+    html += <span class="str">"&lt;li&gt;"</span>+u.name+<span class="str">"&lt;/li&gt;"</span>;
+  response.<span class="fn">write</span>(html);
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header good">✅ Single abstraction level</div>
+          <pre><span class="kw">void</span> <span class="fn">render</span>() {
+  <span class="tp">List</span>&lt;<span class="tp">User</span>&gt; users =
+    <span class="fn">fetchActivePremiumUsers</span>();
+  <span class="tp">String</span> html =
+    <span class="fn">buildUserListHtml</span>(users);
+  response.<span class="fn">write</span>(html);
+}</pre>
+        </div>
+      </div>
+
+      <!-- Expandable panels -->
+      <div class="expand-panels">
+        <button class="expand-badge" id="badge-13-new" onclick="window.togglePanel('panel-13-new','badge-13-new')">🟢 New to this?</button>
+        <button class="expand-badge" id="badge-13-deep" onclick="window.togglePanel('panel-13-deep','badge-13-deep')">🔵 Go deeper</button>
+        <div class="expand-content" id="panel-13-new">
+          <strong style="color:var(--text);">Newspaper analogy.</strong><br>
+          Think of a newspaper: headline → sub-headline → paragraph body. You never mix font sizes mid-paragraph. SLA says each function should live at one consistent "zoom level" of detail. A function can either say <em>what</em> to do (high level) or <em>how</em> to do it (low level) — not both.
+        </div>
+        <div class="expand-content" id="panel-13-deep">
+          <strong style="color:var(--text);">The Step-down Rule (Clean Code).</strong><br>
+          Reading a well-structured file should feel like reading a TO paragraph — each function calling the next level down. You can read the high-level story in the top functions without ever diving into implementation details. Violation of this rule is one of the primary causes of functions that "do too much" without anyone noticing.
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Mixing abstraction levels in a single function forces the reader to context-switch between zoom levels mid-read. Extract each level into its own named function — the name itself becomes documentation.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Section 1.4 — Comments
+  ══════════════════════════════════════════════════════════ -->
+  <section id="s-14" class="concept-section" data-section="s14">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.4 —</span>
+          <span class="section-title">Comments</span>
+          <span class="section-desc">Comments that explain why — not what — are worth keeping</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animateGraveyard()">Animate Graveyard</button>
+        </div>
+      </div>
+
+      <!-- Comment graveyard -->
+      <div class="diagram-area" style="flex-direction:column;">
+        <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">Comment graveyard — bad comments that should be deleted vs. good ones worth keeping</div>
+        <div class="graveyard" id="graveyard">
+          <div class="tombstone dead" id="ts-0">
+            <span class="rip">☠ RIP</span>
+            <div class="text-snippet">// increments x</div>
+          </div>
+          <div class="tombstone dead" id="ts-1">
+            <span class="rip">☠ RIP</span>
+            <div class="text-snippet">// Check if active</div>
+          </div>
+          <div class="tombstone dead" id="ts-2">
+            <span class="rip">☠ RIP</span>
+            <div class="text-snippet">// TODO: fix (2019)</div>
+          </div>
+          <div class="tombstone dead" id="ts-3">
+            <span class="rip">☠ RIP</span>
+            <div class="text-snippet">// don't delete — critical</div>
+          </div>
+          <div class="tombstone alive" id="ts-4">
+            <span class="ok">✓ KEEP</span>
+            <div class="text-snippet">// Workaround for Safari bug #1234</div>
+          </div>
+          <div class="tombstone alive" id="ts-5">
+            <span class="ok">✓ KEEP</span>
+            <div class="text-snippet">// O(1) lookup — perf critical path</div>
+          </div>
+          <div class="tombstone alive" id="ts-6">
+            <span class="ok">✓ KEEP</span>
+            <div class="text-snippet">// Billing spec: preserve insertion order</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Regex interactive -->
+      <div class="regex-panel">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Would you comment this regex?</div>
+        <div class="regex-display">/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/</div>
+        <button class="btn" onclick="window.revealRegexAnswer()">Would you comment this?</button>
+        <div class="regex-answer" id="regex-answer">
+          <strong style="color:var(--good);">YES — comment it.</strong><br>
+          The intent of the regex is not obvious from its syntax. A reader cannot easily verify it handles edge cases (quoted local parts, subdomains, TLDs of length 2+) without parsing it character-by-character. A good comment: <code style="color:var(--accent);">// Validates RFC 5321 email format; does not allow quoted local parts</code>. Comment the <em>why</em> and any intentional gaps in coverage.
+        </div>
+      </div>
+
+      <!-- Code comparison -->
+      <div class="code-compare">
+        <div class="code-block">
+          <div class="code-block-header bad">❌ Noise comments</div>
+          <pre><span class="cm">// Loop through the list</span>
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; list.<span class="fn">size</span>(); i++) {
+  <span class="cm">// Check if active</span>
+  <span class="kw">if</span> (list.<span class="fn">get</span>(i).active == <span class="kw">true</span>) {
+    <span class="cm">// Process it</span>
+    <span class="fn">process</span>(list.<span class="fn">get</span>(i));
+  }
+}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header good">✅ Self-documenting + purposeful comment</div>
+          <pre><span class="kw">for</span> (<span class="tp">Item</span> item : <span class="fn">activeItems</span>()) {
+  <span class="fn">process</span>(item);
+}
+<span class="cm">// Note: processed in insertion order per</span>
+<span class="cm">// billing spec — do not sort before calling.</span></pre>
+        </div>
+      </div>
+
+      <!-- Comment noise meter -->
+      <div class="metric-row">
+        <span class="metric-label">Comment Noise:</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="comment-bar" style="transform:scaleX(0.75);background:var(--bad);"></div>
+        </div>
+        <span class="metric-value" id="comment-val">75%</span>
+      </div>
+
+      <!-- Expandable panels -->
+      <div class="expand-panels">
+        <button class="expand-badge" id="badge-14-new" onclick="window.togglePanel('panel-14-new','badge-14-new')">🟢 New to this?</button>
+        <button class="expand-badge" id="badge-14-deep" onclick="window.togglePanel('panel-14-deep','badge-14-deep')">🔵 Go deeper</button>
+        <div class="expand-content" id="panel-14-new">
+          <strong style="color:var(--text);">Comment types that are always OK.</strong><br>
+          Legal notices, explanations of <em>why</em> (not <em>what</em>), workarounds for external API quirks, TODOs with ticket numbers (<code style="color:var(--accent);">// TODO JIRA-4421</code>). If the comment explains <em>what</em> the code does, the code should be rewritten to be self-documenting instead.
+        </div>
+        <div class="expand-content" id="panel-14-deep">
+          <strong style="color:var(--text);">Commented-out code is a smell.</strong><br>
+          It adds noise and signals fear of deletion. Delete it; git history is your safety net. Far worse: a comment that lies about what the code does (because the code changed but the comment wasn't updated). A lying comment actively misleads — it is worse than no comment at all.
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Every comment is a failure to make the code itself clear — that's not a reason to avoid comments, it's a reason to treat them as a last resort rather than a first instinct.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Section 1.5 — Formatting & Structure
+  ══════════════════════════════════════════════════════════ -->
+  <section id="s-15" class="concept-section" data-section="s15">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.5 —</span>
+          <span class="section-title">Formatting & Structure</span>
+          <span class="section-desc">Consistent layout removes cognitive friction</span>
+        </div>
+      </div>
+
+      <!-- D3 City street -->
+      <div class="diagram-area" style="flex-direction:column;gap:8px;">
+        <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Scroll-triggered: chaotic → structured layout</div>
+        <svg id="city-svg" viewBox="0 0 700 160" height="160" style="max-width:700px;"></svg>
+      </div>
+
+      <!-- Info cards -->
+      <div class="info-cards">
+        <div class="info-card">
+          <h4>The Newspaper Metaphor</h4>
+          <ul>
+            <li>Most important things at the top (public API)</li>
+            <li>Detail decreases as you scroll down</li>
+            <li>Private helpers live at the bottom</li>
+            <li>Related concepts clustered together</li>
+            <li>Vertical proximity signals relationship</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h4>Vertical Distance Rules</h4>
+          <ul>
+            <li>Related things should be close together</li>
+            <li>Unrelated things should be far apart</li>
+            <li>Callers near their callees</li>
+            <li>Variables declared near first use</li>
+            <li>Blank lines separate distinct concepts</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Code comparison (formatting) -->
+      <div class="code-compare">
+        <div class="code-block">
+          <div class="code-block-header bad">❌ Inconsistent, dense formatting</div>
+          <pre><span class="kw">public class</span> <span class="tp">User</span>{<span class="kw">private</span> <span class="tp">String</span> name;<span class="kw">private int</span> age;
+<span class="kw">public</span> <span class="tp">String</span> <span class="fn">getName</span>(){<span class="kw">return</span> name;}
+<span class="kw">public void</span> <span class="fn">setName</span>(<span class="tp">String</span> n){<span class="kw">this</span>.name=n;}
+<span class="kw">private void</span> <span class="fn">validate</span>(){<span class="cm">/* ... */</span>}}</pre>
+        </div>
+        <div class="code-block">
+          <div class="code-block-header good">✅ Consistent, readable formatting</div>
+          <pre><span class="kw">public class</span> <span class="tp">User</span> {
+  <span class="kw">private</span> <span class="tp">String</span> name;
+  <span class="kw">private int</span> age;
+
+  <span class="kw">public</span> <span class="tp">String</span> <span class="fn">getName</span>() { <span class="kw">return</span> name; }
+
+  <span class="kw">public void</span> <span class="fn">setName</span>(<span class="tp">String</span> name) {
+    <span class="kw">this</span>.name = name;
+  }
+}</pre>
+        </div>
+      </div>
+
+      <!-- Expandable panels -->
+      <div class="expand-panels">
+        <button class="expand-badge" id="badge-15-new" onclick="window.togglePanel('panel-15-new','badge-15-new')">🟢 New to this?</button>
+        <button class="expand-badge" id="badge-15-deep" onclick="window.togglePanel('panel-15-deep','badge-15-deep')">🔵 Go deeper</button>
+        <div class="expand-content" id="panel-15-new">
+          <strong style="color:var(--text);">Why whitespace matters.</strong><br>
+          Blank lines are paragraph breaks for code. They tell the reader "this thought is complete; here begins a new one." Dense, unbroken code forces the reader to find the boundaries themselves — adding cognitive work before they even begin to parse the logic.
+        </div>
+        <div class="expand-content" id="panel-15-deep">
+          <strong style="color:var(--text);">Commit to an autoformatter and stop arguing.</strong><br>
+          Formatting rules don't matter as long as they're consistent — the real cost is the team debate, not the choice itself. Prettier, gofmt, Black, clang-format — commit to one and configure it in CI. Once formatting is automated, code reviews become about logic, not style. Zero cognitive overhead from formatting inconsistency is the goal.
+        </div>
+      </div>
+
+      <div class="insight-panel">
+        Formatting is a communication tool. It signals to the reader how the code is structured before they read a single keyword. A well-formatted file can be skimmed; a poorly formatted one must be fully parsed.
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter page nav -->
+  <nav class="chapter-page-nav" aria-label="Chapter navigation">
+    <div class="chapter-nav-disabled" aria-hidden="true">
+      <span class="nav-kicker">← Previous</span>
+      <span class="nav-title">—</span>
+    </div>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">You are here</span>
+      <span class="nav-title">01 — Clean Code</span>
+    </div>
+    <a class="chapter-nav-link next" href="02_solid_principles.html">
+      <span class="nav-kicker">Next →</span>
+      <span class="nav-arrow">→</span>
+      <span class="nav-title">SOLID Principles</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer>
+  <p>Based on <em>Clean Code</em> — Robert C. Martin · <em>The Pragmatic Programmer</em> — Hunt &amp; Thomas · <em>Refactoring</em> — Martin Fowler · <em>Working Effectively with Legacy Code</em> — Michael Feathers</p>
+</footer>
+
+<script>
+  // ── Progress bar ──────────────────────────────────────────────────────────
+  window.addEventListener('scroll', () => {
+    const scrolled = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    if (total > 0) {
+      document.getElementById('progress-bar').style.width = (scrolled / total * 100) + '%';
+    }
+  });
+
+  // ── IntersectionObserver ─────────────────────────────────────────────────
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        animateSection(entry.target.dataset.section);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.25 });
+  document.querySelectorAll('.concept-section').forEach(el => observer.observe(el));
+
+  function animateSection(section) {
+    switch (section) {
+      case 's11': initNaming(); break;
+      case 's12': initFactory(); break;
+      case 's13': initAbstraction(); break;
+      case 's14': initGraveyard(); break;
+      case 's15': initCityStreet(); break;
+    }
+  }
+
+  // ── Toggle expandable panels ─────────────────────────────────────────────
+  window.togglePanel = function(panelId, badgeId) {
+    const panel = document.getElementById(panelId);
+    const badge = document.getElementById(badgeId);
+    const isOpen = panel.classList.toggle('open');
+    badge.classList.toggle('active', isOpen);
+  };
+
+  // ── Code transform animation utility ─────────────────────────────────────
+  function animateCodeTransform(badEl, goodEl, durationMs) {
+    durationMs = durationMs || 800;
+    anime({ targets: badEl, opacity: [1,0], translateY: [0,-10], duration: durationMs/2, easing: 'easeInSine',
+      complete: () => {
+        badEl.style.display = 'none';
+        goodEl.style.display = 'block';
+        anime({ targets: goodEl, opacity: [0,1], translateY: [10,0], duration: durationMs/2, easing: 'easeOutSine' });
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Section 1.1 — Naming
+  // ══════════════════════════════════════════════════════════════════════════
+  function initNaming() {
+    showBadNames();
+  }
+
+  window.showBadNames = function() {
+    const bad = document.getElementById('bad-names-panel');
+    const good = document.getElementById('good-names-panel');
+    anime({ targets: good, opacity: 0, duration: 300, easing: 'easeOutSine',
+      complete: () => {
+        good.style.opacity = '0';
+        bad.style.opacity = '1';
+        bad.querySelectorAll('.name-pill').forEach(el => { el.style.filter = 'blur(2px)'; });
+        anime({ targets: bad, opacity: [0, 1], duration: 400, easing: 'easeOutSine' });
+        bad.querySelectorAll('.name-pill').forEach((el, i) => {
+          anime({ targets: el, opacity: [0.6, 1], delay: i * 60, duration: 300, easing: 'easeOutSine' });
+        });
+        setCogLoad(80, 'var(--bad)');
+      }
+    });
+  };
+
+  window.showGoodNames = function() {
+    const bad = document.getElementById('bad-names-panel');
+    const good = document.getElementById('good-names-panel');
+    bad.querySelectorAll('.name-pill').forEach(el => { el.style.filter = 'blur(0)'; });
+    anime({ targets: bad, opacity: 0, duration: 300, easing: 'easeInSine',
+      complete: () => {
+        bad.style.opacity = '0';
+        good.style.opacity = '0';
+        anime({ targets: good, opacity: [0, 1], duration: 400, easing: 'easeOutSine' });
+        good.querySelectorAll('.name-pill').forEach((el, i) => {
+          anime({ targets: el, opacity: [0, 1], translateY: [8, 0], delay: i * 80, duration: 400, easing: 'easeOutSine' });
+        });
+        setCogLoad(15, 'var(--good)');
+      }
+    });
+  };
+
+  function setCogLoad(pct, color) {
+    const bar = document.getElementById('cog-bar');
+    const val = document.getElementById('cog-val');
+    bar.style.background = color;
+    bar.style.transform = 'scaleX(' + (pct / 100) + ')';
+    val.textContent = pct + '%';
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Section 1.2 — Functions / Factory SVG
+  // ══════════════════════════════════════════════════════════════════════════
+  function initFactory() {
+    drawFactory(0);
+    updateArgSmell(0);
+  }
+
+  function makeSVGEl(tag) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag);
+  }
+
+  function svgRect(svg, x, y, w, h, fill, stroke, rx) {
+    const r = makeSVGEl('rect');
+    r.setAttribute('x', x); r.setAttribute('y', y);
+    r.setAttribute('width', w); r.setAttribute('height', h);
+    r.setAttribute('rx', rx || 6);
+    r.setAttribute('fill', fill || '#161b22');
+    r.setAttribute('stroke', stroke || '#30363d');
+    r.setAttribute('stroke-width', '1.5');
+    svg.appendChild(r); return r;
+  }
+
+  function svgText(svg, x, y, text, fill, size, mono) {
+    const t = makeSVGEl('text');
+    t.setAttribute('x', x); t.setAttribute('y', y);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('fill', fill || '#e6edf3');
+    t.setAttribute('font-size', size || 11);
+    if (mono) t.setAttribute('font-family', 'JetBrains Mono, monospace');
+    t.textContent = text;
+    svg.appendChild(t); return t;
+  }
+
+  function svgLine(svg, x1, y1, x2, y2, stroke, sw, dash) {
+    const l = makeSVGEl('line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', stroke || '#30363d');
+    l.setAttribute('stroke-width', sw || 1.5);
+    if (dash) l.setAttribute('stroke-dasharray', dash);
+    svg.appendChild(l); return l;
+  }
+
+  function drawFactory(argCount) {
+    const svg = document.getElementById('factory-svg');
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    // Clean machine: input → box → output
+    svgRect(svg, 30, 50, 80, 40, '#0d1117', '#30363d');
+    svgText(svg, 70, 65, 'Input', '#8b949e', 10, true);
+    svgText(svg, 70, 78, '(request)', '#8b949e', 9, true);
+
+    const machineStroke = argCount > 3 ? '#f87171' : argCount > 1 ? '#fb923c' : '#4ade80';
+    svgRect(svg, 280, 40, 140, 60, '#161b22', machineStroke);
+    svgText(svg, 350, 67, 'Function', '#e6edf3', 12, true);
+    svgText(svg, 350, 82, argCount === 0 ? '✓ pure transform' : argCount + ' args', machineStroke, 10, true);
+
+    svgRect(svg, 590, 50, 80, 40, '#0d1117', '#30363d');
+    svgText(svg, 630, 65, 'Output', '#8b949e', 10, true);
+    svgText(svg, 630, 78, '(result)', '#8b949e', 9, true);
+
+    // Arrow: input → function
+    svgLine(svg, 110, 70, 278, 70, '#8b949e', 1.5);
+    // Arrowhead
+    const ah1 = makeSVGEl('polygon');
+    ah1.setAttribute('points', '278,65 278,75 290,70');
+    ah1.setAttribute('fill', '#8b949e');
+    svg.appendChild(ah1);
+
+    // Arrow: function → output
+    svgLine(svg, 420, 70, 588, 70, '#8b949e', 1.5);
+    const ah2 = makeSVGEl('polygon');
+    ah2.setAttribute('points', '588,65 588,75 600,70');
+    ah2.setAttribute('fill', '#8b949e');
+    svg.appendChild(ah2);
+
+    // If args > 2, draw extra "wire" inputs sparking into the function box
+    if (argCount > 2) {
+      const colors = ['#f87171','#fb923c','#f2cc60','#60a5fa','#a78bfa'];
+      for (let i = 0; i < Math.min(argCount - 1, 4); i++) {
+        const gy = 30 + i * 20;
+        const line = svgLine(svg, 140 + i * 20, gy, 280, 70, colors[i], 1, '4 3');
+        line.style.opacity = '0.7';
+      }
+    }
+  }
+
+  window.updateArgSmell = function(val) {
+    val = parseInt(val);
+    document.getElementById('arg-count').textContent = val;
+    drawFactory(val);
+
+    const smellBar = document.getElementById('smell-bar');
+    const smellStatus = document.getElementById('smell-status');
+    const levels = [
+      { max: 0, label: 'Ideal — zero arguments',         pct: 0,   color: 'var(--good)' },
+      { max: 1, label: 'Good — 1 argument',               pct: 20,  color: 'var(--good)' },
+      { max: 2, label: 'Acceptable — 2 arguments',        pct: 45,  color: '#f2cc60' },
+      { max: 3, label: 'Questionable — 3 arguments',      pct: 70,  color: '#fb923c' },
+      { max: 99, label: 'Introduce Parameter Object!',   pct: 100, color: 'var(--bad)' },
+    ];
+    const level = levels.find(l => val <= l.max);
+    smellBar.style.transform = 'scaleX(' + (level.pct / 100) + ')';
+    smellBar.style.background = level.color;
+    smellStatus.textContent = level.label;
+    smellStatus.style.color = level.color;
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Section 1.3 — Single Level of Abstraction
+  // ══════════════════════════════════════════════════════════════════════════
+  var slaFixed = false;
+
+  function initAbstraction() {
+    slaFixed = false;
+    // Show mixed block
+    const mixed = document.getElementById('mixed-block');
+    const clean = document.getElementById('clean-block');
+    mixed.style.display = 'block';
+    mixed.style.opacity = '1';
+    clean.style.display = 'none';
+    clean.style.opacity = '0';
+
+    // Animate layers
+    const layers = ['layer-db','layer-biz','layer-html'];
+    layers.forEach((id, i) => {
+      const el = document.getElementById(id);
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(10px)';
+      anime({ targets: el, opacity: [0,1], translateY: [10,0], delay: i * 180, duration: 500, easing: 'easeOutSine' });
+    });
+
+    setSLABar(85, 'var(--bad)');
+  }
+
+  window.fixAbstraction = function() {
+    if (slaFixed) return;
+    slaFixed = true;
+
+    const mixed = document.getElementById('mixed-block');
+    const clean = document.getElementById('clean-block');
+
+    // Fade mixed lines out by level (db first, then biz, then html)
+    const mixedLines = ['ml-0','ml-1','ml-2','ml-3','ml-4','ml-5','ml-6','ml-7'];
+    mixedLines.forEach((id, i) => {
+      anime({ targets: document.getElementById(id), opacity: [1,0], translateY: [0,-8], delay: i * 80, duration: 300, easing: 'easeInSine' });
+    });
+
+    setTimeout(() => {
+      mixed.style.display = 'none';
+      clean.style.display = 'block';
+      anime({ targets: clean, opacity: [0,1], duration: 400, easing: 'easeOutSine' });
+      ['cl-0','cl-1','cl-2'].forEach((id, i) => {
+        anime({ targets: document.getElementById(id), opacity: [0,1], translateY: [8,0], delay: 200 + i * 150, duration: 400, easing: 'easeOutSine' });
+      });
+      setSLABar(5, 'var(--good)');
+    }, mixedLines.length * 80 + 350);
+  };
+
+  window.resetAbstraction = function() {
+    slaFixed = false;
+    const mixed = document.getElementById('mixed-block');
+    const clean = document.getElementById('clean-block');
+    mixed.style.display = 'block';
+    mixed.style.opacity = '1';
+    clean.style.display = 'none';
+    clean.style.opacity = '0';
+    const mixedIds = ['ml-0','ml-1','ml-2','ml-3','ml-4','ml-5','ml-6','ml-7'];
+    mixedIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    });
+    setSLABar(85, 'var(--bad)');
+  };
+
+  function setSLABar(pct, color) {
+    document.getElementById('sla-bar').style.transform = 'scaleX(' + (pct / 100) + ')';
+    document.getElementById('sla-bar').style.background = color;
+    document.getElementById('sla-val').textContent = pct + '%';
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Section 1.4 — Comments / Graveyard
+  // ══════════════════════════════════════════════════════════════════════════
+  function initGraveyard() {
+    // Tombstones start visible; animate in
+    const tombstones = document.querySelectorAll('.tombstone');
+    tombstones.forEach((el, i) => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(12px)';
+      anime({ targets: el, opacity: [0, 1], translateY: [12, 0], delay: i * 100, duration: 500, easing: 'easeOutSine' });
+    });
+    setCommentBar(75, 'var(--bad)');
+  }
+
+  window.animateGraveyard = function() {
+    const dead = document.querySelectorAll('.tombstone.dead');
+    const alive = document.querySelectorAll('.tombstone.alive');
+    dead.forEach((el, i) => {
+      anime({ targets: el, opacity: [1, 0.15], translateY: [0, 6], delay: i * 80, duration: 500, easing: 'easeInSine' });
+    });
+    alive.forEach((el, i) => {
+      anime({ targets: el, opacity: [0.7, 1], translateY: [0, -4], delay: i * 100 + 200, duration: 400, easing: 'easeOutSine' });
+    });
+    setCommentBar(10, 'var(--good)');
+    setTimeout(() => {
+      dead.forEach(el => {
+        anime({ targets: el, opacity: [0.15, 1], translateY: [6, 0], duration: 600, easing: 'easeOutSine' });
+      });
+      alive.forEach(el => {
+        anime({ targets: el, translateY: [-4, 0], duration: 400, easing: 'easeOutSine' });
+      });
+      setCommentBar(75, 'var(--bad)');
+    }, 2800);
+  };
+
+  function setCommentBar(pct, color) {
+    document.getElementById('comment-bar').style.transform = 'scaleX(' + (pct / 100) + ')';
+    document.getElementById('comment-bar').style.background = color;
+    document.getElementById('comment-val').textContent = pct + '%';
+  }
+
+  window.revealRegexAnswer = function() {
+    const ans = document.getElementById('regex-answer');
+    ans.classList.toggle('open');
+    if (ans.classList.contains('open')) {
+      anime({ targets: ans, opacity: [0, 1], translateY: [8, 0], duration: 350, easing: 'easeOutSine' });
+    }
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Section 1.5 — Formatting / D3 City Street
+  // ══════════════════════════════════════════════════════════════════════════
+  function initCityStreet() {
+    const svg = d3.select('#city-svg');
+    svg.selectAll('*').remove();
+    const W = 700, H = 160;
+
+    // Left: chaotic city
+    const chaosBlocks = [
+      { x: 20,  y: 30,  w: 55, h: 90, c: '#f87171' },
+      { x: 82,  y: 10,  w: 35, h: 120, c: '#fb923c' },
+      { x: 122, y: 50,  w: 70, h: 60, c: '#f87171' },
+      { x: 198, y: 20,  w: 25, h: 100, c: '#f2cc60' },
+      { x: 228, y: 60,  w: 50, h: 70, c: '#fb923c' },
+      { x: 283, y: 35,  w: 40, h: 80, c: '#f87171' },
+    ];
+
+    const chaosG = svg.append('g').attr('opacity', 0);
+    svg.append('text').attr('x', 165).attr('y', 152).attr('text-anchor', 'middle')
+      .attr('fill', '#8b949e').attr('font-size', 10).attr('font-family', 'JetBrains Mono, monospace')
+      .text('Chaotic — mixed indentation, random spacing');
+
+    chaosBlocks.forEach(b => {
+      chaosG.append('rect')
+        .attr('x', b.x).attr('y', b.y).attr('width', b.w).attr('height', b.h)
+        .attr('rx', 3).attr('fill', b.c).attr('fill-opacity', 0.18)
+        .attr('stroke', b.c).attr('stroke-width', 1.2);
+    });
+
+    // Right: clean city
+    const cleanBlocks = [
+      { x: 370, y: 20,  w: 55, h: 80 },
+      { x: 432, y: 20,  w: 55, h: 80 },
+      { x: 494, y: 20,  w: 55, h: 80 },
+      { x: 556, y: 20,  w: 55, h: 80 },
+      { x: 618, y: 20,  w: 55, h: 80 },
+    ];
+
+    const cleanG = svg.append('g').attr('opacity', 0);
+    svg.append('text').attr('x', 535).attr('y', 152).attr('text-anchor', 'middle')
+      .attr('fill', '#8b949e').attr('font-size', 10).attr('font-family', 'JetBrains Mono, monospace')
+      .text('Consistent — autoformatted, uniform blocks');
+
+    cleanBlocks.forEach(b => {
+      cleanG.append('rect')
+        .attr('x', b.x).attr('y', b.y).attr('width', b.w).attr('height', b.h)
+        .attr('rx', 4).attr('fill', '#4ade80').attr('fill-opacity', 0.12)
+        .attr('stroke', '#4ade80').attr('stroke-width', 1.2);
+    });
+
+    // Divider
+    svg.append('line').attr('x1', 340).attr('y1', 5).attr('x2', 340).attr('y2', 145)
+      .attr('stroke', '#30363d').attr('stroke-width', 1).attr('stroke-dasharray', '4 3');
+
+    // Animate both sides in on scroll trigger
+    anime({ targets: chaosG.node(), opacity: [0, 1], duration: 600, easing: 'easeOutSine' });
+    anime({ targets: cleanG.node(), opacity: [0, 1], duration: 600, delay: 200, easing: 'easeOutSine' });
+  }
+
+  // ── Sidebar toggle ────────────────────────────────────────────────────────
+  (function() {
+    const body = document.body;
+    const toggle = document.getElementById('sidebar-toggle');
+    const overlay = document.getElementById('sidebar-overlay');
+    const drawer = document.getElementById('sidebar-drawer');
+    const closeBtn = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      body.classList.add('sidebar-open');
+      overlay.classList.add('open');
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+    function closeSidebar() {
+      body.classList.remove('sidebar-open');
+      overlay.classList.remove('open');
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle.addEventListener('click', function() {
+      body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
+    });
+    overlay.addEventListener('click', closeSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('.drawer-group-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const group = btn.closest('.drawer-group');
+        const isCollapsed = group.classList.toggle('collapsed');
+        btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      });
+    });
+
+    drawer.querySelectorAll('a[href^="#"]').forEach(function(a) {
+      a.addEventListener('click', closeSidebar);
+    });
+  })();
+</script>
+
+</body>
+</html>

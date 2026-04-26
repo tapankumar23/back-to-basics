@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>18 · Union-Find (DSU) — DSA Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2330; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #34d399; --accent-dim: rgba(52,211,153,0.15);
+  --good: #4ade80; --bad: #f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-back{color:var(--text-muted);text-decoration:none;font-size:0.8rem;white-space:nowrap}
+.nav-back:hover{color:var(--accent)}
+.nav-pager{display:flex;align-items:center;gap:0.75rem;margin:0 auto;font-size:0.8rem}
+.nav-pager a{color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-pager span{color:var(--text);font-weight:600}
+.nav-anchors{display:flex;gap:0.5rem;margin-left:auto}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.75rem;padding:3px 8px;border-radius:4px}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 3rem}
+section{margin-bottom:4rem;opacity:0;transform:translateY(32px);transition:opacity 0.6s ease,transform 0.6s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.hero{text-align:center;padding:3rem 0 2rem;opacity:1!important;transform:none!important}
+.hero .pattern-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.5rem}
+.hero h1{font-size:3.5rem;font-weight:700;margin-bottom:0.75rem;background:linear-gradient(135deg,var(--accent),#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{color:var(--text-muted);font-size:1.1rem;max-width:700px;margin:0 auto}
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card:hover{background:var(--bg-card-hover)}
+.card h3{font-size:1rem;font-weight:600;margin-bottom:0.75rem;color:var(--text)}
+.controls{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+#viz-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+#viz-svg{width:100%;overflow:visible}
+.trace-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.trace-row{display:flex;gap:1rem;margin-bottom:0.4rem;flex-wrap:wrap}
+.trace-key{color:var(--text-muted)}
+.trace-val{color:var(--accent);font-weight:600}
+.trace-invariant{color:#f59e0b;font-size:0.75rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border)}
+.code-panel{position:relative}
+.code-panel pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7}
+.copy-btn{position:absolute;top:0.75rem;right:0.75rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-family:'Inter',sans-serif}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.875rem 1rem}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.problem-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:0.75rem;margin-bottom:0.25rem}
+.problem-name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}
+.problem-note{color:var(--text-muted);font-size:0.8rem}
+.section-label{font-size:1.1rem;font-weight:600;margin-bottom:0.75rem;margin-top:1.25rem;color:var(--text-muted)}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.staff-card h3{color:#f59e0b;font-size:1rem;margin-bottom:0.75rem}
+.staff-card p{color:var(--text-muted);font-size:0.875rem;line-height:1.7}
+.staff-card .hint{color:var(--text);margin-top:0.5rem;font-size:0.875rem}
+footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border)}
+.concept-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+@media(max-width:900px){.concept-cards{grid-template-columns:1fr}}
+.concept-svg-wrap{margin-top:1rem;background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:0.75rem;overflow:hidden}
+.toggle-row{display:flex;gap:0.5rem;margin-top:0.75rem;align-items:center;flex-wrap:wrap}
+.comparison-row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:1rem}
+@media(max-width:600px){.comparison-row{grid-template-columns:1fr}}
+.comp-box{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:0.875rem}
+.comp-box .label{font-size:0.75rem;font-weight:600;margin-bottom:0.5rem;padding:2px 8px;border-radius:4px;display:inline-block}
+.label-bad{background:rgba(248,113,113,0.15);color:#f87171}
+.label-good{background:rgba(52,211,153,0.15);color:#34d399}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<nav>
+  <a href="00_index.html" class="nav-back">Problem Solving Home</a>
+<div class="nav-pager">
+    <a href="17_graphs_mst.html">← MST</a>
+    <span>Union-Find (DSU)</span>
+    <a href="19_bit_manipulation.html">Bit Manipulation →</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+</nav>
+
+<main>
+  <section class="hero" id="hero">
+    <div class="pattern-num">PATTERN 18</div>
+    <h1>Union-Find (DSU)</h1>
+    <p class="tagline">Disjoint Set Union — O(α(n)) dynamic connectivity with path compression + union by rank</p>
+  </section>
+
+  <!-- ═══════════ SECTION 1: CONCEPT ═══════════ -->
+  <section id="concept">
+    <h2>Core Concept</h2>
+    <div class="concept-cards">
+
+      <!-- Card 1 -->
+      <div class="card">
+        <h3>Core Idea</h3>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem">
+          DSU maintains disjoint sets (components). Two core operations: <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">find(x)</code> returns the root representative of x's component; <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">union(a,b)</code> merges two components.
+        </p>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem">
+          Without optimizations: O(n) per op. With <strong style="color:var(--text)">path compression + union by rank</strong>: amortized <strong style="color:var(--accent)">O(α(n)) ≈ O(1)</strong>, where α is the inverse Ackermann function.
+        </p>
+        <div class="concept-svg-wrap">
+          <svg id="concept-svg-1" width="100%" height="160"></svg>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="card">
+        <h3>Path Compression + Union by Rank</h3>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.5rem">
+          <strong style="color:var(--text)">Path compression:</strong> on every <code style="color:var(--accent);font-family:'JetBrains Mono',monospace">find</code>, set <code style="font-family:'JetBrains Mono',monospace;color:var(--text)">parent[x] = root</code> directly — flattens the path.
+        </p>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem">
+          <strong style="color:var(--text)">Union by rank:</strong> always attach the smaller-rank tree under the larger-rank root — bounds tree height at O(log n).
+        </p>
+        <div class="comparison-row">
+          <div class="comp-box">
+            <div class="label label-bad">Naive union</div>
+            <svg id="naive-tree-svg" width="100%" height="100"></svg>
+          </div>
+          <div class="comp-box">
+            <div class="label label-good">Rank + compression</div>
+            <svg id="opt-tree-svg" width="100%" height="100"></svg>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <button class="btn" id="btn-compress" onclick="togglePathCompression()">Show Path Compression</button>
+          <span id="compress-label" style="color:var(--text-muted);font-size:0.8rem">Before find(5)</span>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="card">
+        <h3>When DSU beats BFS/DFS</h3>
+        <div style="margin-bottom:0.75rem">
+          <div style="background:var(--accent-dim);border:1px solid var(--accent);border-radius:6px;padding:0.6rem 0.875rem;margin-bottom:0.5rem">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--accent);margin-bottom:0.25rem">Use DSU when:</div>
+            <ul style="font-size:0.8rem;color:var(--text-muted);padding-left:1.1rem">
+              <li>Dynamic edge additions (online algorithm)</li>
+              <li>Only connectivity needed, not the path</li>
+              <li>Many repeated connectivity queries</li>
+            </ul>
+          </div>
+          <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:0.6rem 0.875rem">
+            <div style="font-size:0.75rem;font-weight:700;color:#f87171;margin-bottom:0.25rem">Use BFS/DFS when:</div>
+            <ul style="font-size:0.8rem;color:var(--text-muted);padding-left:1.1rem">
+              <li>Need the actual path between nodes</li>
+              <li>Weighted shortest path (Dijkstra/BF)</li>
+              <li>Directed graphs with SCC (Tarjan/Kosaraju)</li>
+            </ul>
+          </div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:0.6rem 0.875rem">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted)">
+            BFS/DFS: <span style="color:#f87171">O(V+E)</span> per query, store full graph<br>
+            DSU: <span style="color:var(--accent)">O(α(n))</span> per query after O(E) build
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ SECTION 2: STEPPER ═══════════ -->
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:1rem">
+      10 nodes (0–9), 7 union operations + 1 find. Watch the forest grow and path compression flatten trees.
+    </p>
+    <div id="viz-container">
+      <svg id="viz-svg" height="320"></svg>
+    </div>
+    <div class="controls" style="margin-top:0.75rem">
+      <button class="btn primary" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" onclick="stepForward()">Step →</button>
+      <button class="btn" onclick="stepBackward()">← Step</button>
+      <button class="btn" onclick="resetStepper()">↺ Reset</button>
+      <span id="step-counter" style="color:var(--text-muted);font-size:0.85rem">Step 0 / 7</span>
+    </div>
+    <div class="trace-panel" id="trace-panel">
+      <div class="trace-row">
+        <span class="trace-key">operation:</span><span class="trace-val" id="tr-op">Initial state</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">parent[]:</span><span class="trace-val" id="tr-parent">[0,1,2,3,4,5,6,7,8,9]</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">rank[]:</span><span class="trace-val" id="tr-rank">[0,0,0,0,0,0,0,0,0,0]</span>
+      </div>
+      <div class="trace-row">
+        <span class="trace-key">components:</span><span class="trace-val" id="tr-comp">10</span>
+        <span class="trace-key">find_path:</span><span class="trace-val" id="tr-path">—</span>
+      </div>
+      <div class="trace-invariant" id="trace-inv">
+        Invariant: Each tree's root is the canonical representative; path compression flattens trees; union by rank bounds tree height at O(log n)
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ SECTION 3: CODE ═══════════ -->
+  <section id="code">
+    <h2>Java Code Template</h2>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+      <pre id="code-pre"><span class="cm">// ===== UNION-FIND (DSU) — Path Compression + Union by Rank =====</span>
+<span class="kw">class</span> <span class="tp">DSU</span> {
+    <span class="kw">private</span> <span class="tp">int</span>[] parent, rank;
+    <span class="kw">private</span> <span class="tp">int</span> components;
+
+    <span class="kw">public</span> <span class="fn">DSU</span>(<span class="tp">int</span> n) {
+        parent = <span class="kw">new</span> <span class="tp">int</span>[n];
+        rank   = <span class="kw">new</span> <span class="tp">int</span>[n];
+        components = n;
+        <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; n; i++) parent[i] = i;
+    }
+
+    <span class="kw">public</span> <span class="tp">int</span> <span class="fn">find</span>(<span class="tp">int</span> x) {
+        <span class="kw">if</span> (parent[x] != x) parent[x] = <span class="fn">find</span>(parent[x]); <span class="cm">// path compression</span>
+        <span class="kw">return</span> parent[x];
+    }
+
+    <span class="kw">public</span> <span class="tp">boolean</span> <span class="fn">union</span>(<span class="tp">int</span> a, <span class="tp">int</span> b) {
+        <span class="tp">int</span> ra = <span class="fn">find</span>(a), rb = <span class="fn">find</span>(b);
+        <span class="kw">if</span> (ra == rb) <span class="kw">return</span> <span class="kw">false</span>; <span class="cm">// already same component</span>
+        <span class="kw">if</span> (rank[ra] &lt; rank[rb]) { <span class="tp">int</span> t = ra; ra = rb; rb = t; }
+        parent[rb] = ra;
+        <span class="kw">if</span> (rank[ra] == rank[rb]) rank[ra]++;
+        components--;
+        <span class="kw">return</span> <span class="kw">true</span>;
+    }
+
+    <span class="kw">public</span> <span class="tp">boolean</span> <span class="fn">connected</span>(<span class="tp">int</span> a, <span class="tp">int</span> b) { <span class="kw">return</span> <span class="fn">find</span>(a) == <span class="fn">find</span>(b); }
+    <span class="kw">public</span> <span class="tp">int</span> <span class="fn">getComponents</span>() { <span class="kw">return</span> components; }
+}
+
+<span class="cm">// ===== WEIGHTED DSU (for rank/ratio problems) =====</span>
+<span class="kw">class</span> <span class="tp">WeightedDSU</span> {
+    <span class="tp">int</span>[] parent;
+    <span class="tp">double</span>[] weight; <span class="cm">// weight[x] = weight(x) / weight(parent[x])</span>
+
+    <span class="kw">public</span> <span class="fn">WeightedDSU</span>(<span class="tp">int</span> n) {
+        parent = <span class="kw">new</span> <span class="tp">int</span>[n];
+        weight = <span class="kw">new</span> <span class="tp">double</span>[n];
+        <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; n; i++) { parent[i] = i; weight[i] = <span class="num">1.0</span>; }
+    }
+
+    <span class="kw">public</span> <span class="tp">int</span> <span class="fn">find</span>(<span class="tp">int</span> x) {
+        <span class="kw">if</span> (parent[x] == x) <span class="kw">return</span> x;
+        <span class="tp">int</span> root = <span class="fn">find</span>(parent[x]);
+        weight[x] *= weight[parent[x]]; <span class="cm">// accumulate weight on path compression</span>
+        parent[x] = root;
+        <span class="kw">return</span> root;
+    }
+
+    <span class="kw">public</span> <span class="tp">boolean</span> <span class="fn">union</span>(<span class="tp">int</span> a, <span class="tp">int</span> b, <span class="tp">double</span> ratio) { <span class="cm">// ratio = val(a) / val(b)</span>
+        <span class="tp">int</span> ra = <span class="fn">find</span>(a), rb = <span class="fn">find</span>(b);
+        <span class="kw">if</span> (ra == rb) <span class="kw">return</span> <span class="kw">false</span>;
+        parent[ra] = rb;
+        weight[ra] = ratio * weight[b] / weight[a];
+        <span class="kw">return</span> <span class="kw">true</span>;
+    }
+
+    <span class="kw">public</span> <span class="tp">double</span> <span class="fn">query</span>(<span class="tp">int</span> a, <span class="tp">int</span> b) {
+        <span class="kw">if</span> (<span class="fn">find</span>(a) != <span class="fn">find</span>(b)) <span class="kw">return</span> -<span class="num">1.0</span>; <span class="cm">// not connected</span>
+        <span class="kw">return</span> weight[a] / weight[b];
+    }
+}</pre>
+    </div>
+  </section>
+
+  <!-- ═══════════ SECTION 4: PROBLEMS ═══════════ -->
+  <section id="problems">
+    <h2>Canonical Problems</h2>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">LC 547</div>
+        <div class="problem-name">Number of Provinces</div>
+        <div class="problem-note">Direct DSU application; count remaining components after all union ops. Also solvable with BFS but DSU is cleaner and faster.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 684</div>
+        <div class="problem-name">Redundant Connection</div>
+        <div class="problem-note">Find the first edge whose both endpoints already share a root. The redundant edge forms the cycle — return it immediately.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 305</div>
+        <div class="problem-name">Number of Islands II</div>
+        <div class="problem-note">Online: islands added dynamically one at a time. After each add, union with adjacent land cells and query component count. DSU shines here; BFS would be O(k·mn).</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 721</div>
+        <div class="problem-name">Accounts Merge</div>
+        <div class="problem-note">DSU on email indices (not strings). Key insight: map each email to an integer ID, union IDs sharing an account, then group emails by root component.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 947</div>
+        <div class="problem-name">Most Stones Removed (Same Row/Col)</div>
+        <div class="problem-note">Union stones sharing same row or column. Answer = n − (number of components). Elegant: a component can be reduced to 1 stone.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 1202</div>
+        <div class="problem-name">Smallest String With Swaps</div>
+        <div class="problem-note">DSU on indices: union swappable pairs. Within each component, collect characters, sort, and place back in sorted index order.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 399</div>
+        <div class="problem-name">Evaluate Division</div>
+        <div class="problem-note">Weighted DSU where edge weight = ratio a/b. Path compression accumulates weights multiplicatively. Query = weight[a]/weight[b] when same root.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 827</div>
+        <div class="problem-name">Making a Large Island</div>
+        <div class="problem-note">Label each component with DSU and record sizes. For each 0-cell, sum distinct adjacent component sizes + 1. Two-pass O(mn) using DSU labels.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ SECTION 5: STAFF ═══════════ -->
+  <section id="staff">
+    <h2>Staff Angles</h2>
+    <div class="staff-card">
+      <h3>Distributed DSU</h3>
+      <p>You have a social graph with 1B nodes partitioned across 50 machines. Users connect dynamically. How do you maintain connected components? Discuss local DSU per shard + periodic global merge rounds vs. consistent-hash-based routing. What's the consistency model?</p>
+      <p class="hint">→ Local DSU per shard handles intra-shard edges in O(α(n)); cross-shard edges require a two-phase protocol — route both endpoints to a coordinator or use consistent hashing so all nodes in a component land on the same shard (but rebalancing is expensive). Periodic global merge (MapReduce-style): each round ships root IDs across shards, takes O(E/shards) messages per round, converges in O(log n) rounds. Consistency model: eventual — queries during a merge window may return stale component info. For strong consistency, serialize cross-shard unions through a distributed lock or use a CRDTs-based union-find where merges are idempotent and commutative.</p>
+    </div>
+    <div class="staff-card">
+      <h3>Persistent / Rollback DSU</h3>
+      <p>You need to support undo operations (rollback last k unions) — for example, in an offline algorithm (like link-cut trees or offline LCT) that processes queries in a different order. Path compression breaks rollback. How do you handle this?</p>
+      <p class="hint">→ Drop path compression; keep union by rank only. Tree height stays O(log n), so find is O(log n) — acceptable. Rollback: maintain a stack of <code style="font-family:'JetBrains Mono',monospace">(node, oldParent, oldRank)</code> tuples. Each union pushes 1–2 entries. Rollback k unions: pop and restore exactly k times, O(k log n) total. This technique enables offline divide-and-conquer on dynamic connectivity: split timeline into segments, process with rollback DSU in O(E log E log n). For fully persistent DSU with O(log n) per op, use a persistent array (path-copying) instead — but that's O(n log n) space per version.</p>
+    </div>
+  </section>
+</main>
+
+<footer>Union-Find (DSU) · MANG Staff DSA 2026</footer>
+
+<script>
+// ─── Progress bar ───────────────────────────────────────────────
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + window.scrollY / total + ')';
+});
+
+// ─── Intersection observer ──────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// ══════════════════════════════════════════════════════════════
+// CONCEPT SVG 1: 8 nodes initial → 3 union ops with tree structure
+// ══════════════════════════════════════════════════════════════
+function drawConceptSvg1() {
+  const svg = d3.select('#concept-svg-1');
+  svg.selectAll('*').remove();
+  const W = document.getElementById('concept-svg-1').parentElement.offsetWidth - 24;
+  const H = 160;
+  svg.attr('width', W).attr('height', H);
+
+  const nodeR = 14;
+  // 8 nodes in two rows of 4
+  const positions = [
+    {x: W*0.1, y: 40}, {x: W*0.24, y: 40}, {x: W*0.38, y: 40}, {x: W*0.52, y: 40},
+    {x: W*0.66, y: 40}, {x: W*0.8, y: 40},  {x: W*0.9, y: 40},  {x: W*0.96, y: 40}
+  ];
+  // Simplified: show 8 separate nodes then animate union(0,1), union(2,3), union(0,2)
+  const nodes = [0,1,2,3,4,5,6,7];
+  // evenly spaced
+  const spacing = W / 9;
+  const posX = i => (i+1) * spacing;
+
+  // Draw edges (parent pointers) after unions
+  // After union(0,1): 1→0
+  // After union(2,3): 3→2
+  // After union(0,2): 2→0
+  const edges = [
+    {from: 1, to: 0}, {from: 3, to: 2}, {from: 2, to: 0}
+  ];
+
+  // Draw edges
+  edges.forEach(e => {
+    const x1 = posX(e.from), y1 = 45;
+    const x2 = posX(e.to),   y2 = 45;
+    const midX = (x1 + x2) / 2;
+    const midY = e.from === 2 ? 115 : 75; // arc below for 2→0
+    svg.append('path')
+      .attr('d', `M${x1},${y1} Q${midX},${midY} ${x2},${y2}`)
+      .attr('fill','none').attr('stroke','rgba(52,211,153,0.6)').attr('stroke-width',1.5)
+      .attr('marker-end','url(#arr18)');
+  });
+
+  // Arrow marker
+  const defs = svg.append('defs');
+  const marker = defs.append('marker').attr('id','arr18').attr('markerWidth',8).attr('markerHeight',8)
+    .attr('refX',6).attr('refY',3).attr('orient','auto');
+  marker.append('path').attr('d','M0,0 L0,6 L8,3 z').attr('fill','rgba(52,211,153,0.6)');
+
+  // Draw nodes
+  nodes.forEach(i => {
+    const x = posX(i);
+    const isRoot = i === 0 || i === 4 || i === 5 || i === 6 || i === 7;
+    svg.append('circle').attr('cx', x).attr('cy', 45).attr('r', nodeR)
+      .attr('fill', isRoot ? 'rgba(52,211,153,0.2)' : 'rgba(52,211,153,0.05)')
+      .attr('stroke', isRoot ? '#34d399' : '#30363d').attr('stroke-width', isRoot ? 2 : 1);
+    svg.append('text').attr('x', x).attr('y', 50).attr('text-anchor','middle')
+      .attr('fill', '#e6edf3').attr('font-size', 11).attr('font-family','JetBrains Mono').text(i);
+  });
+
+  // Labels
+  svg.append('text').attr('x', posX(0)).attr('y', 130).attr('text-anchor','middle')
+    .attr('fill','#34d399').attr('font-size',9).attr('font-family','Inter').text('root');
+  svg.append('text').attr('x', W/2).attr('y', 150).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',10).attr('font-family','Inter')
+    .text('After union(0,1), union(2,3), union(0,2) → component {0,1,2,3}');
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONCEPT SVG: Naive tree vs Optimized tree
+// ══════════════════════════════════════════════════════════════
+let compressionState = false;
+
+function drawNaiveTree() {
+  const svgEl = document.getElementById('naive-tree-svg');
+  const W = svgEl.parentElement.offsetWidth - 20;
+  const svg = d3.select('#naive-tree-svg').attr('width', W).attr('height', 100);
+  svg.selectAll('*').remove();
+  // Tall chain: 0←1←2←3←4
+  const nodes = [0,1,2,3,4];
+  const xBase = W / 2;
+  const yStart = 15, yStep = 17;
+  nodes.forEach((n, i) => {
+    const y = yStart + i * yStep;
+    if (i < 4) {
+      svg.append('line').attr('x1', xBase).attr('y1', y+8).attr('x2', xBase).attr('y2', y+yStep-8)
+        .attr('stroke','#f87171').attr('stroke-width',1.5);
+    }
+    svg.append('circle').attr('cx', xBase).attr('cy', y).attr('r', 9)
+      .attr('fill','rgba(248,113,113,0.1)').attr('stroke','#f87171').attr('stroke-width',1.5);
+    svg.append('text').attr('x', xBase).attr('y', y+4).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-size',9).attr('font-family','JetBrains Mono').text(n);
+  });
+  svg.append('text').attr('x', xBase+14).attr('y', yStart+2).attr('fill','#8b949e').attr('font-size',8).text('root');
+  svg.append('text').attr('x', 2).attr('y', 92).attr('fill','#f87171').attr('font-size',9).attr('font-family','JetBrains Mono').text('O(n) height');
+}
+
+function drawOptTree(compressed) {
+  const svgEl = document.getElementById('opt-tree-svg');
+  const W = svgEl.parentElement.offsetWidth - 20;
+  const svg = d3.select('#opt-tree-svg').attr('width', W).attr('height', 100);
+  svg.selectAll('*').remove();
+
+  if (!compressed) {
+    // Before: small balanced tree, root=0, children 1,2 under 0; 3,4 under 1
+    const treeNodes = [
+      {id:0, x:W/2,   y:14},
+      {id:1, x:W*0.3, y:42},
+      {id:2, x:W*0.7, y:42},
+      {id:3, x:W*0.15,y:70},
+      {id:4, x:W*0.45,y:70},
+    ];
+    const edges = [[0,1],[0,2],[1,3],[1,4]];
+    edges.forEach(([p,c]) => {
+      const pn = treeNodes[p], cn = treeNodes[c];
+      svg.append('line').attr('x1',pn.x).attr('y1',pn.y+8).attr('x2',cn.x).attr('y2',cn.y-8)
+        .attr('stroke','rgba(52,211,153,0.5)').attr('stroke-width',1.5);
+    });
+    treeNodes.forEach(n => {
+      svg.append('circle').attr('cx',n.x).attr('cy',n.y).attr('r',9)
+        .attr('fill','rgba(52,211,153,0.12)').attr('stroke','#34d399').attr('stroke-width',1.5);
+      svg.append('text').attr('x',n.x).attr('y',n.y+4).attr('text-anchor','middle')
+        .attr('fill','#e6edf3').attr('font-size',9).attr('font-family','JetBrains Mono').text(n.id);
+    });
+    svg.append('text').attr('x',W/2+14).attr('y',16).attr('fill','#8b949e').attr('font-size',8).text('root');
+    svg.append('text').attr('x',2).attr('y',92).attr('fill','#34d399').attr('font-size',9).attr('font-family','JetBrains Mono').text('O(log n)');
+  } else {
+    // After path compression: star topology — all point directly to 0
+    const cx = W/2, cy = 22;
+    const childAngles = [-60,-30,0,30];
+    const childNodes = [1,2,3,4];
+    childNodes.forEach((n, i) => {
+      const angle = (childAngles[i] - 90) * Math.PI / 180;
+      const r = 46;
+      const nx = cx + r * Math.cos(angle);
+      const ny = cy + r * Math.sin(angle) + 30;
+      svg.append('line').attr('x1',cx).attr('y1',cy+8).attr('x2',nx).attr('y2',ny-8)
+        .attr('stroke','rgba(52,211,153,0.7)').attr('stroke-width',1.5).attr('stroke-dasharray','3,2');
+      svg.append('circle').attr('cx',nx).attr('cy',ny).attr('r',9)
+        .attr('fill','rgba(52,211,153,0.12)').attr('stroke','#34d399').attr('stroke-width',1.5);
+      svg.append('text').attr('x',nx).attr('y',ny+4).attr('text-anchor','middle')
+        .attr('fill','#e6edf3').attr('font-size',9).attr('font-family','JetBrains Mono').text(n);
+    });
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',9)
+      .attr('fill','rgba(52,211,153,0.25)').attr('stroke','#34d399').attr('stroke-width',2);
+    svg.append('text').attr('x',cx).attr('y',cy+4).attr('text-anchor','middle')
+      .attr('fill','#e6edf3').attr('font-size',9).attr('font-family','JetBrains Mono').text(0);
+    svg.append('text').attr('x',2).attr('y',92).attr('fill','#34d399').attr('font-size',9).attr('font-family','JetBrains Mono').text('O(α(n))');
+  }
+}
+
+function togglePathCompression() {
+  compressionState = !compressionState;
+  drawOptTree(compressionState);
+  const btn = document.getElementById('btn-compress');
+  const lbl = document.getElementById('compress-label');
+  btn.textContent = compressionState ? 'Show Before Compression' : 'Show Path Compression';
+  lbl.textContent = compressionState ? 'After find(4): all nodes point to root' : 'Before find(5)';
+}
+
+// ══════════════════════════════════════════════════════════════
+// STEPPER
+// ══════════════════════════════════════════════════════════════
+const STEPS = [
+  {
+    op: 'Initial: 10 separate nodes, parent[i]=i, rank[i]=0',
+    parent: [0,1,2,3,4,5,6,7,8,9],
+    rank:   [0,0,0,0,0,0,0,0,0,0],
+    comp: 10,
+    path: '—',
+    highlight: [],
+    pathCompress: []
+  },
+  {
+    op: 'union(0,1): rank equal → attach 1 under 0. rank[0]++',
+    parent: [0,0,2,3,4,5,6,7,8,9],
+    rank:   [1,0,0,0,0,0,0,0,0,0],
+    comp: 9,
+    path: '—',
+    highlight: [0,1],
+    pathCompress: []
+  },
+  {
+    op: 'union(2,3): rank equal → attach 3 under 2. rank[2]++',
+    parent: [0,0,2,2,4,5,6,7,8,9],
+    rank:   [1,0,1,0,0,0,0,0,0,0],
+    comp: 8,
+    path: '—',
+    highlight: [2,3],
+    pathCompress: []
+  },
+  {
+    op: 'union(4,5): rank equal → attach 5 under 4. rank[4]++',
+    parent: [0,0,2,2,4,4,6,7,8,9],
+    rank:   [1,0,1,0,1,0,0,0,0,0],
+    comp: 7,
+    path: '—',
+    highlight: [4,5],
+    pathCompress: []
+  },
+  {
+    op: 'union(0,2): rank equal (both 1) → attach 2 under 0. rank[0]++. {0,1,2,3} connected',
+    parent: [0,0,0,2,4,4,6,7,8,9],
+    rank:   [2,0,1,0,1,0,0,0,0,0],
+    comp: 6,
+    path: '—',
+    highlight: [0,1,2,3],
+    pathCompress: []
+  },
+  {
+    op: 'union(6,7): rank equal → attach 7 under 6. rank[6]++',
+    parent: [0,0,0,2,4,4,6,6,8,9],
+    rank:   [2,0,1,0,1,0,1,0,0,0],
+    comp: 5,
+    path: '—',
+    highlight: [6,7],
+    pathCompress: []
+  },
+  {
+    op: 'union(0,6): rank[0]=2 > rank[6]=1 → attach 6 under 0. {0,1,2,3,6,7} connected',
+    parent: [0,0,0,2,4,4,0,6,8,9],
+    rank:   [2,0,1,0,1,0,1,0,0,0],
+    comp: 4,
+    path: '—',
+    highlight: [0,1,2,3,6,7],
+    pathCompress: []
+  },
+  {
+    op: 'find(5): traverse 5→4 (root). Returns 4. Components: {0,1,2,3,6,7}, {4,5}, {8}, {9}',
+    parent: [0,0,0,2,4,4,0,6,8,9],
+    rank:   [2,0,1,0,1,0,1,0,0,0],
+    comp: 4,
+    path: '5 → 4 (root)',
+    highlight: [4,5],
+    pathCompress: [5]
+  }
+];
+
+let stepIdx = 0;
+let playInterval = null;
+
+// Node positions: two rows of 5
+function getNodePos(i, W, H) {
+  const row = Math.floor(i / 5);
+  const col = i % 5;
+  const xStart = W * 0.1;
+  const xEnd   = W * 0.9;
+  const xStep  = (xEnd - xStart) / 4;
+  const y = row === 0 ? H * 0.28 : H * 0.72;
+  return { x: xStart + col * xStep, y };
+}
+
+function drawStepper() {
+  const svg = d3.select('#viz-svg');
+  svg.selectAll('*').remove();
+  const W = document.getElementById('viz-container').offsetWidth - 48;
+  const H = 320;
+  svg.attr('width', W).attr('height', H);
+
+  const st = STEPS[stepIdx];
+  const parent = st.parent;
+  const N = 10;
+  const nodeR = 18;
+
+  // Defs for arrow
+  const defs = svg.append('defs');
+  const mk = defs.append('marker').attr('id','arr-dsu').attr('markerWidth',8).attr('markerHeight',8)
+    .attr('refX',7).attr('refY',3).attr('orient','auto');
+  mk.append('path').attr('d','M0,0 L0,6 L8,3 z').attr('fill','rgba(52,211,153,0.8)');
+
+  const mkRed = defs.append('marker').attr('id','arr-dsu-red').attr('markerWidth',8).attr('markerHeight',8)
+    .attr('refX',7).attr('refY',3).attr('orient','auto');
+  mkRed.append('path').attr('d','M0,0 L0,6 L8,3 z').attr('fill','#f87171');
+
+  // Draw parent edges
+  for (let i = 0; i < N; i++) {
+    if (parent[i] !== i) {
+      const {x:x1, y:y1} = getNodePos(i, W, H);
+      const {x:x2, y:y2} = getNodePos(parent[i], W, H);
+      const isCompress = st.pathCompress.includes(i);
+      const isHL = st.highlight.includes(i) && st.highlight.includes(parent[i]);
+      // curved edge
+      const dx = x2 - x1, dy = y2 - y1;
+      const mx = (x1+x2)/2, my = (y1+y2)/2;
+      const curveDx = -dy * 0.3, curveDy = dx * 0.3;
+      const cpx = mx + curveDx, cpy = my + curveDy;
+      // shorten to node radius
+      const dist = Math.sqrt((x2-x1)**2+(y2-y1)**2);
+      const ux = (x2-x1)/dist, uy = (y2-y1)/dist;
+      const ex1 = x1 + ux*nodeR, ey1 = y1 + uy*nodeR;
+      const ex2 = x2 - ux*nodeR, ey2 = y2 - uy*nodeR;
+
+      svg.append('path')
+        .attr('d', `M${ex1},${ey1} Q${cpx},${cpy} ${ex2},${ey2}`)
+        .attr('fill','none')
+        .attr('stroke', isCompress ? '#f87171' : (isHL ? 'rgba(52,211,153,0.8)' : 'rgba(52,211,153,0.35)'))
+        .attr('stroke-width', isCompress ? 2.5 : (isHL ? 2 : 1.5))
+        .attr('marker-end', isCompress ? 'url(#arr-dsu-red)' : 'url(#arr-dsu)')
+        .attr('stroke-dasharray', isCompress ? '4,3' : 'none');
+    }
+  }
+
+  // Draw nodes
+  for (let i = 0; i < N; i++) {
+    const {x, y} = getNodePos(i, W, H);
+    const isHL = st.highlight.includes(i);
+    const isRoot = parent[i] === i;
+    const isCompress = st.pathCompress.includes(i);
+
+    svg.append('circle').attr('cx', x).attr('cy', y).attr('r', nodeR)
+      .attr('fill', isCompress ? 'rgba(248,113,113,0.2)' : (isHL ? 'rgba(52,211,153,0.2)' : '#161b22'))
+      .attr('stroke', isCompress ? '#f87171' : (isHL ? '#34d399' : '#30363d'))
+      .attr('stroke-width', (isRoot && isHL) ? 3 : (isHL ? 2 : 1.5));
+
+    svg.append('text').attr('x', x).attr('y', y+5).attr('text-anchor','middle')
+      .attr('fill', isCompress ? '#f87171' : (isHL ? '#34d399' : '#e6edf3'))
+      .attr('font-size', 13).attr('font-weight', isRoot ? '700' : '400')
+      .attr('font-family','JetBrains Mono').text(i);
+
+    if (isRoot) {
+      svg.append('text').attr('x', x).attr('y', y - nodeR - 5).attr('text-anchor','middle')
+        .attr('fill','rgba(52,211,153,0.7)').attr('font-size', 9).attr('font-family','Inter').text('root');
+    }
+  }
+
+  // Row labels
+  svg.append('text').attr('x', 6).attr('y', H*0.28+5).attr('fill','#8b949e')
+    .attr('font-size',9).attr('font-family','Inter').text('0–4');
+  svg.append('text').attr('x', 6).attr('y', H*0.72+5).attr('fill','#8b949e')
+    .attr('font-size',9).attr('font-family','Inter').text('5–9');
+
+  // Operation label at top
+  svg.append('text').attr('x', W/2).attr('y', 18).attr('text-anchor','middle')
+    .attr('fill','#8b949e').attr('font-size',11).attr('font-family','Inter')
+    .text(`Step ${stepIdx} / ${STEPS.length - 1}`);
+}
+
+function updateTrace() {
+  const st = STEPS[stepIdx];
+  document.getElementById('tr-op').textContent = st.op;
+  document.getElementById('tr-parent').textContent = '[' + st.parent.join(',') + ']';
+  document.getElementById('tr-rank').textContent = '[' + st.rank.join(',') + ']';
+  document.getElementById('tr-comp').textContent = st.comp;
+  document.getElementById('tr-path').textContent = st.path;
+  document.getElementById('step-counter').textContent = `Step ${stepIdx} / ${STEPS.length - 1}`;
+}
+
+function resetStepper() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; document.getElementById('play-btn').textContent = '▶ Play'; }
+  stepIdx = 0;
+  drawStepper();
+  updateTrace();
+}
+
+function stepForward() {
+  if (stepIdx < STEPS.length - 1) {
+    stepIdx++;
+    drawStepper();
+    updateTrace();
+  }
+}
+
+function stepBackward() {
+  if (stepIdx > 0) {
+    stepIdx--;
+    drawStepper();
+    updateTrace();
+  }
+}
+
+function togglePlay() {
+  if (playInterval) {
+    clearInterval(playInterval);
+    playInterval = null;
+    document.getElementById('play-btn').textContent = '▶ Play';
+  } else {
+    document.getElementById('play-btn').textContent = '⏸ Pause';
+    playInterval = setInterval(() => {
+      if (stepIdx >= STEPS.length - 1) {
+        clearInterval(playInterval); playInterval = null;
+        document.getElementById('play-btn').textContent = '▶ Play';
+        return;
+      }
+      stepForward();
+    }, 1400);
+  }
+}
+
+// ─── Copy code ──────────────────────────────────────────────────
+function copyCode() {
+  const raw = `// ===== UNION-FIND (DSU) — Path Compression + Union by Rank =====
+class DSU {
+    private int[] parent, rank;
+    private int components;
+
+    public DSU(int n) {
+        parent = new int[n];
+        rank = new int[n];
+        components = n;
+        for (int i = 0; i < n; i++) parent[i] = i;
+    }
+
+    public int find(int x) {
+        if (parent[x] != x) parent[x] = find(parent[x]); // path compression
+        return parent[x];
+    }
+
+    public boolean union(int a, int b) {
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false; // already same component
+        if (rank[ra] < rank[rb]) { int t = ra; ra = rb; rb = t; }
+        parent[rb] = ra;
+        if (rank[ra] == rank[rb]) rank[ra]++;
+        components--;
+        return true;
+    }
+
+    public boolean connected(int a, int b) { return find(a) == find(b); }
+    public int getComponents() { return components; }
+}
+
+// ===== WEIGHTED DSU (for rank/ratio problems) =====
+class WeightedDSU {
+    int[] parent;
+    double[] weight; // weight[x] = weight(x) / weight(parent[x])
+
+    public WeightedDSU(int n) {
+        parent = new int[n];
+        weight = new double[n];
+        for (int i = 0; i < n; i++) { parent[i] = i; weight[i] = 1.0; }
+    }
+
+    public int find(int x) {
+        if (parent[x] == x) return x;
+        int root = find(parent[x]);
+        weight[x] *= weight[parent[x]]; // accumulate weight on path compression
+        parent[x] = root;
+        return root;
+    }
+
+    public boolean union(int a, int b, double ratio) { // ratio = val(a) / val(b)
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;
+        parent[ra] = rb;
+        weight[ra] = ratio * weight[b] / weight[a];
+        return true;
+    }
+
+    public double query(int a, int b) {
+        if (find(a) != find(b)) return -1.0; // not connected
+        return weight[a] / weight[b];
+    }
+}`;
+  navigator.clipboard.writeText(raw).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+function initAll() {
+  drawConceptSvg1();
+  drawNaiveTree();
+  drawOptTree(false);
+  resetStepper();
+}
+
+window.addEventListener('load', initAll);
+window.addEventListener('resize', () => {
+  drawConceptSvg1();
+  drawNaiveTree();
+  drawOptTree(compressionState);
+  drawStepper();
+});
+</script>
+</body>
+</html>

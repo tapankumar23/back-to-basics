@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ch 8+9: Distributed Problems &amp; Consensus — DDIA Animated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg-card:#161b22;--bg-card-hover:#1c2330;
+  --border:#30363d;--text:#e6edf3;--text-muted:#8b949e;
+  --accent:#34d399;--accent-dim:rgba(52,211,153,0.15);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;padding-top:56px}
+a{color:inherit;text-decoration:none}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e}.num{color:#79c0ff}.tp{color:#ffa657}
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+.section{padding:5rem 0}
+.section-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--accent);margin-bottom:.5rem}
+.section-sub{color:var(--text-muted);font-size:15px;margin-bottom:2.5rem}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;transition:background .2s}
+.card:hover{background:var(--bg-card-hover)}
+.card-title{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+pre{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7}
+code{font-family:'JetBrains Mono',monospace;font-size:13px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-accent{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn-accent:hover{background:var(--accent);color:#000}
+.tab-btn{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all .2s}
+.tab-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:600}
+.badge-green{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3)}
+.badge-red{background:rgba(248,113,113,.15);color:#f87171;border:1px solid rgba(248,113,113,.3)}
+.badge-amber{background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3)}
+.badge-accent{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(52,211,153,.3)}
+hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
+.will-animate{opacity:0;transform:translateY(20px)}
+svg text{font-family:'Inter',sans-serif}
+.verdict-grid{width:100%;border-collapse:collapse}
+.verdict-grid th,.verdict-grid td{padding:10px 14px;border:1px solid var(--border);font-size:13px;text-align:left}
+.verdict-grid th{background:var(--bg-card);color:var(--text-muted);font-weight:600}
+.verdict-grid td.check{color:#4ade80;font-weight:700;font-size:16px}
+.verdict-grid td.cross{color:#f87171;font-weight:700;font-size:16px}
+.verdict-grid tbody tr{cursor:pointer;transition:background .2s}
+.verdict-grid tbody tr:hover{background:var(--bg-card-hover)}
+.spectrum-bar{position:relative;height:36px;border-radius:8px;background:linear-gradient(to right,rgba(248,113,113,.3),rgba(245,158,11,.3),rgba(52,211,153,.4));border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 12px;overflow:hidden;}
+.spectrum-label{font-size:11px;font-weight:600;z-index:1;position:relative}
+.raft-node{display:flex;flex-direction:column;align-items:center;gap:6px}
+.raft-circle{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border:2px solid var(--border);transition:all .4s}
+.raft-role{font-size:10px;color:var(--text-muted)}
+.info-box{background:var(--accent-dim);border:1px solid rgba(52,211,153,.3);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--text-muted);}
+.info-box strong{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div id="progress-bar" style="position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);transform:scaleX(0);transform-origin:left center;z-index:1000;pointer-events:none;"></div>
+
+<nav id="navbar" style="position:fixed;top:0;left:0;right:0;padding:6px 20px;background:rgba(13,17,23,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;z-index:999;flex-wrap:wrap;">
+  <a href="00_index.html" style="font-weight:700;color:var(--accent);text-decoration:none;font-size:15px;">DDIA</a>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <a href="06_transactions.html" style="display:flex;flex-direction:column;padding:3px 10px;border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-muted);font-size:11px;"><span>&#8592; prev</span><span style="color:var(--text);font-size:12px;font-weight:500;">Transactions</span></a>
+    <span style="display:flex;flex-direction:column;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;font-size:11px;color:var(--accent);"><span>ch 8+9</span><span style="font-size:12px;font-weight:600;">Distributed Problems</span></span>
+    <a href="08_batch_stream_future.html" style="display:flex;flex-direction:column;padding:3px 10px;border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-muted);font-size:11px;"><span>next &#8594;</span><span style="color:var(--text);font-size:12px;font-weight:500;">Batch, Stream &amp; Future</span></a>
+  </div>
+  <div style="display:flex;gap:8px;font-size:12px;margin-left:auto;flex-wrap:wrap;">
+    <a href="#s1" style="color:var(--text-muted);text-decoration:none;">Partial Failures</a>
+    <a href="#s2" style="color:var(--text-muted);text-decoration:none;">Byzantine</a>
+    <a href="#s3" style="color:var(--text-muted);text-decoration:none;">Clocks</a>
+    <a href="#s4" style="color:var(--text-muted);text-decoration:none;">Logical Clocks</a>
+    <a href="#s5" style="color:var(--text-muted);text-decoration:none;">Process Pauses</a>
+    <a href="#s6" style="color:var(--text-muted);text-decoration:none;">Causality</a>
+    <a href="#s7" style="color:var(--text-muted);text-decoration:none;">Linearizability</a>
+    <a href="#s8" style="color:var(--text-muted);text-decoration:none;">CAP</a>
+    <a href="#s9" style="color:var(--text-muted);text-decoration:none;">Consensus</a>
+    <a href="#s10" style="color:var(--text-muted);text-decoration:none;">ZooKeeper</a>
+    <a href="../system-design-concepts/00_index.html" style="color:var(--text-muted);text-decoration:none;">System Design</a>
+    <a href="../coding-concepts/00_index.html" style="color:var(--text-muted);text-decoration:none;">Coding Concepts</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div style="padding:4rem 20px 2rem;text-align:center;">
+  <div class="container">
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border:1px solid var(--accent);border-radius:20px;font-size:12px;color:var(--accent);margin-bottom:1rem;">Chapters 8 + 9</div>
+    <h1 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:700;margin-bottom:1rem;">Distributed Problems &amp; Consensus</h1>
+    <p style="color:var(--text-muted);max-width:680px;margin:0 auto;font-size:16px;">Partial failures, unreliable clocks, process pauses — and the coordination primitives that tame them: linearizability, ordering, and distributed consensus.</p>
+  </div>
+</div>
+
+<!-- ===== S1: Partial Failures ===== -->
+<section id="s1" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Partial Failures</h2>
+    <p class="section-sub will-animate">In distributed systems, some nodes may crash or networks may drop packets while other parts keep running normally — unlike a single computer that either works or doesn't.</p>
+
+    <div class="grid2" style="margin-bottom:1.5rem;">
+      <div class="card will-animate">
+        <div class="card-title">5-Node Cluster</div>
+        <svg id="cluster-svg" width="100%" height="240" viewBox="0 0 360 240"></svg>
+        <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-accent" onclick="injectFailure()">Inject Failure</button>
+          <button class="btn" onclick="resetCluster()">Reset</button>
+          <span id="failure-label" style="font-size:13px;color:var(--text-muted);margin-left:4px;"></span>
+        </div>
+        <div id="failure-desc" style="margin-top:.75rem;font-size:13px;color:var(--text-muted);min-height:36px;"></div>
+      </div>
+      <div class="card will-animate">
+        <div class="card-title">HPC vs Cloud Philosophy</div>
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:.5rem;color:#f87171;">HPC (Supercomputer)</div>
+            <p style="font-size:13px;color:var(--text-muted);">Stop on any fault. Specialized hardware with low error rates. Checkpoint &amp; restart from a known-good state.</p>
+            <div style="margin-top:.5rem;display:flex;gap:6px;align-items:center;">
+              <div style="width:10px;height:10px;border-radius:50%;background:#f87171;flex-shrink:0;"></div>
+              <span style="font-size:12px;color:#f87171;">Any node fails &#x2192; full stop</span>
+            </div>
+          </div>
+          <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:.5rem;color:var(--accent);">Cloud / Internet Services</div>
+            <p style="font-size:13px;color:var(--text-muted);">Commodity hardware fails often. Build software that tolerates partial failures and continues serving requests.</p>
+            <div style="margin-top:.5rem;display:flex;gap:6px;align-items:center;">
+              <div style="width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0;"></div>
+              <span style="font-size:12px;color:var(--accent);">Node fails &#x2192; route around it</span>
+            </div>
+          </div>
+          <div class="info-box">
+            <strong>Key insight:</strong> You cannot know whether a remote node crashed or is just slow — the network gives no reliable answer.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S2: Byzantine Faults & System Models ===== -->
+<section id="s2" class="section" style="background:rgba(52,211,153,.02);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <h2 class="section-title will-animate">Byzantine Faults &amp; System Models</h2>
+    <p class="section-sub will-animate">Not all faults are simple crashes. Byzantine nodes can send contradictory, malicious, or corrupted messages to different recipients.</p>
+
+    <div class="card will-animate" style="margin-bottom:1.5rem;">
+      <div class="card-title">Byzantine Node — Contradictory Messages</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;padding:1.5rem 0;">
+        <div style="text-align:center;">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(74,222,128,.15);border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin:0 auto;">N1</div>
+          <div id="byz-n1-msg" style="margin-top:8px;font-size:11px;padding:3px 8px;border-radius:4px;min-width:80px;min-height:20px;text-align:center;"></div>
+        </div>
+        <div style="text-align:center;">
+          <div id="byz-node" style="width:60px;height:60px;border-radius:50%;background:rgba(248,113,113,.15);border:2px solid #f87171;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin:0 auto;position:relative;">
+            BYZ
+            <span style="position:absolute;top:-6px;right:-6px;font-size:14px;">&#x26A1;</span>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#f87171;">Byzantine Node</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(167,139,250,.15);border:2px solid #a78bfa;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin:0 auto;">N2</div>
+          <div id="byz-n2-msg" style="margin-top:8px;font-size:11px;padding:3px 8px;border-radius:4px;min-width:80px;min-height:20px;text-align:center;"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:.75rem;">
+        <button class="btn btn-accent" onclick="runByzantine()">Send Messages</button>
+      </div>
+      <div id="byz-explanation" style="text-align:center;font-size:13px;color:var(--text-muted);min-height:20px;"></div>
+    </div>
+
+    <div class="grid3 will-animate" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title" style="color:#f87171;">Crash-Stop</div>
+        <p style="font-size:13px;color:var(--text-muted);">A node crashes and never comes back. Simplest model — others detect it via timeout and route around it.</p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:#f59e0b;">Crash-Recovery</div>
+        <p style="font-size:13px;color:var(--text-muted);">Nodes may crash and restart. Must persist durable state to disk. Most real-world systems use this model.</p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:var(--accent);">Byzantine</div>
+        <p style="font-size:13px;color:var(--text-muted);">Nodes can behave arbitrarily — sending lies, colluding, corrupting data. Rare except in adversarial environments (blockchain, aerospace).</p>
+      </div>
+    </div>
+
+    <div class="grid2 will-animate">
+      <div class="card" style="border-color:rgba(74,222,128,.3);">
+        <div class="card-title" style="color:#4ade80;">Safety</div>
+        <p style="font-size:15px;font-weight:600;margin-bottom:.5rem;">"Nothing bad happens"</p>
+        <p style="font-size:13px;color:var(--text-muted);">Safety can be violated at a specific moment and cannot be undone. Example: two nodes must never both believe they are the leader simultaneously.</p>
+      </div>
+      <div class="card" style="border-color:rgba(52,211,153,.3);">
+        <div class="card-title" style="color:var(--accent);">Liveness</div>
+        <p style="font-size:15px;font-weight:600;margin-bottom:.5rem;">"Something good eventually happens"</p>
+        <p style="font-size:13px;color:var(--text-muted);">Liveness requires eventual progress. Example: every request that is not dropped must eventually receive a response.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S3: Unreliable Clocks ===== -->
+<section id="s3" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Unreliable Clocks</h2>
+    <p class="section-sub will-animate">Each machine has its own quartz clock that drifts. NTP can sync them but only approximately — and clock jumps break causality.</p>
+
+    <div class="grid2" style="margin-bottom:1.5rem;">
+      <div class="card will-animate">
+        <div class="card-title">Clock Drift &amp; NTP Sync</div>
+        <div style="display:flex;gap:2rem;justify-content:center;margin:1rem 0;align-items:flex-end;">
+          <div style="text-align:center;">
+            <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px;">Node 1</div>
+            <div id="clock1" style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:#4ade80;transition:color .3s;">12:00:00.000</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px;">Node 2</div>
+            <div id="clock2" style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:700;color:#a78bfa;transition:color .3s;">12:00:00.000</div>
+          </div>
+        </div>
+        <div id="ntp-status" style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:.75rem;min-height:20px;"></div>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-accent" onclick="startClockDrift()">Start Drift</button>
+          <button class="btn" onclick="ntpSync()">NTP Sync</button>
+          <button class="btn" onclick="resetClocks()">Reset</button>
+        </div>
+      </div>
+      <div class="card will-animate">
+        <div class="card-title">Event Ordering Problem</div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:12px;font-family:'JetBrains Mono',monospace;">
+          <div style="margin-bottom:.75rem;">
+            <div style="color:var(--text-muted);margin-bottom:4px;">Node 1:</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="padding:4px 10px;border-radius:6px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:#4ade80;">Event A</div>
+              <div style="color:var(--text-muted);font-size:11px;">t=42.005s</div>
+              <span class="badge badge-red" style="font-size:10px;">later ts</span>
+            </div>
+          </div>
+          <div style="margin-bottom:.75rem;">
+            <div style="color:var(--text-muted);margin-bottom:4px;">Node 2:</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="padding:4px 10px;border-radius:6px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;">Event B</div>
+              <div style="color:var(--text-muted);font-size:11px;">t=42.001s</div>
+              <span class="badge badge-green" style="font-size:10px;">earlier ts</span>
+            </div>
+          </div>
+          <div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:8px;color:#f87171;font-size:11px;">
+            Wrong order! A appears after B by timestamp, but A actually happened first. Node 1 clock ran fast (+4ms skew).
+          </div>
+        </div>
+        <div style="margin-top:1rem;">
+          <div class="info-box">
+            <strong>Monotonic clocks</strong> are safe for elapsed time. <strong>Wall-clock time</strong> can jump backward after NTP sync.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card will-animate">
+      <div class="card-title">Google TrueTime — Confidence Intervals</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Instead of a single timestamp, TrueTime returns [earliest, latest] bounds. Spanner waits until the intervals of two transactions do not overlap before committing — guaranteeing causality.</p>
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--text-muted);width:100px;">Txn A commit:</span>
+          <div style="flex:1;min-width:200px;position:relative;height:28px;">
+            <div style="position:absolute;left:0;right:0;top:50%;height:2px;background:var(--border);transform:translateY(-50%);"></div>
+            <div style="position:absolute;left:10%;right:30%;top:4px;height:20px;background:rgba(52,211,153,.2);border:1px solid var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent);">[T&#x2081;, T&#x2081;+&#x03B5;]</div>
+          </div>
+          <span class="badge badge-accent">safe to commit</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--text-muted);width:100px;">Txn B start:</span>
+          <div style="flex:1;min-width:200px;position:relative;height:28px;">
+            <div style="position:absolute;left:0;right:0;top:50%;height:2px;background:var(--border);transform:translateY(-50%);"></div>
+            <div style="position:absolute;left:50%;right:10%;top:4px;height:20px;background:rgba(167,139,250,.2);border:1px solid #a78bfa;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#a78bfa;">[T&#x2082;, T&#x2082;+&#x03B5;]</div>
+          </div>
+          <span class="badge badge-green">no overlap &#x2192; A before B</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S4: Logical Clocks ===== -->
+<section id="s4" class="section" style="background:rgba(52,211,153,.02);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <h2 class="section-title will-animate">Logical Clocks</h2>
+    <p class="section-sub will-animate">Instead of physical time, logical clocks track causal ordering. Lamport timestamps establish happened-before; vector clocks detect concurrency.</p>
+
+    <div class="grid2">
+      <div class="card will-animate">
+        <div class="card-title">Lamport Timestamps</div>
+        <div id="lamport-display" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:160px;"></div>
+        <div style="margin-top:.75rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-accent" onclick="stepLamport()">Step &#x25B6;</button>
+          <button class="btn" onclick="resetLamport()">Reset</button>
+          <span id="lamport-step-label" style="font-size:12px;color:var(--text-muted);">Step 0/6</span>
+        </div>
+        <div id="lamport-rule" style="margin-top:.5rem;font-size:13px;color:var(--text-muted);min-height:36px;"></div>
+      </div>
+      <div class="card will-animate">
+        <div class="card-title">Vector Clocks</div>
+        <div id="vector-display" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:160px;"></div>
+        <div style="margin-top:.75rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-accent" onclick="stepVector()">Step &#x25B6;</button>
+          <button class="btn" onclick="resetVector()">Reset</button>
+          <span id="vector-step-label" style="font-size:12px;color:var(--text-muted);">Step 0/6</span>
+        </div>
+        <div id="vector-rule" style="margin-top:.5rem;font-size:13px;color:var(--text-muted);min-height:36px;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S5: Process Pauses ===== -->
+<section id="s5" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Process Pauses</h2>
+    <p class="section-sub will-animate">A GC stop-the-world pause can last seconds. During that time, leases expire and another node may take over — leading to split-brain if the paused node resumes as stale leader.</p>
+
+    <div class="grid2" style="margin-bottom:1.5rem;">
+      <div class="card will-animate">
+        <div class="card-title">GC Pause &#x2192; Stale Leader</div>
+        <div id="gc-anim" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:160px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div style="display:flex;justify-content:space-around;align-items:center;">
+            <div style="text-align:center;">
+              <div id="gc-node-a" style="width:52px;height:52px;border-radius:50%;background:rgba(52,211,153,.15);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto;transition:all .4s;">A</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Leader</div>
+              <div id="gc-node-a-status" style="font-size:10px;color:var(--accent);">active</div>
+            </div>
+            <div style="text-align:center;">
+              <div id="gc-lease-bar-wrap" style="width:80px;height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin:0 auto 4px;">
+                <div id="gc-lease-bar" style="height:100%;background:var(--accent);transform:scaleX(1);transform-origin:left center;transition:transform .1s;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">Lease</div>
+            </div>
+            <div style="text-align:center;">
+              <div id="gc-node-b" style="width:52px;height:52px;border-radius:50%;background:rgba(74,222,128,.1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto;transition:all .4s;">B</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Follower</div>
+              <div id="gc-node-b-status" style="font-size:10px;color:var(--text-muted);">waiting</div>
+            </div>
+          </div>
+          <div id="gc-log" style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:1rem;min-height:48px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:.75rem;">
+          <button class="btn btn-accent" onclick="runGCPause()">Simulate GC Pause</button>
+          <button class="btn" onclick="resetGCPause()">Reset</button>
+        </div>
+      </div>
+      <div class="card will-animate">
+        <div class="card-title">Fencing Tokens</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">A monotonically increasing token issued with every lock grant. Storage servers reject writes with a stale (lower) token.</p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;">
+          <div style="margin-bottom:.75rem;">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Storage Server</div>
+            <div style="padding:8px 16px;border-radius:8px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);font-family:'JetBrains Mono',monospace;font-size:13px;display:inline-block;">expects &#x2265; <span id="fence-expected" style="color:var(--accent);font-weight:700;">43</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <div style="padding:6px 12px;border-radius:6px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);">token=43 (new leader)</div>
+              <span class="badge badge-green">&#x2713; ACCEPTED</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <div style="padding:6px 12px;border-radius:6px;background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);font-family:'JetBrains Mono',monospace;font-size:13px;color:#f87171;">token=42 (stale leader)</div>
+              <span class="badge badge-red">&#x2717; REJECTED</span>
+            </div>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:1rem;">
+          <strong>ZooKeeper</strong> zxid and <strong>Chubby</strong> sequencer both implement fencing tokens.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S6: Ordering and Causality ===== -->
+<section id="s6" class="section" style="background:rgba(52,211,153,.02);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <h2 class="section-title will-animate">Ordering &amp; Causality</h2>
+    <p class="section-sub will-animate">Causality imposes a partial order on events. Understanding causality lets us choose the weakest consistency model that still prevents anomalies.</p>
+
+    <div class="card will-animate" style="margin-bottom:1.5rem;">
+      <div class="card-title">Causal Dependency: Post &#x2192; Reply</div>
+      <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;justify-content:center;padding:1rem 0;">
+        <div style="text-align:center;padding:.75rem 1.25rem;border:1px solid rgba(52,211,153,.4);border-radius:8px;background:var(--accent-dim);">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Event A</div>
+          <div style="font-weight:600;font-size:14px;color:var(--accent);">Post message</div>
+          <div style="font-size:11px;color:var(--text-muted);">t=1</div>
+        </div>
+        <div style="padding:0 12px;font-size:20px;color:var(--accent);">&#x2192;</div>
+        <div style="text-align:center;padding:.75rem 1.25rem;border:1px solid rgba(167,139,250,.4);border-radius:8px;background:rgba(167,139,250,.1);">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Event B</div>
+          <div style="font-weight:600;font-size:14px;color:#a78bfa;">Reply to post</div>
+          <div style="font-size:11px;color:var(--text-muted);">t=2</div>
+        </div>
+        <div style="margin-left:1.5rem;padding:.75rem;border:1px solid rgba(52,211,153,.3);border-radius:8px;font-size:13px;color:var(--text-muted);">
+          B <em>causally depends</em> on A. B must not be seen without A.
+        </div>
+      </div>
+    </div>
+
+    <div class="card will-animate" style="margin-bottom:1.5rem;">
+      <div class="card-title">Consistency Spectrum</div>
+      <div class="spectrum-bar" style="margin-bottom:.75rem;">
+        <span class="spectrum-label" style="color:#f87171;">Eventual</span>
+        <span class="spectrum-label" style="color:#f59e0b;">Causal</span>
+        <span class="spectrum-label" style="color:var(--accent);">Linearizable</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);">
+        <span>Weakest — highest availability, lowest latency</span>
+        <span>Strongest — highest cost, lowest availability</span>
+      </div>
+      <div class="grid3" style="margin-top:1rem;">
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:.75rem;">
+          <div style="color:#f87171;font-weight:600;margin-bottom:4px;font-size:13px;">Eventual Consistency</div>
+          <p style="color:var(--text-muted);font-size:12px;">Replicas converge eventually. No ordering guarantees. Maximum availability.</p>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:.75rem;">
+          <div style="color:#f59e0b;font-weight:600;margin-bottom:4px;font-size:13px;">Causal Consistency</div>
+          <p style="color:var(--text-muted);font-size:12px;">Causally related ops appear in order. Concurrent ops may differ. Implementable without coordination.</p>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:.75rem;">
+          <div style="color:var(--accent);font-weight:600;margin-bottom:4px;font-size:13px;">Linearizability</div>
+          <p style="color:var(--text-muted);font-size:12px;">Total order consistent with real time. Requires cross-node coordination. Strongest guarantee.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card will-animate">
+      <div class="card-title">Version Vectors as Causality Trackers</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Each replica maintains a version vector — one counter per replica. Used to detect concurrent writes in leaderless systems (Dynamo, Riak).</p>
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;flex:1;min-width:180px;">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem;">Replica A writes "x=1"</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent);">[A:1, B:0, C:0]</div>
+        </div>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;flex:1;min-width:180px;">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem;">Replica B writes "x=2" concurrently</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#a78bfa;">[A:0, B:1, C:0]</div>
+        </div>
+        <div style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:1rem;flex:1;min-width:180px;">
+          <div style="font-size:12px;color:#f87171;margin-bottom:.5rem;">Neither dominates &#x2192; CONFLICT</div>
+          <div style="font-size:12px;color:var(--text-muted);">Must reconcile (last-write-wins, merge, or expose to client)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S7: Linearizable Systems Verdict Grid ===== -->
+<section id="s7" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Linearizable Systems</h2>
+    <p class="section-sub will-animate">Linearizability makes a distributed system behave as if there is a single up-to-date copy of the data. Not all architectures achieve it.</p>
+
+    <div class="card will-animate">
+      <div class="card-title">Architecture Verdict Grid</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Click a row for an explanation.</p>
+      <div style="overflow-x:auto;">
+        <table class="verdict-grid" id="verdict-table">
+          <thead>
+            <tr>
+              <th>Architecture</th>
+              <th>Linearizable?</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="showVerdict(0)">
+              <td>Single-leader replication (reads from leader)</td>
+              <td class="check">&#x2713;</td>
+              <td>Leader has complete, up-to-date log</td>
+            </tr>
+            <tr onclick="showVerdict(1)">
+              <td>Single-leader replication (reads from followers)</td>
+              <td class="cross">&#x2717;</td>
+              <td>Followers may lag; stale reads possible</td>
+            </tr>
+            <tr onclick="showVerdict(2)">
+              <td>Consensus algorithms (Raft, Paxos)</td>
+              <td class="check">&#x2713;</td>
+              <td>Designed to guarantee linearizability</td>
+            </tr>
+            <tr onclick="showVerdict(3)">
+              <td>Multi-leader replication</td>
+              <td class="cross">&#x2717;</td>
+              <td>Conflicting concurrent writes on multiple leaders</td>
+            </tr>
+            <tr onclick="showVerdict(4)">
+              <td>Leaderless quorum reads/writes</td>
+              <td class="cross">&#x2717;</td>
+              <td>Sloppy quorum &amp; concurrent writes break it</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="verdict-detail" style="margin-top:1rem;padding:1rem;border-radius:8px;background:var(--accent-dim);border:1px solid rgba(52,211,153,.3);font-size:13px;color:var(--text-muted);display:none;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S8: Linearizability vs Serializability & CAP ===== -->
+<section id="s8" class="section" style="background:rgba(52,211,153,.02);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <h2 class="section-title will-animate">Linearizability vs Serializability &amp; CAP</h2>
+    <p class="section-sub will-animate">These terms are often confused. Linearizability is about single-object real-time ordering; serializability is about multi-object transaction isolation.</p>
+
+    <div class="grid2" style="margin-bottom:1.5rem;">
+      <div class="card will-animate">
+        <div class="card-title">Linearizability</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">A recency guarantee on reads and writes of an individual register. Every operation appears to take effect atomically at a single point in real time.</p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:12px;">
+          <div style="color:var(--text-muted);margin-bottom:6px;">Timeline (real time &#x2192;)</div>
+          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+            <div style="padding:4px 8px;border-radius:4px;background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:var(--accent);font-family:'JetBrains Mono',monospace;">write(x=1)</div>
+            <div style="color:var(--text-muted);">&#x2192;</div>
+            <div style="padding:4px 8px;border-radius:4px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-family:'JetBrains Mono',monospace;">read &#x2192; 1 &#x2713;</div>
+          </div>
+          <div style="font-size:11px;color:#f87171;">Not linearizable: read returns stale value after write completes</div>
+        </div>
+      </div>
+      <div class="card will-animate">
+        <div class="card-title">Serializability</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">An isolation property of transactions. Result is equivalent to <em>some</em> serial execution — but not necessarily in real-time order.</p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:12px;">
+          <div style="color:var(--text-muted);margin-bottom:6px;">Actual interleaved execution:</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;">
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-family:'JetBrains Mono',monospace;font-size:11px;">T1:R(x)</div>
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-family:'JetBrains Mono',monospace;font-size:11px;">T2:R(x)</div>
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-family:'JetBrains Mono',monospace;font-size:11px;">T1:W(x=1)</div>
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);color:#a78bfa;font-family:'JetBrains Mono',monospace;font-size:11px;">T2:W(x=2)</div>
+          </div>
+          <div style="font-size:11px;color:var(--accent);">&#x2261; serial T1 then T2 &#x2192; &#x2713; serializable</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card will-animate">
+        <div class="card-title">Strict Serializability = Both</div>
+        <div style="display:flex;justify-content:center;padding:1rem 0;">
+          <div style="position:relative;width:240px;height:120px;">
+            <div style="position:absolute;left:0;top:10px;width:140px;height:100px;border-radius:50%;background:rgba(245,158,11,.15);border:2px solid rgba(245,158,11,.4);display:flex;align-items:center;justify-content:center;padding-left:10px;">
+              <span style="font-size:11px;color:#f59e0b;font-weight:600;text-align:center;">Serializable</span>
+            </div>
+            <div style="position:absolute;right:0;top:10px;width:140px;height:100px;border-radius:50%;background:rgba(52,211,153,.15);border:2px solid rgba(52,211,153,.4);display:flex;align-items:center;justify-content:center;padding-right:10px;">
+              <span style="font-size:11px;color:var(--accent);font-weight:600;text-align:center;">Linearizable</span>
+            </div>
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:10px;color:var(--text);font-weight:700;text-align:center;pointer-events:none;white-space:nowrap;">Strict<br/>Serializable</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);text-align:center;">Spanner, CockroachDB. Highest consistency. Highest cost.</p>
+      </div>
+
+      <div class="card will-animate">
+        <div class="card-title">CAP Theorem</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">During a network partition, choose Consistency (refuse requests) or Availability (serve potentially stale data). You cannot have both.</p>
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+          <button class="tab-btn active" id="cap-normal-btn" onclick="showCAP('normal')">Normal</button>
+          <button class="tab-btn" id="cap-partition-btn" onclick="showCAP('partition')">Partition!</button>
+        </div>
+        <div id="cap-display" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:13px;min-height:80px;"></div>
+        <div class="info-box" style="margin-top:.75rem;">
+          <strong>Note:</strong> "CA" without P is impossible — networks always may partition. Real tradeoff is CP vs AP.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S9: Consensus ===== -->
+<section id="s9" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Consensus</h2>
+    <p class="section-sub will-animate">Consensus lets a set of nodes agree on a single value despite node failures. It is the fundamental primitive behind leader election, atomic commit, and total-order broadcast.</p>
+
+    <div class="grid4 will-animate" style="margin-bottom:1.5rem;">
+      <div class="card" style="border-color:rgba(52,211,153,.3);">
+        <div class="card-title" style="font-size:12px;">Termination</div>
+        <p style="font-size:13px;color:var(--text-muted);">Every non-faulty node eventually decides a value (liveness).</p>
+      </div>
+      <div class="card" style="border-color:rgba(74,222,128,.3);">
+        <div class="card-title" style="font-size:12px;">Agreement</div>
+        <p style="font-size:13px;color:var(--text-muted);">All non-faulty nodes decide the same value (safety).</p>
+      </div>
+      <div class="card" style="border-color:rgba(167,139,250,.3);">
+        <div class="card-title" style="font-size:12px;">Validity</div>
+        <p style="font-size:13px;color:var(--text-muted);">The decided value must have been proposed by some node.</p>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.3);">
+        <div class="card-title" style="font-size:12px;">Integrity</div>
+        <p style="font-size:13px;color:var(--text-muted);">Each node decides at most once (prevents double decisions).</p>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-bottom:1.5rem;">
+      <div class="card will-animate">
+        <div class="card-title">2PC Coordinator Failure — Blocked Forever</div>
+        <div id="twopc-anim" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:180px;">
+          <div style="display:flex;justify-content:space-around;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+            <div style="text-align:center;">
+              <div id="twopc-coord" style="width:52px;height:52px;border-radius:8px;background:rgba(52,211,153,.15);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin:0 auto;transition:all .4s;">COORD</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Coordinator</div>
+              <div id="twopc-coord-status" style="font-size:10px;color:var(--accent);">active</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="width:44px;height:44px;border-radius:8px;background:rgba(74,222,128,.1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin:0 auto;">P1</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Participant</div>
+              <div id="twopc-p1-status" style="font-size:10px;color:var(--text-muted);">ready</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="width:44px;height:44px;border-radius:8px;background:rgba(74,222,128,.1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;margin:0 auto;">P2</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Participant</div>
+              <div id="twopc-p2-status" style="font-size:10px;color:var(--text-muted);">ready</div>
+            </div>
+          </div>
+          <div id="twopc-log" style="margin-top:1rem;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);min-height:60px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:.75rem;">
+          <button class="btn btn-accent" onclick="run2PC()">Simulate Coordinator Crash</button>
+          <button class="btn" onclick="reset2PC()">Reset</button>
+        </div>
+      </div>
+
+      <div class="card will-animate">
+        <div class="card-title">Raft Leader Election</div>
+        <div id="raft-display" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:140px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+          <div id="raft-nodes" style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;"></div>
+          <div id="raft-msg" style="font-size:12px;color:var(--text-muted);text-align:center;min-height:36px;font-family:'JetBrains Mono',monospace;"></div>
+        </div>
+        <div style="margin-top:.75rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-accent" onclick="stepRaft()">Next Step &#x25B6;</button>
+          <button class="btn" onclick="resetRaft()">Reset</button>
+          <span id="raft-step-label" style="font-size:12px;color:var(--text-muted);">Step 0/4</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card will-animate" style="border-color:rgba(248,113,113,.3);">
+      <div class="card-title" style="color:#f87171;">FLP Impossibility</div>
+      <p style="font-size:13px;color:var(--text-muted);">Fischer, Lynch &amp; Paterson (1985): in an asynchronous system where even <em>one</em> node may crash, no deterministic consensus algorithm can guarantee termination (liveness) in all cases. In practice we use timeouts, randomization, and partial synchrony assumptions to work around this.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== S10: Total Order Broadcast & ZooKeeper ===== -->
+<section id="s10" class="section" style="background:rgba(52,211,153,.02);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <h2 class="section-title will-animate">Total Order Broadcast &amp; ZooKeeper</h2>
+    <p class="section-sub will-animate">Total order broadcast, consensus, and atomic broadcast are equivalent problems. ZooKeeper implements consensus-based primitives used throughout distributed systems.</p>
+
+    <div class="card will-animate" style="margin-bottom:1.5rem;">
+      <div class="card-title">Three Names, One Problem</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;padding:1rem 0;">
+        <div style="padding:10px 18px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);text-align:center;">
+          <div style="font-weight:700;font-size:13px;color:var(--accent);">Total Order Broadcast</div>
+          <div style="font-size:11px;color:var(--text-muted);">All nodes deliver same msgs in same order</div>
+        </div>
+        <div style="font-size:18px;color:var(--text-muted);">=</div>
+        <div style="padding:10px 18px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);text-align:center;">
+          <div style="font-weight:700;font-size:13px;color:var(--accent);">Consensus</div>
+          <div style="font-size:11px;color:var(--text-muted);">Agree on sequence of values</div>
+        </div>
+        <div style="font-size:18px;color:var(--text-muted);">=</div>
+        <div style="padding:10px 18px;border:1px solid var(--accent);border-radius:8px;background:var(--accent-dim);text-align:center;">
+          <div style="font-weight:700;font-size:13px;color:var(--accent);">Atomic Broadcast</div>
+          <div style="font-size:11px;color:var(--text-muted);">Reliable delivery or none</div>
+        </div>
+      </div>
+      <div class="info-box" style="margin-top:.5rem;">
+        <strong>Building linearizable storage from TOB:</strong> Every write is appended to the log. To read, fetch all log entries and apply — you see a linearizable view.
+      </div>
+    </div>
+
+    <div class="card will-animate" style="margin-bottom:1.5rem;">
+      <div class="card-title">XA Distributed Transactions</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">XA (eXtended Architecture) uses 2PC to coordinate commits across heterogeneous resources: databases, message queues. Either all commit or all abort.</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:.5rem 0;">
+        <div style="text-align:center;">
+          <div style="padding:8px 14px;border-radius:8px;border:2px solid var(--accent);background:var(--accent-dim);font-weight:700;font-size:12px;color:var(--accent);">TM<br/><span style="font-size:10px;font-weight:400;">Transaction Manager</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+          <div style="font-size:10px;color:var(--text-muted);">Prepare / Commit / Abort</div>
+          <div style="font-size:18px;color:var(--accent);">&#x2194;</div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <div style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);font-size:12px;font-weight:600;text-align:center;">PostgreSQL<br/><span style="font-size:10px;font-weight:400;color:var(--text-muted);">RM / Database</span></div>
+          <div style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);font-size:12px;font-weight:600;text-align:center;">Kafka<br/><span style="font-size:10px;font-weight:400;color:var(--text-muted);">RM / Message Queue</span></div>
+        </div>
+      </div>
+      <div style="margin-top:1rem;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:.75rem;font-size:13px;color:#f87171;">
+        If TM crashes after prepare but before commit/abort, participants are <strong>in-doubt</strong> and hold locks until TM recovers. This is the fundamental problem with 2PC.
+      </div>
+    </div>
+
+    <div class="card will-animate">
+      <div class="card-title">ZooKeeper Use Cases</div>
+      <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;">
+        <button class="tab-btn active" id="zk-tab-0" onclick="showZK(0)">Leader Election</button>
+        <button class="tab-btn" id="zk-tab-1" onclick="showZK(1)">Service Discovery</button>
+        <button class="tab-btn" id="zk-tab-2" onclick="showZK(2)">Distributed Lock</button>
+      </div>
+      <div id="zk-content" style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:120px;font-size:13px;"></div>
+    </div>
+  </div>
+</section>
+
+<footer style="text-align:center;padding:3rem 2rem;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border);margin-top:4rem;">
+  Designing Data-Intensive Applications — Martin Kleppmann
+</footer>
+
+<script>
+// ===== PROGRESS BAR =====
+(function(){
+  var bar = document.getElementById('progress-bar');
+  window.addEventListener('scroll', function(){
+    var total = document.documentElement.scrollHeight - window.innerHeight;
+    if(total <= 0) return;
+    var ratio = window.scrollY / total;
+    bar.style.transform = 'scaleX(' + ratio + ')';
+  });
+})();
+
+// ===== INTERSECTION OBSERVER =====
+(function(){
+  var els = document.querySelectorAll('.will-animate');
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        anime({targets:e.target,opacity:[0,1],translateY:[20,0],duration:600,easing:'easeOutQuad'});
+        obs.unobserve(e.target);
+      }
+    });
+  },{threshold:0.25});
+  els.forEach(function(el){obs.observe(el);});
+})();
+
+// ===== SAFE DOM HELPERS =====
+function setTextContent(id, text){
+  var el = document.getElementById(id);
+  if(el) el.textContent = text;
+}
+function appendText(id, text){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var line = document.createElement('div');
+  line.textContent = text;
+  el.appendChild(line);
+}
+function clearEl(id){
+  var el = document.getElementById(id);
+  if(el) el.textContent = '';
+}
+
+// ===== S1: CLUSTER DIAGRAM =====
+(function(){
+  var svg = d3.select('#cluster-svg');
+  var W=360,H=240,cx=W/2,cy=H/2,R=85;
+  var nodes=[
+    {id:0,label:'N1',x:cx+R*Math.cos(-Math.PI/2),y:cy+R*Math.sin(-Math.PI/2)},
+    {id:1,label:'N2',x:cx+R*Math.cos(-Math.PI/2+2*Math.PI/5),y:cy+R*Math.sin(-Math.PI/2+2*Math.PI/5)},
+    {id:2,label:'N3',x:cx+R*Math.cos(-Math.PI/2+4*Math.PI/5),y:cy+R*Math.sin(-Math.PI/2+4*Math.PI/5)},
+    {id:3,label:'N4',x:cx+R*Math.cos(-Math.PI/2+6*Math.PI/5),y:cy+R*Math.sin(-Math.PI/2+6*Math.PI/5)},
+    {id:4,label:'N5',x:cx+R*Math.cos(-Math.PI/2+8*Math.PI/5),y:cy+R*Math.sin(-Math.PI/2+8*Math.PI/5)}
+  ];
+  var links=[];
+  for(var i=0;i<nodes.length;i++) for(var j=i+1;j<nodes.length;j++) links.push({s:i,t:j});
+
+  var linkEls={};
+  links.forEach(function(l){
+    var key=l.s+'-'+l.t;
+    linkEls[key]=svg.append('line')
+      .attr('x1',nodes[l.s].x).attr('y1',nodes[l.s].y)
+      .attr('x2',nodes[l.t].x).attr('y2',nodes[l.t].y)
+      .attr('stroke','#30363d').attr('stroke-width',1.5);
+  });
+
+  var nodeGs=nodes.map(function(n){
+    var g=svg.append('g').attr('id','ng-'+n.id);
+    g.append('circle').attr('cx',n.x).attr('cy',n.y).attr('r',20)
+      .attr('fill','rgba(52,211,153,.12)').attr('stroke','#34d399').attr('stroke-width',2);
+    g.append('text').attr('x',n.x).attr('y',n.y+4).attr('text-anchor','middle')
+      .attr('fill','#34d399').attr('font-size',11).attr('font-weight',700).text(n.label);
+    return g;
+  });
+
+  var packet=svg.append('circle').attr('r',5).attr('fill','#34d399').attr('opacity',0);
+  var failMode=0;
+  var failModes=['node-crash','network-partition','packet-delay'];
+  var failLabels=['Node crash','Network partition','Packet delay'];
+  var failDescs=[
+    'N3 crashes. Remaining nodes detect absence via heartbeat timeout and reroute requests.',
+    'N3-N4 link partitioned. Packets on that path are dropped; nodes may disagree on state.',
+    'N1 to N2 packet travels slowly. Responses are delayed but not lost.'
+  ];
+
+  window.resetCluster=function(){
+    failMode=0;
+    setTextContent('failure-label','');
+    setTextContent('failure-desc','');
+    nodeGs.forEach(function(g){
+      g.select('circle').attr('fill','rgba(52,211,153,.12)').attr('stroke','#34d399').attr('opacity',1);
+      g.select('text').attr('fill','#34d399').attr('opacity',1);
+    });
+    Object.values(linkEls).forEach(function(l){
+      l.attr('stroke','#30363d').attr('stroke-dasharray',null).attr('stroke-width',1.5).attr('opacity',1);
+    });
+    packet.attr('opacity',0);
+  };
+
+  window.injectFailure=function(){
+    resetCluster();
+    var mode=failModes[failMode%3];
+    setTextContent('failure-label',failLabels[failMode%3]);
+    setTextContent('failure-desc',failDescs[failMode%3]);
+    if(mode==='node-crash'){
+      nodeGs[2].select('circle').attr('fill','rgba(100,100,100,.2)').attr('stroke','#555').attr('opacity',0.5);
+      nodeGs[2].select('text').attr('fill','#555').attr('opacity',0.5);
+      anime({targets:'#ng-2',opacity:[1,0.4],duration:400,easing:'easeOutQuad'});
+    } else if(mode==='network-partition'){
+      ['2-3','2-4','3-4'].forEach(function(k){
+        if(linkEls[k]) linkEls[k].attr('stroke','#f87171').attr('stroke-dasharray','6,3').attr('stroke-width',2).attr('opacity',0.8);
+      });
+    } else {
+      packet.attr('cx',nodes[0].x).attr('cy',nodes[0].y).attr('opacity',1);
+      anime({targets:packet.node(),
+        translateX:[0,nodes[1].x-nodes[0].x],
+        translateY:[0,nodes[1].y-nodes[0].y],
+        duration:3000,easing:'linear',
+        complete:function(){packet.attr('opacity',0);}
+      });
+    }
+    failMode++;
+  };
+})();
+
+// ===== S2: Byzantine =====
+var byzRunning=false;
+function runByzantine(){
+  if(byzRunning) return;
+  byzRunning=true;
+  var n1=document.getElementById('byz-n1-msg');
+  var n2=document.getElementById('byz-n2-msg');
+  n1.textContent='';
+  n1.style.background='';
+  n1.style.border='';
+  n2.textContent='';
+  n2.style.background='';
+  n2.style.border='';
+  setTextContent('byz-explanation','Sending...');
+  setTimeout(function(){
+    n1.style.background='rgba(52,211,153,.15)';
+    n1.style.border='1px solid rgba(52,211,153,.4)';
+    n1.style.color='#34d399';
+    n1.textContent='value = 5';
+    anime({targets:'#byz-node',opacity:[1,0.4,1],duration:400,easing:'easeInOutQuad'});
+  },400);
+  setTimeout(function(){
+    n2.style.background='rgba(248,113,113,.15)';
+    n2.style.border='1px solid rgba(248,113,113,.4)';
+    n2.style.color='#f87171';
+    n2.textContent='value = 7';
+    setTextContent('byz-explanation','N1 received value=5, N2 received value=7. They cannot agree — Byzantine fault!');
+    byzRunning=false;
+  },900);
+}
+
+// ===== S3: CLOCKS =====
+var clockInterval=null,c1=0,c2=0;
+function formatClock(ms){
+  var total=Math.floor(ms/1000);
+  var s=total%60,frac=Math.floor(ms%1000);
+  return '12:00:'+String(s).padStart(2,'0')+'.'+String(frac).padStart(3,'0');
+}
+function updateClockDisplay(){
+  setTextContent('clock1',formatClock(c1));
+  setTextContent('clock2',formatClock(c2));
+}
+window.startClockDrift=function(){
+  if(clockInterval) return;
+  setTextContent('ntp-status','Clocks drifting...');
+  clockInterval=setInterval(function(){
+    c1+=50;c2+=54;
+    updateClockDisplay();
+    var diff=Math.abs(c1-c2);
+    if(diff>200){
+      document.getElementById('clock2').style.color='#f87171';
+      setTextContent('ntp-status','Skew: +'+diff+'ms — NTP sync needed!');
+    }
+  },100);
+};
+window.ntpSync=function(){
+  if(!clockInterval) return;
+  setTextContent('ntp-status','NTP syncing...');
+  document.getElementById('clock2').style.color='#f59e0b';
+  c2=c1;
+  updateClockDisplay();
+  setTimeout(function(){
+    document.getElementById('clock2').style.color='#a78bfa';
+    setTextContent('ntp-status','Synced! Both clocks agree.');
+  },300);
+};
+window.resetClocks=function(){
+  clearInterval(clockInterval);clockInterval=null;c1=0;c2=0;
+  document.getElementById('clock1').style.color='#4ade80';
+  document.getElementById('clock2').style.color='#a78bfa';
+  setTextContent('ntp-status','');
+  updateClockDisplay();
+};
+
+// ===== S4: LAMPORT TIMESTAMPS =====
+var lamportStep=0;
+var lamportData=[
+  {N1:0,N2:0,N3:0,event:'Initial state',rule:'All clocks start at 0.'},
+  {N1:1,N2:0,N3:0,event:'N1 local event',rule:'Local event: increment own clock. N1: 0 to 1.'},
+  {N1:2,N2:0,N3:0,event:'N1 local event',rule:'Local event: increment own clock. N1: 1 to 2.'},
+  {N1:2,N2:3,N3:0,event:'N1(ts=2) sends to N2',rule:'Receive: max(local=0, received=2)+1=3. N2 sets clock to 3.'},
+  {N1:2,N2:4,N3:0,event:'N2 local event',rule:'Local event: increment own clock. N2: 3 to 4.'},
+  {N1:2,N2:4,N3:5,event:'N2(ts=4) sends to N3',rule:'Receive: max(local=0, received=4)+1=5. N3 sets clock to 5.'},
+  {N1:2,N2:4,N3:6,event:'N3 local event',rule:'Local event: increment own clock. N3: 5 to 6.'},
+];
+function renderLamport(){
+  var s=lamportData[lamportStep];
+  var container=document.getElementById('lamport-display');
+  container.textContent='';
+  var hdr=document.createElement('div');
+  hdr.style.cssText='color:var(--text-muted);font-size:11px;margin-bottom:8px;';
+  hdr.textContent=s.event;
+  container.appendChild(hdr);
+  ['N1','N2','N3'].forEach(function(n){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+    var lbl=document.createElement('span');
+    lbl.style.cssText='width:24px;color:var(--accent);font-weight:700;';
+    lbl.textContent=n;
+    var val=document.createElement('div');
+    val.style.cssText='padding:4px 14px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(52,211,153,.3);color:var(--accent);font-size:14px;font-weight:700;font-family:JetBrains Mono,monospace;';
+    val.textContent='ts='+s[n];
+    row.appendChild(lbl);row.appendChild(val);
+    container.appendChild(row);
+  });
+  setTextContent('lamport-step-label','Step '+lamportStep+'/'+(lamportData.length-1));
+  setTextContent('lamport-rule',s.rule);
+}
+window.stepLamport=function(){if(lamportStep<lamportData.length-1){lamportStep++;renderLamport();}};
+window.resetLamport=function(){lamportStep=0;renderLamport();};
+renderLamport();
+
+// ===== S4: VECTOR CLOCKS =====
+var vectorStep=0;
+var vectorData=[
+  {N1:[0,0,0],N2:[0,0,0],N3:[0,0,0],event:'Initial state',rule:'All vector clocks at [0,0,0].',concurrent:false},
+  {N1:[1,0,0],N2:[0,0,0],N3:[0,0,0],event:'N1 local event',rule:'N1 increments its own component: [0,0,0] to [1,0,0].',concurrent:false},
+  {N1:[1,0,0],N2:[0,1,0],N3:[0,0,0],event:'N2 local event (concurrent)',rule:'N2: [0,0,0] to [0,1,0]. Concurrent with N1 event — neither happened before the other.',concurrent:true},
+  {N1:[1,0,0],N2:[1,2,0],N3:[0,0,0],event:'N1([1,0,0]) sends to N2',rule:'N2 merges: max each = [1,1,0] then increments N2 position: [1,2,0].',concurrent:false},
+  {N1:[1,0,0],N2:[1,2,0],N3:[0,0,1],event:'N3 local event',rule:'N3: [0,0,0] to [0,0,1].',concurrent:false},
+  {N1:[1,0,0],N2:[1,2,0],N3:[1,2,2],event:'N2([1,2,0]) sends to N3',rule:'N3 merges: max each=[1,2,1] then increments N3: [1,2,2].',concurrent:false},
+  {N1:[2,0,0],N2:[1,2,0],N3:[1,2,2],event:'N1 local event',rule:'N1: [1,0,0] to [2,0,0]. Concurrent with N2 [1,2,0] — neither dominates.',concurrent:true},
+];
+function renderVector(){
+  var s=vectorData[vectorStep];
+  var container=document.getElementById('vector-display');
+  container.textContent='';
+  var hdr=document.createElement('div');
+  hdr.style.cssText='color:var(--text-muted);font-size:11px;margin-bottom:8px;';
+  hdr.textContent=s.event;
+  container.appendChild(hdr);
+  ['N1','N2','N3'].forEach(function(n){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;';
+    var lbl=document.createElement('span');
+    lbl.style.cssText='width:24px;color:var(--accent);font-weight:700;';
+    lbl.textContent=n;
+    var val=document.createElement('div');
+    val.style.cssText='padding:4px 14px;border-radius:6px;background:var(--accent-dim);border:1px solid rgba(52,211,153,.3);color:var(--accent);font-size:13px;font-weight:700;font-family:JetBrains Mono,monospace;';
+    val.textContent='['+s[n].join(',')+']';
+    row.appendChild(lbl);row.appendChild(val);
+    container.appendChild(row);
+  });
+  if(s.concurrent){
+    var warn=document.createElement('div');
+    warn.style.cssText='margin-top:6px;padding:4px 10px;border-radius:4px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;font-size:11px;';
+    warn.textContent='CONCURRENT events detected';
+    container.appendChild(warn);
+  }
+  setTextContent('vector-step-label','Step '+vectorStep+'/'+(vectorData.length-1));
+  setTextContent('vector-rule',s.rule);
+}
+window.stepVector=function(){if(vectorStep<vectorData.length-1){vectorStep++;renderVector();}};
+window.resetVector=function(){vectorStep=0;renderVector();};
+renderVector();
+
+// ===== S5: GC PAUSE =====
+var gcPhase=0,gcTimer=null;
+window.resetGCPause=function(){
+  clearTimeout(gcTimer);gcPhase=0;
+  var na=document.getElementById('gc-node-a');
+  na.style.background='rgba(52,211,153,.15)';
+  na.style.border='2px solid var(--accent)';
+  na.style.opacity='1';
+  var nas=document.getElementById('gc-node-a-status');
+  nas.style.color='var(--accent)';nas.textContent='active';
+  var nb=document.getElementById('gc-node-b');
+  nb.style.background='rgba(74,222,128,.1)';
+  nb.style.border='1px solid var(--border)';
+  var nbs=document.getElementById('gc-node-b-status');
+  nbs.style.color='var(--text-muted)';nbs.textContent='waiting';
+  document.getElementById('gc-lease-bar').style.transform='scaleX(1)';
+  clearEl('gc-log');
+};
+window.runGCPause=function(){
+  if(gcPhase>0) return;
+  gcPhase=1;
+  appendText('gc-log','A holds lease, actively leading...');
+  var leaseRatio=1;
+  var drainInterval=setInterval(function(){
+    leaseRatio-=0.05;
+    if(leaseRatio<=0){leaseRatio=0;clearInterval(drainInterval);}
+    document.getElementById('gc-lease-bar').style.transform='scaleX('+leaseRatio+')';
+  },80);
+  gcTimer=setTimeout(function(){
+    var na=document.getElementById('gc-node-a');
+    na.style.background='rgba(245,158,11,.15)';
+    na.style.border='2px solid #f59e0b';
+    var nas=document.getElementById('gc-node-a-status');
+    nas.style.color='#f59e0b';nas.textContent='GC paused';
+    appendText('gc-log','A: GC stop-the-world pause! A is frozen.');
+    gcTimer=setTimeout(function(){
+      document.getElementById('gc-lease-bar').style.transform='scaleX(0)';
+      appendText('gc-log','Lease expired! B detects A timeout. B becomes new leader.');
+      var nb=document.getElementById('gc-node-b');
+      nb.style.background='rgba(52,211,153,.15)';
+      nb.style.border='2px solid var(--accent)';
+      var nbs=document.getElementById('gc-node-b-status');
+      nbs.style.color='var(--accent)';nbs.textContent='NEW leader';
+      gcTimer=setTimeout(function(){
+        na.style.background='rgba(248,113,113,.15)';
+        na.style.border='2px solid #f87171';
+        nas.style.color='#f87171';nas.textContent='stale leader!';
+        appendText('gc-log','A resumes — thinks it is still leader! SPLIT-BRAIN!');
+        appendText('gc-log','Solution: fencing token or lease-before-action check.');
+      },2000);
+    },1800);
+  },800);
+};
+
+// ===== S7: VERDICT GRID =====
+var verdictDetails=[
+  'Single-leader with reads from leader: the leader has the most up-to-date log. Every read is served from the authoritative copy, so recency is guaranteed.',
+  'Single-leader with follower reads: replication lag means followers may return stale data. A client could read a value then read from another follower and get an older value — not linearizable.',
+  'Consensus algorithms (Raft, Paxos, Zab): specifically designed to guarantee linearizable reads and writes. Raft reads from leader or uses ReadIndex ensuring no stale reads.',
+  'Multi-leader replication: two leaders can independently accept writes to the same key. There is no single authority so conflicting concurrent writes break linearizability.',
+  'Leaderless quorum (Dynamo-style): sloppy quorums, hinted handoffs, and concurrent writes mean a quorum read may not see the latest write. Usually not linearizable without extra coordination.'
+];
+window.showVerdict=function(i){
+  var box=document.getElementById('verdict-detail');
+  box.style.display='block';
+  box.textContent=verdictDetails[i];
+  anime({targets:'#verdict-detail',opacity:[0,1],translateY:[4,0],duration:300,easing:'easeOutQuad'});
+};
+
+// ===== S8: CAP =====
+function showCAP(state){
+  document.getElementById('cap-normal-btn').classList.toggle('active',state==='normal');
+  document.getElementById('cap-partition-btn').classList.toggle('active',state==='partition');
+  var d=document.getElementById('cap-display');
+  d.textContent='';
+  if(state==='normal'){
+    var hdr=document.createElement('div');
+    hdr.style.cssText='color:var(--accent);font-weight:600;margin-bottom:6px;';
+    hdr.textContent='Normal operation';
+    var body=document.createElement('p');
+    body.style.cssText='color:var(--text-muted);font-size:13px;';
+    body.textContent='All nodes communicate freely. You get both Consistency and Availability. No tradeoff needed — network is healthy.';
+    d.appendChild(hdr);d.appendChild(body);
+  } else {
+    var hdr=document.createElement('div');
+    hdr.style.cssText='color:#f87171;font-weight:600;margin-bottom:6px;';
+    hdr.textContent='Network partition detected!';
+    d.appendChild(hdr);
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;';
+    var cp=document.createElement('div');
+    cp.style.cssText='flex:1;min-width:140px;padding:8px;border-radius:6px;border:1px solid rgba(52,211,153,.3);background:var(--accent-dim);';
+    var cpH=document.createElement('div');
+    cpH.style.cssText='font-size:12px;font-weight:700;color:var(--accent);margin-bottom:4px;';
+    cpH.textContent='Choose C (CP)';
+    var cpB=document.createElement('div');
+    cpB.style.cssText='font-size:12px;color:var(--text-muted);';
+    cpB.textContent='Refuse requests from isolated partition. Consistent but unavailable during partition.';
+    cp.appendChild(cpH);cp.appendChild(cpB);
+    var ap=document.createElement('div');
+    ap.style.cssText='flex:1;min-width:140px;padding:8px;border-radius:6px;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.1);';
+    var apH=document.createElement('div');
+    apH.style.cssText='font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:4px;';
+    apH.textContent='Choose A (AP)';
+    var apB=document.createElement('div');
+    apB.style.cssText='font-size:12px;color:var(--text-muted);';
+    apB.textContent='Serve requests but may return stale data. Available but inconsistent during partition.';
+    ap.appendChild(apH);ap.appendChild(apB);
+    row.appendChild(cp);row.appendChild(ap);
+    d.appendChild(row);
+  }
+  anime({targets:'#cap-display',opacity:[0,1],duration:300,easing:'easeOutQuad'});
+}
+showCAP('normal');
+
+// ===== S9: RAFT =====
+var raftStep=0;
+var raftSteps=[
+  {roles:['Follower','Follower','Follower','Follower'],colors:['#30363d','#30363d','#30363d','#30363d'],textColors:['var(--text-muted)','var(--text-muted)','var(--text-muted)','var(--text-muted)'],msg:'All nodes start as followers, waiting for heartbeats from a leader.',label:'Step 0/4: Initial state'},
+  {roles:['Candidate','Follower','Follower','Follower'],colors:['rgba(245,158,11,.3)','#30363d','#30363d','#30363d'],textColors:['#f59e0b','var(--text-muted)','var(--text-muted)','var(--text-muted)'],msg:'N0 election timeout fires. Becomes Candidate, increments term, sends RequestVote to N1, N2, N3.',label:'Step 1/4: Candidate sends RequestVote'},
+  {roles:['Leader','Follower','Follower','Follower'],colors:['rgba(52,211,153,.3)','#30363d','#30363d','#30363d'],textColors:['var(--accent)','var(--text-muted)','var(--text-muted)','var(--text-muted)'],msg:'N0 receives votes from N1 and N2 (majority of 4). Becomes Leader for this term.',label:'Step 2/4: Leader elected'},
+  {roles:['Leader','Follower','Follower','Follower'],colors:['rgba(52,211,153,.3)','rgba(52,211,153,.12)','rgba(52,211,153,.12)','rgba(52,211,153,.12)'],textColors:['var(--accent)','#4ade80','#4ade80','#4ade80'],msg:'Leader sends periodic heartbeats and log entries (AppendEntries) to all followers.',label:'Step 3/4: Heartbeats and log replication'},
+  {roles:['Crashed','Follower','Follower','Follower'],colors:['rgba(248,113,113,.2)','rgba(245,158,11,.2)','#30363d','#30363d'],textColors:['#f87171','#f59e0b','var(--text-muted)','var(--text-muted)'],msg:'N0 (leader) crashes. N1 times out and starts new election. A new leader will be elected.',label:'Step 4/4: Leader crash triggers new election'}
+];
+function renderRaft(){
+  var s=raftSteps[raftStep];
+  var container=document.getElementById('raft-nodes');
+  container.textContent='';
+  ['N0','N1','N2','N3'].forEach(function(n,i){
+    var wrap=document.createElement('div');
+    wrap.className='raft-node';
+    var circle=document.createElement('div');
+    circle.className='raft-circle';
+    circle.style.background=s.colors[i];
+    circle.style.borderColor=s.textColors[i];
+    circle.style.color=s.textColors[i];
+    circle.textContent=n;
+    var role=document.createElement('div');
+    role.className='raft-role';
+    role.style.color=s.textColors[i];
+    role.textContent=s.roles[i];
+    wrap.appendChild(circle);wrap.appendChild(role);
+    container.appendChild(wrap);
+  });
+  setTextContent('raft-msg',s.msg);
+  setTextContent('raft-step-label',s.label);
+  anime({targets:'#raft-nodes .raft-circle',opacity:[0,1],translateY:[10,0],duration:400,delay:anime.stagger(80),easing:'easeOutQuad'});
+}
+window.stepRaft=function(){if(raftStep<raftSteps.length-1){raftStep++;renderRaft();}};
+window.resetRaft=function(){raftStep=0;renderRaft();};
+renderRaft();
+
+// ===== S9: 2PC =====
+var twopcPhase=0,twopcTimer=null;
+window.reset2PC=function(){
+  clearTimeout(twopcTimer);twopcPhase=0;
+  clearEl('twopc-log');
+  var coord=document.getElementById('twopc-coord');
+  coord.style.background='rgba(52,211,153,.15)';
+  coord.style.border='2px solid var(--accent)';
+  setTextContent('twopc-coord-status','active');
+  document.getElementById('twopc-coord-status').style.color='var(--accent)';
+  setTextContent('twopc-p1-status','ready');
+  document.getElementById('twopc-p1-status').style.color='var(--text-muted)';
+  setTextContent('twopc-p2-status','ready');
+  document.getElementById('twopc-p2-status').style.color='var(--text-muted)';
+};
+window.run2PC=function(){
+  if(twopcPhase>0) return;
+  twopcPhase=1;
+  appendText('twopc-log','Phase 1: Coordinator sends PREPARE to P1, P2...');
+  twopcTimer=setTimeout(function(){
+    setTextContent('twopc-p1-status','VOTED YES');
+    document.getElementById('twopc-p1-status').style.color='#4ade80';
+    setTextContent('twopc-p2-status','VOTED YES');
+    document.getElementById('twopc-p2-status').style.color='#4ade80';
+    appendText('twopc-log','P1 voted YES. P2 voted YES. Coordinator has all votes.');
+    twopcTimer=setTimeout(function(){
+      var coord=document.getElementById('twopc-coord');
+      coord.style.background='rgba(248,113,113,.2)';
+      coord.style.border='2px solid #f87171';
+      setTextContent('twopc-coord-status','CRASHED');
+      document.getElementById('twopc-coord-status').style.color='#f87171';
+      appendText('twopc-log','Coordinator CRASHES before sending COMMIT!');
+      twopcTimer=setTimeout(function(){
+        setTextContent('twopc-p1-status','IN-DOUBT');
+        document.getElementById('twopc-p1-status').style.color='#f59e0b';
+        setTextContent('twopc-p2-status','IN-DOUBT');
+        document.getElementById('twopc-p2-status').style.color='#f59e0b';
+        appendText('twopc-log','P1 and P2 are IN-DOUBT. Holding locks. Cannot commit or abort.');
+        appendText('twopc-log','System is blocked until coordinator recovers.');
+      },1000);
+    },1200);
+  },1000);
+};
+
+// ===== S10: ZOOKEEPER TABS =====
+var zkData=[
+  {
+    title:'Leader Election via Ephemeral Nodes',
+    color:'var(--accent)',
+    body:'Each candidate creates an ephemeral znode (e.g. /election/candidate-001). The node with the lowest sequence number is leader. When a leader dies, its ephemeral node is auto-deleted and the next candidate takes over — no explicit crash detection needed.'
+  },
+  {
+    title:'Service Discovery via Address Registration',
+    color:'var(--accent)',
+    body:'Services register their host:port under a well-known znode (e.g. /services/db/node1). Clients watch the parent znode. When a service instance starts or stops, watchers are notified automatically — no polling required.'
+  },
+  {
+    title:'Distributed Lock via Sequential Nodes',
+    color:'var(--accent)',
+    body:'To acquire a lock, create a sequential ephemeral node under /locks/. Check if your node has the lowest sequence number — if yes, you hold the lock. Otherwise watch the node just before yours. When it is deleted, check again. This avoids thundering herd.'
+  }
+];
+function showZK(i){
+  [0,1,2].forEach(function(j){
+    document.getElementById('zk-tab-'+j).classList.toggle('active',j===i);
+  });
+  var content=document.getElementById('zk-content');
+  content.textContent='';
+  var d=zkData[i];
+  var hdr=document.createElement('div');
+  hdr.style.cssText='color:var(--accent);font-weight:600;margin-bottom:.75rem;';
+  hdr.textContent=d.title;
+  var body=document.createElement('p');
+  body.style.cssText='color:var(--text-muted);font-size:13px;';
+  body.textContent=d.body;
+  content.appendChild(hdr);content.appendChild(body);
+  anime({targets:'#zk-content',opacity:[0,1],duration:300,easing:'easeOutQuad'});
+}
+showZK(0);
+</script>
+</body>
+</html>

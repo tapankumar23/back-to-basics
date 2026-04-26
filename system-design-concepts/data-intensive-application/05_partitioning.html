@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partitioning — DDIA Ch. 5</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg:#0d1117; --bg-card:#161b22; --bg-card-hover:#1c2330;
+      --border:#30363d; --text:#e6edf3; --text-muted:#8b949e;
+      --accent:#a78bfa; --accent-dim:rgba(167,139,250,0.15);
+      --red:#f87171; --amber:#fbbf24; --green:#4ade80;
+      --blue:#60a5fa; --orange:#fb923c; --sky:#38bdf8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+
+    #progress-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left center;
+      z-index: 1000; pointer-events: none;
+    }
+
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.93);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999; overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      text-decoration: none; margin-right: 1.2rem;
+    }
+    #navbar a { color: var(--text-muted); text-decoration: none; font-size: 12px; }
+    #navbar a:hover { color: var(--accent); }
+    #navbar .chapter-pager {
+      display: flex; align-items: stretch; gap: 6px;
+      margin-right: 12px; padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    .chapter-nav-chip {
+      min-height: 34px; padding: 5px 10px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      display: flex; flex-direction: column; justify-content: center; gap: 1px;
+      color: var(--text); text-decoration: none;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .chapter-nav-chip:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-chip.current { background: rgba(255,255,255,0.07); text-align: center; align-items: center; }
+    .nav-kicker { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'JetBrains Mono', monospace; }
+    .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+    #navbar .nav-sections { display: flex; align-items: center; gap: 2px; flex: 1; }
+    #navbar .nav-sections a { padding: 0 8px; height: 48px; display: flex; align-items: center; }
+    #navbar .nav-links { display: flex; align-items: center; gap: 2px; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 8px; }
+    #navbar .nav-links a { padding: 0 8px; height: 48px; display: flex; align-items: center; white-space: nowrap; }
+
+    /* Layout */
+    .hero {
+      padding: 8rem 2rem 4rem;
+      text-align: center;
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167,139,250,0.18) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-block; padding: 4px 14px;
+      border: 1px solid var(--accent); border-radius: 999px;
+      color: var(--accent); font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.2rem;
+    }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 700; margin-bottom: 0.8rem; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--text-muted); max-width: 620px; margin: 0 auto 2rem; font-size: 1.05rem; }
+    .hero-stats { display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; }
+    .hero-stat { text-align: center; }
+    .hero-stat .val { font-size: 1.8rem; font-weight: 700; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+    .hero-stat .lbl { font-size: 11px; color: var(--text-muted); }
+
+    main { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+    .concept-section { margin-bottom: 5rem; }
+    .section-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem; }
+    .section-num { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--accent); opacity: 0.7; }
+    .section-header h2 { font-size: 1.6rem; font-weight: 700; }
+    .section-header p { color: var(--text-muted); font-size: 0.95rem; margin-top: 0.3rem; }
+
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--accent); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media(max-width:700px){ .two-col { grid-template-columns: 1fr; } }
+
+    /* Diagram canvas areas */
+    .diagram-area {
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+      min-height: 180px; position: relative;
+    }
+    .diagram-area svg { display: block; width: 100%; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; }
+    .btn {
+      padding: 7px 16px; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--text); font-family: 'Inter', sans-serif;
+      font-size: 13px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .btn:hover { border-color: var(--accent); background: var(--accent-dim); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+    /* Trace panel */
+    .trace-panel {
+      background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      color: var(--text-muted); min-height: 48px;
+      margin-top: 0.75rem; line-height: 1.7;
+    }
+    .trace-panel .hl { color: var(--accent); }
+    .trace-panel .ok { color: var(--green); }
+    .trace-panel .warn { color: var(--amber); }
+    .trace-panel .err { color: var(--red); }
+
+    /* Tab buttons */
+    .tab-row { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+    .tab-btn {
+      flex: 1; padding: 8px 12px;
+      background: none; border: none;
+      border-right: 1px solid var(--border);
+      color: var(--text-muted); font-size: 12px;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn:last-child { border-right: none; }
+    .tab-btn.active { background: var(--accent-dim); color: var(--accent); }
+
+    /* Code block */
+    .code-block {
+      background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1rem 1.2rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      line-height: 1.7; overflow-x: auto; white-space: pre; margin-top: 1rem;
+    }
+    .kw{color:#ff7b72} .fn{color:#d2a8ff} .str{color:#a5d6ff}
+    .cm{color:#8b949e} .num{color:#79c0ff} .tp{color:#ffa657}
+
+    /* Key insight box */
+    .insight-box {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+      border-radius: 0 8px 8px 0;
+      padding: 0.75rem 1rem;
+      font-size: 13px; margin-top: 1rem; color: var(--text);
+    }
+
+    /* Range bars for S1 */
+    .range-bar-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    .range-bar {
+      flex: 1; min-width: 70px; height: 40px;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+      position: relative; overflow: visible;
+      border: 2px solid transparent;
+      transition: border-color 0.3s;
+    }
+    .range-bar.hot { border-color: var(--red) !important; }
+    .hot-label {
+      position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+      font-size: 10px; font-weight: 700; color: var(--red);
+      font-family: 'JetBrains Mono', monospace;
+      opacity: 0; pointer-events: none;
+    }
+
+    /* Partition boxes for S5 */
+    .p-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+    .p-box {
+      width: 52px; height: 36px; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(167,139,250,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .p-box.migrating { background: rgba(251,191,36,0.2); border-color: var(--amber); color: var(--amber); }
+    .p-box.split { background: rgba(96,165,250,0.15); border-color: var(--blue); color: var(--blue); }
+
+    /* Node row labels */
+    .node-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .node-label {
+      width: 64px; font-size: 11px; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Mitigation bars */
+    .bar-container { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+    .bar-item { display: flex; align-items: center; gap: 8px; }
+    .bar-item .bar-label { width: 80px; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .bar-track {
+      flex: 1; height: 16px; background: rgba(255,255,255,0.05);
+      border-radius: 4px; overflow: hidden; position: relative;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 4px;
+      transform: scaleX(0); transform-origin: left center;
+      transition: none;
+    }
+
+    /* Routing diagram boxes */
+    .routing-box {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 8px 16px; border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 13px; font-weight: 600;
+      background: rgba(255,255,255,0.04);
+    }
+
+    /* view panels */
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+
+    /* Opacity utilities */
+    .opacity-low { opacity: 0.2; }
+
+    footer {
+      text-align: center; padding: 3rem 2rem;
+      color: var(--text-muted); font-size: 13px;
+      border-top: 1px solid var(--border); margin-top: 4rem;
+    }
+
+    /* Scroll reveal */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <a href="00_index.html" class="nav-brand">DDIA</a>
+  <div class="chapter-pager">
+    <a href="04_replication.html" class="chapter-nav-chip">
+      <span class="nav-kicker">← prev</span>
+      <span class="nav-title">Replication</span>
+    </a>
+    <div class="chapter-nav-chip current">
+      <span class="nav-kicker">ch 5</span>
+      <span class="nav-title" style="color:var(--accent);font-weight:600;">Partitioning</span>
+    </div>
+    <a href="06_transactions.html" class="chapter-nav-chip">
+      <span class="nav-kicker">next →</span>
+      <span class="nav-title">Transactions</span>
+    </a>
+  </div>
+  <div class="nav-sections">
+    <a href="#s1">Key-Range</a>
+    <a href="#s2">Hash</a>
+    <a href="#s3">Hot Spots</a>
+    <a href="#s4">Sec. Indexes</a>
+    <a href="#s5">Rebalancing</a>
+    <a href="#s6">Routing</a>
+  </div>
+  <div class="nav-links">
+    <a href="../system-design-concepts/00_index.html">System Design</a>
+    <a href="../coding-concepts/00_index.html">Coding Concepts</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">DDIA · Chapter 5</div>
+  <h1>Data <span>Partitioning</span></h1>
+  <p>Splitting a dataset across multiple nodes so each node holds a subset — enabling horizontal scale beyond what any single machine can handle.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="val">6</div><div class="lbl">Strategies</div></div>
+    <div class="hero-stat"><div class="val">∞</div><div class="lbl">Scalability</div></div>
+    <div class="hero-stat"><div class="val">2</div><div class="lbl">Index Types</div></div>
+    <div class="hero-stat"><div class="val">3</div><div class="lbl">Routing Tiers</div></div>
+  </div>
+</div>
+
+<main>
+
+<!-- ======================================================= S1 — Key-Range -->
+<section id="s1" class="concept-section">
+  <div class="section-header reveal">
+    <span class="section-num">01</span>
+    <div>
+      <h2>Key-Range Partitioning</h2>
+      <p>Assign continuous ranges of keys to each partition — like encyclopedia volumes.</p>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div class="card">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;">Partition layout</div>
+      <!-- SVG diagram: key range bars -->
+      <div class="diagram-area" style="min-height:160px;padding:1rem;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-family:'JetBrains Mono',monospace;">KEY SPACE A → Z</div>
+        <div class="range-bar-row" id="range-bars">
+          <div class="range-bar" id="rb0" style="background:rgba(74,222,128,0.15);color:#4ade80;border-color:#4ade80;">
+            A – F
+            <span class="hot-label" id="hot0">HOT</span>
+          </div>
+          <div class="range-bar" id="rb1" style="background:rgba(167,139,250,0.15);color:#a78bfa;border-color:#a78bfa;">
+            G – M
+            <span class="hot-label" id="hot1">HOT</span>
+          </div>
+          <div class="range-bar" id="rb2" style="background:rgba(251,191,36,0.15);color:#fbbf24;border-color:#fbbf24;">
+            N – T
+            <span class="hot-label" id="hot2">HOT</span>
+          </div>
+          <div class="range-bar" id="rb3" style="background:rgba(96,165,250,0.15);color:#60a5fa;border-color:#60a5fa;">
+            U – Z
+            <span class="hot-label" id="hot3">HOT</span>
+          </div>
+        </div>
+        <!-- travelling key dot -->
+        <div style="position:relative;height:40px;margin-top:12px;">
+          <div id="key-dot" style="position:absolute;left:0;top:8px;width:28px;height:24px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#0d1117;opacity:0;">"hi"</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btn-send-write">Send Write "hello"</button>
+        <button class="btn" id="btn-sim-sensor">Simulate Sensor</button>
+        <button class="btn" id="btn-reset-s1">Reset</button>
+      </div>
+      <div class="trace-panel" id="trace-s1">Ready — click a button to simulate key routing.</div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">How it works</div>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+        The keyspace is divided into contiguous ranges. Each range is assigned to a partition (and its replicas). The database keeps a sorted structure of range boundaries — looking up a key requires finding its range in O(log n).
+      </p>
+      <div class="insight-box">
+        <strong>Ordered scans are efficient</strong> — e.g. fetch all sensor readings between 2024-01-01 and 2024-01-31 in a single sequential read on the owning partition.
+      </div>
+      <div class="insight-box" style="border-color:var(--red);background:rgba(248,113,113,0.1);margin-top:0.5rem;">
+        <strong>Hot-spot risk:</strong> timestamp-prefixed keys send all recent writes to the latest partition. Mitigate by prepending the sensor ID or hashing the prefix.
+      </div>
+      <div class="code-block"><span class="cm">// Key-range lookup (pseudo)</span>
+<span class="kw">function</span> <span class="fn">routeKey</span>(key) {
+  <span class="kw">for</span> (<span class="kw">let</span> [lo, hi, node] <span class="kw">of</span> boundaries) {
+    <span class="kw">if</span> (key >= lo && key <= hi)
+      <span class="kw">return</span> node;
+  }
+}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= S2 — Hash Partitioning -->
+<section id="s2" class="concept-section">
+  <div class="section-header reveal">
+    <span class="section-num">02</span>
+    <div>
+      <h2>Hash Partitioning</h2>
+      <p>Apply a hash function to the key; the resulting hash value determines the partition — distributing load evenly.</p>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div class="card">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:0.75rem;">Consistent hash ring</div>
+      <div class="diagram-area" style="min-height:260px;">
+        <svg id="hash-ring-svg" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg">
+          <!-- Ring -->
+          <circle cx="160" cy="140" r="90" fill="none" stroke="#30363d" stroke-width="2"/>
+          <!-- Virtual node ticks (12 total) -->
+          <g id="vnode-ticks"></g>
+          <!-- Node circles -->
+          <g id="hash-nodes"></g>
+          <!-- Routing dot -->
+          <circle id="ring-dot" cx="160" cy="50" r="7" fill="var(--accent)" opacity="0"/>
+          <!-- Arrow marker -->
+          <defs>
+            <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btn-route-key">Route Key</button>
+        <button class="btn" id="btn-add-node">Add Node</button>
+        <button class="btn" id="btn-remove-node">Remove Node</button>
+      </div>
+      <div class="trace-panel" id="trace-s2">Click "Route Key" to watch consistent hashing in action.</div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Consistent Hashing</div>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+        Both nodes <em>and</em> keys are hashed onto the same ring. A key is owned by the first node clockwise from its hash position. Adding or removing a node only moves a fraction (1/n) of keys.
+      </p>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-top:0.75rem;">
+        <strong style="color:var(--text);">Virtual nodes</strong> (vnodes) place each physical node at multiple ring positions, improving balance and making load redistribution finer-grained.
+      </p>
+      <div class="insight-box" style="margin-top:0.75rem;">
+        Hash partitioning destroys key ordering — range scans require querying <em>all</em> partitions (scatter/gather).
+      </div>
+      <div class="code-block"><span class="cm">// Consistent hash ring lookup</span>
+<span class="kw">function</span> <span class="fn">getNode</span>(key) {
+  <span class="kw">const</span> h = <span class="fn">hash</span>(key); <span class="cm">// 0..2^32</span>
+  <span class="kw">const</span> ring = sortedRing; <span class="cm">// sorted node hashes</span>
+  <span class="kw">const</span> idx = <span class="fn">upperBound</span>(ring, h);
+  <span class="kw">return</span> ring[idx % ring.length].node;
+}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= S3 — Hot Spots -->
+<section id="s3" class="concept-section">
+  <div class="section-header reveal">
+    <span class="section-num">03</span>
+    <div>
+      <h2>Hot Spots &amp; Skewed Workloads</h2>
+      <p>Even perfect hashing can't prevent celebrity-post hotspots — a single key that gets millions of reads or writes per second.</p>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div class="card">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:0.5rem;">Write load per partition</div>
+
+      <!-- Hot bar -->
+      <div class="bar-item" style="margin-top:8px;">
+        <div class="bar-label" style="color:var(--red);font-weight:600;">post:beyoncé</div>
+        <div class="bar-track" style="height:40px;">
+          <div id="hot-main-bar" class="bar-fill" style="background:var(--red);transform:scaleX(0.92);border-radius:4px;height:100%;"></div>
+        </div>
+      </div>
+
+      <!-- Mitigation bars (initially hidden) -->
+      <div id="mitigation-bars" style="opacity:0;transform:translateY(10px);transition:none;">
+        <div style="font-size:11px;color:var(--text-muted);margin:10px 0 4px;font-family:'JetBrains Mono',monospace;">AFTER MITIGATION (10-shard spread)</div>
+        <div class="bar-container" id="shard-bars"></div>
+      </div>
+
+      <div style="margin-top:10px;font-size:12px;color:var(--text-muted);" id="fanout-note"></div>
+      <div class="btn-row">
+        <button class="btn" id="btn-show-mitigation">Show Mitigation</button>
+        <button class="btn" id="btn-reset-s3">Reset</button>
+      </div>
+      <div class="trace-panel" id="trace-s3">All writes for a celebrity post land on a single partition.</div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">The Celebrity Problem</div>
+      <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">
+        Beyoncé posts → millions of followers write reactions simultaneously. The hash of <code style="color:var(--accent);">post:beyoncé</code> maps to <em>one</em> partition, overwhelming it despite even key distribution elsewhere.
+      </p>
+      <div class="insight-box" style="margin-top:0.75rem;">
+        <strong>Mitigation:</strong> append a random suffix to hot keys: <code style="color:var(--accent);">post:beyoncé:07</code>. Writes spread across N shards. Reads must query all N shards and merge — a controlled fan-out trade-off.
+      </div>
+      <div class="insight-box" style="border-color:var(--amber);background:rgba(251,191,36,0.08);margin-top:0.5rem;">
+        Only a tiny number of keys are hot. Most applications can detect these (e.g. via a hot-key cache or rate-limiter) and apply the splitting technique selectively.
+      </div>
+      <div class="code-block"><span class="cm">// Split hot key across N shards</span>
+<span class="kw">function</span> <span class="fn">hotWrite</span>(key, value, N) {
+  <span class="kw">const</span> shard = Math.<span class="fn">floor</span>(Math.<span class="fn">random</span>() * N);
+  <span class="fn">write</span>(<span class="str">`</span>${key}<span class="str">:</span>${shard}<span class="str">`</span>, value);
+}
+<span class="kw">function</span> <span class="fn">hotRead</span>(key, N) {
+  <span class="kw">const</span> parts = [...<span class="tp">Array</span>(N)].<span class="fn">map</span>((_, i) =>
+    <span class="fn">read</span>(<span class="str">`</span>${key}<span class="str">:</span>${i}<span class="str">`</span>));
+  <span class="kw">return</span> <span class="fn">merge</span>(parts); <span class="cm">// fan-out reads</span>
+}</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= S4 — Secondary Indexes -->
+<section id="s4" class="concept-section">
+  <div class="section-header reveal">
+    <span class="section-num">04</span>
+    <div>
+      <h2>Secondary Indexes: Local vs Global</h2>
+      <p>Partitioning by primary key is straightforward — but secondary indexes complicate the picture significantly.</p>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-local" onclick="switchIdx('local')">Local (Document) Index</button>
+      <button class="tab-btn" id="tab-global" onclick="switchIdx('global')">Global (Term) Index</button>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <!-- SVG diagram that changes based on active tab -->
+        <div class="diagram-area" style="min-height:220px;">
+          <svg id="idx-svg" viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr-b" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--sky)"/>
+              </marker>
+              <marker id="arr-o" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--orange)"/>
+              </marker>
+            </defs>
+            <!-- Partition boxes -->
+            <rect id="p1box" x="20" y="70" width="70" height="40" rx="6" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="55" y="95" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono">P1</text>
+
+            <rect id="p2box" x="125" y="70" width="70" height="40" rx="6" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="160" y="95" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono">P2</text>
+
+            <rect id="p3box" x="230" y="70" width="70" height="40" rx="6" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="265" y="95" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono">P3</text>
+
+            <!-- LOCAL: local index labels under each partition -->
+            <g id="local-idx-group">
+              <text x="55" y="130" text-anchor="middle" fill="#8b949e" font-size="9" font-family="JetBrains Mono">local idx</text>
+              <text x="160" y="130" text-anchor="middle" fill="#8b949e" font-size="9" font-family="JetBrains Mono">local idx</text>
+              <text x="265" y="130" text-anchor="middle" fill="#8b949e" font-size="9" font-family="JetBrains Mono">local idx</text>
+
+              <!-- Query fan-out arrows from client -->
+              <rect x="120" y="10" width="80" height="30" rx="6" fill="rgba(56,189,248,0.1)" stroke="#38bdf8" stroke-width="1.5"/>
+              <text x="160" y="30" text-anchor="middle" fill="#38bdf8" font-size="11" font-family="JetBrains Mono">Client</text>
+
+              <line id="fan1" x1="160" y1="40" x2="55" y2="70" stroke="var(--sky)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-b)" opacity="0"/>
+              <line id="fan2" x1="160" y1="40" x2="160" y2="70" stroke="var(--sky)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-b)" opacity="0"/>
+              <line id="fan3" x1="160" y1="40" x2="265" y2="70" stroke="var(--sky)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-b)" opacity="0"/>
+
+              <!-- Merge label -->
+              <text id="merge-lbl" x="160" y="165" text-anchor="middle" fill="#fbbf24" font-size="10" font-family="JetBrains Mono" opacity="0">⟵ merge results ⟶</text>
+            </g>
+
+            <!-- GLOBAL: global index partition, write arrows -->
+            <g id="global-idx-group" opacity="0">
+              <!-- Global index partition -->
+              <rect x="110" y="160" width="100" height="40" rx="6" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1.5"/>
+              <text x="160" y="176" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="JetBrains Mono">Global Index</text>
+              <text x="160" y="190" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="JetBrains Mono">Partition</text>
+
+              <!-- Write arrows to global idx from partitions -->
+              <line id="widx1" x1="55" y1="110" x2="130" y2="160" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-o)" opacity="0"/>
+              <line id="widx2" x1="160" y1="110" x2="160" y2="160" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-o)" opacity="0"/>
+              <line id="widx3" x1="265" y1="110" x2="190" y2="160" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-o)" opacity="0"/>
+
+              <!-- Single read arrow -->
+              <rect x="120" y="10" width="80" height="30" rx="6" fill="rgba(56,189,248,0.1)" stroke="#38bdf8" stroke-width="1.5"/>
+              <text x="160" y="30" text-anchor="middle" fill="#38bdf8" font-size="11" font-family="JetBrains Mono">Client</text>
+              <line id="g-read" x1="160" y1="40" x2="160" y2="155" stroke="var(--sky)" stroke-width="2" marker-end="url(#arr-b)" opacity="0"/>
+            </g>
+          </svg>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="btn-animate-idx">Animate Query</button>
+        </div>
+      </div>
+
+      <div>
+        <div id="local-desc">
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Local (Document-Partitioned) Index</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">Each partition maintains its own secondary index covering only the documents in <em>that</em> partition. Writing is simple — you only update the index on the partition that holds the document.</p>
+          <div class="insight-box" style="margin-top:0.75rem;">
+            <strong>Query cost:</strong> a secondary-index query must fan out to <em>all</em> partitions (scatter/gather) and merge results. Expensive for read-heavy workloads.
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:0.75rem;">Used by: Elasticsearch, MongoDB, Cassandra.</p>
+        </div>
+        <div id="global-desc" style="display:none;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Global (Term-Partitioned) Index</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">The secondary index is itself partitioned (by term). All documents with <em>color=red</em> appear in one index partition, regardless of which data partition holds the document.</p>
+          <div class="insight-box" style="margin-top:0.75rem;">
+            <strong>Read is efficient</strong> — query only the relevant index partition. But <strong>writes are expensive</strong>: updating a single document may touch multiple index partitions across nodes.
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:0.75rem;">Global index updates are often asynchronous — reads may be slightly stale. Used by: DynamoDB GSI, Riak.</p>
+        </div>
+      </div>
+    </div>
+    <div class="trace-panel" id="trace-s4">Select "Local Index" or "Global Index", then click "Animate Query".</div>
+  </div>
+</section>
+
+<!-- ======================================================= S5 — Rebalancing -->
+<section id="s5" class="concept-section">
+  <div class="section-header reveal">
+    <span class="section-num">05</span>
+    <div>
+      <h2>Rebalancing Strategies</h2>
+      <p>When nodes are added or removed, partitions must move to maintain even load — without downtime.</p>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-fixed" onclick="switchRebal('fixed')">Fixed Partitions</button>
+      <button class="tab-btn" id="tab-dynamic" onclick="switchRebal('dynamic')">Dynamic Split</button>
+      <button class="tab-btn" id="tab-prop" onclick="switchRebal('proportional')">Proportional</button>
+    </div>
+
+    <!-- Fixed partitions view -->
+    <div class="view-panel active" id="view-fixed">
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Nodes &amp; their partitions</div>
+          <div id="fixed-grid">
+            <div class="node-row">
+              <div class="node-label">Node A</div>
+              <div class="p-grid" id="na-parts"></div>
+            </div>
+            <div class="node-row">
+              <div class="node-label">Node B</div>
+              <div class="p-grid" id="nb-parts"></div>
+            </div>
+            <div class="node-row">
+              <div class="node-label">Node C</div>
+              <div class="p-grid" id="nc-parts"></div>
+            </div>
+            <div class="node-row" id="nd-row" style="opacity:0;transform:translateY(8px);transition:opacity 0.4s,transform 0.4s;">
+              <div class="node-label" style="color:var(--green);">Node D ✦</div>
+              <div class="p-grid" id="nd-parts"></div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="btn-add-node-fixed">Add Node D</button>
+            <button class="btn" id="btn-reset-fixed">Reset</button>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Fixed Partitions</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">Create many more partitions than nodes at startup (e.g. 1000 partitions, 10 nodes → 100 per node). When a node joins, it steals a few partitions from each existing node. The number of partitions never changes — only their assignment.</p>
+          <div class="insight-box">Partition count should be chosen to comfortably exceed the maximum expected cluster size. Too many partitions adds bookkeeping overhead.</div>
+          <div class="trace-panel" id="trace-fixed" style="margin-top:0.75rem;">Click "Add Node D" to watch partition migration.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic split view -->
+    <div class="view-panel" id="view-dynamic">
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Partition lifecycle</div>
+          <div class="diagram-area" style="min-height:180px;">
+            <svg id="dyn-svg" viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+              <!-- Single wide bar -->
+              <rect id="dyn-p1" x="20" y="70" width="280" height="50" rx="8" fill="rgba(167,139,250,0.12)" stroke="#a78bfa" stroke-width="1.5"/>
+              <text id="dyn-t1" x="160" y="100" text-anchor="middle" fill="#a78bfa" font-size="12" font-family="JetBrains Mono">Partition P0 (full)</text>
+              <!-- Split halves (hidden) -->
+              <rect id="dyn-p2" x="20" y="70" width="130" height="50" rx="8" fill="rgba(74,222,128,0.12)" stroke="#4ade80" stroke-width="1.5" opacity="0"/>
+              <text id="dyn-t2" x="85" y="100" text-anchor="middle" fill="#4ade80" font-size="11" font-family="JetBrains Mono" opacity="0">P0-left</text>
+              <rect id="dyn-p3" x="170" y="70" width="130" height="50" rx="8" fill="rgba(96,165,250,0.12)" stroke="#60a5fa" stroke-width="1.5" opacity="0"/>
+              <text id="dyn-t3" x="235" y="100" text-anchor="middle" fill="#60a5fa" font-size="11" font-family="JetBrains Mono" opacity="0">P0-right</text>
+              <!-- Size label -->
+              <text id="dyn-size" x="160" y="155" text-anchor="middle" fill="#8b949e" font-size="10" font-family="JetBrains Mono">Size: 5 GB (threshold: 10 GB)</text>
+            </svg>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="btn-dyn-split">Split Partition</button>
+            <button class="btn" id="btn-dyn-merge">Merge Partitions</button>
+          </div>
+          <div class="trace-panel" id="trace-dynamic">Partition grows past threshold → auto-split.</div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Dynamic Splitting</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">Partitions start large and split when they exceed a size threshold (e.g. HBase's 10 GB default). Small partitions can be merged. The number of partitions adapts to data volume automatically.</p>
+          <div class="insight-box">Similar to how a B-tree splits its nodes when they overflow. Well-suited to key-range partitioning where split point can be chosen at the median key.</div>
+          <div class="insight-box" style="border-color:var(--amber);background:rgba(251,191,36,0.08);margin-top:0.5rem;">An empty database starts with a single partition. All writes go there until the first split — pre-splitting is recommended.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proportional view -->
+    <div class="view-panel" id="view-proportional">
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Partitions per node</div>
+          <div class="diagram-area" style="min-height:180px;">
+            <svg id="prop-svg" viewBox="0 0 320 180" xmlns="http://www.w3.org/2000/svg">
+              <g id="prop-nodes"></g>
+              <g id="prop-arcs"></g>
+            </svg>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="btn-prop-add">Add Node</button>
+            <button class="btn" id="btn-prop-reset">Reset</button>
+          </div>
+          <div class="trace-panel" id="trace-prop">Each node owns a fixed number of partitions.</div>
+        </div>
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Proportional Partitioning</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">The number of partitions is proportional to the number of nodes — typically a fixed ratio (e.g. 256 partitions per node in Cassandra). Adding a node increases total partitions; each new node randomly chooses split points.</p>
+          <div class="insight-box">Partition <em>size</em> stays roughly constant as the cluster grows, since more nodes means more (but smaller) partitions covering the same total data.</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;margin-top:0.75rem;">This approach sits between fixed (count never changes) and dynamic (count grows with data). Used by: Cassandra, Ketama.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= S6 — Routing -->
+<section id="s6" class="concept-section">
+  <div class="section-header reveal">
+    <span class="section-num">06</span>
+    <div>
+      <h2>Request Routing</h2>
+      <p>When a client wants to read or write, how does it know which node to contact? Three main approaches.</p>
+    </div>
+  </div>
+
+  <div class="card reveal">
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-r1" onclick="switchRouting('client')">Client-Aware</button>
+      <button class="tab-btn" id="tab-r2" onclick="switchRouting('routing')">Routing Tier</button>
+      <button class="tab-btn" id="tab-r3" onclick="switchRouting('zk')">ZooKeeper</button>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="diagram-area" style="min-height:220px;">
+          <svg id="routing-svg" viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr-r" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/>
+              </marker>
+              <marker id="arr-g" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 Z" fill="var(--green)"/>
+              </marker>
+            </defs>
+            <!-- Client box -->
+            <rect id="rt-client" x="110" y="20" width="100" height="36" rx="8" fill="rgba(56,189,248,0.1)" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="160" y="43" text-anchor="middle" fill="#38bdf8" font-size="12" font-family="JetBrains Mono">Client</text>
+
+            <!-- Router box (hidden in client-aware) -->
+            <rect id="rt-router" x="110" y="90" width="100" height="36" rx="8" fill="rgba(251,191,36,0.1)" stroke="#fbbf24" stroke-width="1.5" opacity="0"/>
+            <text id="rt-router-lbl" x="160" y="113" text-anchor="middle" fill="#fbbf24" font-size="12" font-family="JetBrains Mono" opacity="0">Router</text>
+
+            <!-- ZK box -->
+            <rect id="rt-zk" x="20" y="90" width="80" height="36" rx="8" fill="rgba(74,222,128,0.1)" stroke="#4ade80" stroke-width="1.5" opacity="0"/>
+            <text id="rt-zk-lbl" x="60" y="113" text-anchor="middle" fill="#4ade80" font-size="11" font-family="JetBrains Mono" opacity="0">ZooKeeper</text>
+
+            <!-- Partition node boxes -->
+            <rect id="rt-p1" x="30" y="165" width="70" height="36" rx="8" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="65" y="188" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono">Node 1</text>
+
+            <rect id="rt-p2" x="125" y="165" width="70" height="36" rx="8" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="160" y="188" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono">Node 2</text>
+
+            <rect id="rt-p3" x="220" y="165" width="70" height="36" rx="8" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="255" y="188" text-anchor="middle" fill="#a78bfa" font-size="11" font-family="JetBrains Mono">Node 3</text>
+
+            <!-- Animated arrow -->
+            <line id="rt-arrow1" x1="160" y1="56" x2="65" y2="165" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr-r)" opacity="0"/>
+            <line id="rt-arrow2" x1="160" y1="56" x2="160" y2="165" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr-r)" opacity="0"/>
+            <line id="rt-arrow3" x1="160" y1="126" x2="160" y2="165" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr-r)" opacity="0"/>
+            <!-- ZK notification arrow -->
+            <line id="rt-zk-arrow" x1="100" y1="108" x2="110" y2="108" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arr-g)" opacity="0"/>
+            <!-- Client to router arrow -->
+            <line id="rt-c-router" x1="160" y1="56" x2="160" y2="90" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr-r)" opacity="0"/>
+
+            <!-- Lookup table label for client-aware -->
+            <text id="rt-lookup" x="160" y="80" text-anchor="middle" fill="#8b949e" font-size="9" font-family="JetBrains Mono" opacity="0">lookup table</text>
+          </svg>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="btn-animate-routing">Animate Request</button>
+        </div>
+      </div>
+
+      <div id="routing-desc-area">
+        <div id="routing-client-desc">
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Client-Aware Routing</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">The client maintains a local copy of the partition-to-node mapping (routing table). It sends requests directly to the correct node — no intermediate hop.</p>
+          <div class="insight-box">Lowest latency path. Client must be notified of rebalancing events (e.g. via ZooKeeper watch). Used by: Cassandra driver, Redis Cluster.</div>
+        </div>
+        <div id="routing-routing-desc" style="display:none;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">Routing Tier</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">All requests go through a stateless load balancer / router that knows the partition mapping. Clients are simple — they talk only to the router.</p>
+          <div class="insight-box">Adds one network hop. Routing tier can be updated centrally. Used by: MongoDB mongos, Vitess vtgate.</div>
+        </div>
+        <div id="routing-zk-desc" style="display:none;">
+          <div style="font-size:14px;font-weight:600;margin-bottom:0.75rem;">ZooKeeper Coordination</div>
+          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">ZooKeeper (or etcd) acts as the source of truth for partition assignments. Nodes register themselves; routers or clients watch for changes and update their local tables automatically.</p>
+          <div class="insight-box">Decouples routing metadata from any single node. ZK watches fire immediately on topology change. Used by: HBase, Kafka, SolrCloud.</div>
+        </div>
+      </div>
+    </div>
+    <div class="trace-panel" id="trace-s6">Choose a routing strategy then click "Animate Request".</div>
+  </div>
+</section>
+
+</main>
+
+<footer>Designing Data-Intensive Applications — Martin Kleppmann</footer>
+
+<script>
+// ===================== PROGRESS BAR =====================
+const bar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  bar.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+});
+
+// ===================== SCROLL REVEAL =====================
+const revealEls = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.25 });
+revealEls.forEach(el => observer.observe(el));
+
+// ===================== S1 — KEY-RANGE =====================
+let s1Animating = false;
+
+function setTrace(id, html) {
+  document.getElementById(id).innerHTML = html;
+}
+
+document.getElementById('btn-send-write').addEventListener('click', () => {
+  if (s1Animating) return;
+  s1Animating = true;
+  const dot = document.getElementById('key-dot');
+  const container = dot.parentElement;
+  const containerW = container.offsetWidth;
+
+  // "hello" → G-M = partition index 1
+  const targetX = containerW * (1 / 4) + (containerW / 4) / 2 - 14;
+
+  dot.style.opacity = '0';
+  dot.style.transform = 'translateX(0)';
+  dot.textContent = '"hello"';
+
+  setTrace('trace-s1', '<span class="hl">hash("hello")</span> → key starts with "h" → range <span class="ok">G–M</span> → Node 2');
+
+  anime({
+    targets: dot,
+    opacity: [0, 1],
+    duration: 300,
+    easing: 'easeOutQuad',
+    complete: () => {
+      anime({
+        targets: dot,
+        translateX: targetX,
+        duration: 700,
+        easing: 'easeInOutQuad',
+        complete: () => {
+          // Flash the G-M bar
+          const rb = document.getElementById('rb1');
+          rb.style.boxShadow = '0 0 12px rgba(167,139,250,0.8)';
+          setTimeout(() => { rb.style.boxShadow = ''; s1Animating = false; }, 1200);
+        }
+      });
+    }
+  });
+});
+
+document.getElementById('btn-sim-sensor').addEventListener('click', () => {
+  if (s1Animating) return;
+  s1Animating = true;
+  setTrace('trace-s1', '<span class="warn">Sensor writes: 2024-04-24T...</span> → all land on range starting with "2" → <span class="err">HOT SPOT on first partition!</span>');
+
+  const rb0 = document.getElementById('rb0');
+  const hot0 = document.getElementById('hot0');
+
+  rb0.classList.add('hot');
+  rb0.style.background = 'rgba(248,113,113,0.25)';
+  anime({
+    targets: hot0,
+    opacity: [0, 1],
+    duration: 400,
+    easing: 'easeOutQuad',
+    complete: () => { s1Animating = false; }
+  });
+});
+
+document.getElementById('btn-reset-s1').addEventListener('click', () => {
+  s1Animating = false;
+  const dot = document.getElementById('key-dot');
+  dot.style.opacity = '0';
+  dot.style.transform = 'translateX(0)';
+  document.getElementById('rb0').classList.remove('hot');
+  document.getElementById('rb0').style.background = 'rgba(74,222,128,0.15)';
+  document.getElementById('hot0').style.opacity = '0';
+  document.querySelectorAll('.range-bar').forEach(b => b.style.boxShadow = '');
+  setTrace('trace-s1', 'Reset — click a button to simulate key routing.');
+});
+
+// ===================== S2 — HASH RING =====================
+const ringCx = 160, ringCy = 140, ringR = 90;
+
+const nodeAngles = [270, 0, 90, 180]; // top, right, bottom, left
+const nodeColors = ['#4ade80', '#f59e0b', '#a78bfa', '#60a5fa'];
+const nodeLabels = ['N1', 'N2', 'N3', 'N4'];
+let ringNodes = [...nodeAngles]; // mutable
+let ringNodeCount = 4;
+let ringBusy = false;
+
+function polarXY(cx, cy, r, deg) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function renderRing() {
+  const svg = document.getElementById('hash-ring-svg');
+  const nodesG = document.getElementById('hash-nodes');
+  const ticksG = document.getElementById('vnode-ticks');
+
+  // Clear
+  while (nodesG.firstChild) nodesG.removeChild(nodesG.firstChild);
+  while (ticksG.firstChild) ticksG.removeChild(ticksG.firstChild);
+
+  // Ticks (12 virtual nodes)
+  const tickAngles = [0,30,60,90,120,150,180,210,240,270,300,330];
+  tickAngles.forEach((deg, i) => {
+    const outer = polarXY(ringCx, ringCy, ringR, deg);
+    const inner = polarXY(ringCx, ringCy, ringR - 10, deg);
+    const ownerIdx = i % ringNodes.length;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', inner.x); line.setAttribute('y1', inner.y);
+    line.setAttribute('x2', outer.x); line.setAttribute('y2', outer.y);
+    line.setAttribute('stroke', nodeColors[ownerIdx % nodeColors.length]);
+    line.setAttribute('stroke-width', '2.5');
+    line.id = 'tick-' + i;
+    ticksG.appendChild(line);
+  });
+
+  // Node circles
+  ringNodes.forEach((deg, i) => {
+    const pos = polarXY(ringCx, ringCy, ringR, deg);
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', pos.x); circle.setAttribute('cy', pos.y);
+    circle.setAttribute('r', 18);
+    circle.setAttribute('fill', nodeColors[i % nodeColors.length] + '22');
+    circle.setAttribute('stroke', nodeColors[i % nodeColors.length]);
+    circle.setAttribute('stroke-width', '2');
+    circle.id = 'rnode-' + i;
+    nodesG.appendChild(circle);
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', pos.x); txt.setAttribute('y', pos.y + 4);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('fill', nodeColors[i % nodeColors.length]);
+    txt.setAttribute('font-size', '11');
+    txt.setAttribute('font-family', 'JetBrains Mono');
+    txt.textContent = nodeLabels[i] || 'N' + (i + 1);
+    nodesG.appendChild(txt);
+  });
+}
+
+renderRing();
+
+document.getElementById('btn-route-key').addEventListener('click', () => {
+  if (ringBusy) return;
+  ringBusy = true;
+  const dot = document.getElementById('ring-dot');
+  // Start at top of ring
+  const startPos = polarXY(ringCx, ringCy, ringR, 270);
+  dot.setAttribute('cx', startPos.x);
+  dot.setAttribute('cy', startPos.y);
+
+  // Pick a random node to route to
+  const targetIdx = Math.floor(Math.random() * ringNodes.length);
+  const targetDeg = ringNodes[targetIdx];
+  const targetPos = polarXY(ringCx, ringCy, ringR, targetDeg);
+
+  setTrace('trace-s2', 'Hashing key → position on ring... routing clockwise to <span class="ok">' + (nodeLabels[targetIdx] || 'N'+(targetIdx+1)) + '</span>');
+
+  anime({
+    targets: dot,
+    opacity: [0, 1],
+    duration: 200,
+    easing: 'easeOutQuad',
+    complete: () => {
+      anime({
+        targets: dot,
+        cx: targetPos.x,
+        cy: targetPos.y,
+        duration: 900,
+        easing: 'easeInOutSine',
+        complete: () => {
+          // Flash target node
+          const nc = document.getElementById('rnode-' + targetIdx);
+          if (nc) {
+            nc.setAttribute('r', '22');
+            setTimeout(() => { nc.setAttribute('r', '18'); }, 500);
+          }
+          setTimeout(() => {
+            anime({ targets: dot, opacity: 0, duration: 400, easing: 'easeInQuad', complete: () => { ringBusy = false; } });
+          }, 800);
+        }
+      });
+    }
+  });
+});
+
+document.getElementById('btn-add-node').addEventListener('click', () => {
+  if (ringBusy || ringNodes.length >= 5) return;
+  ringBusy = true;
+  const newDeg = 45; // between N1(0) and N2(90)
+  ringNodes.push(newDeg);
+  nodeLabels[ringNodes.length - 1] = 'N5';
+  renderRing();
+  // Animate the new node in
+  const newCircle = document.getElementById('rnode-' + (ringNodes.length - 1));
+  if (newCircle) {
+    anime({ targets: newCircle, opacity: [0, 1], duration: 600, easing: 'easeOutQuad' });
+  }
+  setTrace('trace-s2', '<span class="ok">Node N5 added</span> — only ~20% of keys (1/5) need to move. Other partitions unaffected.');
+  ringBusy = false;
+});
+
+document.getElementById('btn-remove-node').addEventListener('click', () => {
+  if (ringBusy || ringNodes.length <= 3) return;
+  ringBusy = true;
+  const removedIdx = ringNodes.length - 1;
+  const nodeEl = document.getElementById('rnode-' + removedIdx);
+  if (nodeEl) {
+    anime({
+      targets: nodeEl,
+      opacity: 0,
+      duration: 500,
+      easing: 'easeInQuad',
+      complete: () => {
+        ringNodes.pop();
+        renderRing();
+        setTrace('trace-s2', '<span class="warn">Node removed</span> — its partitions distributed to neighbors. Only keys it owned need remapping.');
+        ringBusy = false;
+      }
+    });
+  } else {
+    ringNodes.pop();
+    renderRing();
+    setTrace('trace-s2', '<span class="warn">Node removed</span> — partitions redistributed.');
+    ringBusy = false;
+  }
+});
+
+// ===================== S3 — HOT SPOTS =====================
+let s3Done = false;
+
+// Build shard bars
+const shardBarsEl = document.getElementById('shard-bars');
+for (let i = 0; i < 10; i++) {
+  const item = document.createElement('div');
+  item.className = 'bar-item';
+  const lbl = document.createElement('div');
+  lbl.className = 'bar-label';
+  lbl.textContent = 'post:bey:' + i;
+  const track = document.createElement('div');
+  track.className = 'bar-track';
+  const fill = document.createElement('div');
+  fill.className = 'bar-fill';
+  fill.id = 'shard-fill-' + i;
+  fill.style.background = '#4ade80';
+  const fraction = 0.05 + Math.random() * 0.15;
+  fill.style.transform = 'scaleX(0)';
+  track.appendChild(fill);
+  item.appendChild(lbl);
+  item.appendChild(track);
+  shardBarsEl.appendChild(item);
+}
+
+document.getElementById('btn-show-mitigation').addEventListener('click', () => {
+  if (s3Done) return;
+  s3Done = true;
+  const mainBar = document.getElementById('hot-main-bar');
+  const mitigDiv = document.getElementById('mitigation-bars');
+  const fanoutNote = document.getElementById('fanout-note');
+
+  // Fade main bar
+  anime({ targets: mainBar, opacity: 0.2, duration: 600, easing: 'easeOutQuad' });
+
+  // Show mitigation container
+  anime({
+    targets: mitigDiv,
+    opacity: [0, 1],
+    translateY: [10, 0],
+    duration: 500,
+    easing: 'easeOutQuad',
+    complete: () => {
+      // Animate shard bars staggered using transforms
+      for (let i = 0; i < 10; i++) {
+        const fill = document.getElementById('shard-fill-' + i);
+        const fraction = 0.05 + Math.random() * 0.15;
+        setTimeout(() => {
+          anime({
+            targets: fill,
+            translateX: ['-100%', '0%'],
+            opacity: [0, 1],
+            duration: 500,
+            easing: 'easeOutQuad',
+            begin: () => {
+              fill.style.transform = 'scaleX(' + fraction + ')';
+              fill.style.opacity = '1';
+            }
+          });
+          // Use scaleX directly
+          fill.style.transition = 'transform 0.5s ease';
+          fill.style.transform = 'scaleX(' + fraction + ')';
+        }, i * 80);
+      }
+      setTimeout(() => {
+        fanoutNote.innerHTML = '<span style="color:var(--amber);">Read fan-out: 10 shards → merge results client-side</span>';
+      }, 900);
+    }
+  });
+
+  setTrace('trace-s3', '<span class="ok">Mitigation applied</span>: key suffixed with random 0–9 → 10 partitions. Read fan-out = 10. Hot spot eliminated.');
+});
+
+document.getElementById('btn-reset-s3').addEventListener('click', () => {
+  s3Done = false;
+  document.getElementById('hot-main-bar').style.opacity = '1';
+  document.getElementById('mitigation-bars').style.opacity = '0';
+  document.getElementById('mitigation-bars').style.transform = 'translateY(10px)';
+  document.getElementById('fanout-note').textContent = '';
+  for (let i = 0; i < 10; i++) {
+    const fill = document.getElementById('shard-fill-' + i);
+    if (fill) fill.style.transform = 'scaleX(0)';
+  }
+  setTrace('trace-s3', 'All writes for a celebrity post land on a single partition.');
+});
+
+// ===================== S4 — SECONDARY INDEXES =====================
+let currentIdxView = 'local';
+let idxBusy = false;
+
+window.switchIdx = function(view) {
+  currentIdxView = view;
+  document.getElementById('tab-local').classList.toggle('active', view === 'local');
+  document.getElementById('tab-global').classList.toggle('active', view === 'global');
+  document.getElementById('local-desc').style.display = view === 'local' ? '' : 'none';
+  document.getElementById('global-desc').style.display = view === 'global' ? '' : 'none';
+  document.getElementById('local-idx-group').style.opacity = view === 'local' ? '1' : '0';
+  document.getElementById('global-idx-group').style.opacity = view === 'global' ? '1' : '0';
+
+  // Reset animation state
+  ['fan1','fan2','fan3','merge-lbl','g-read','widx1','widx2','widx3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.opacity = '0';
+  });
+  setTrace('trace-s4', 'Click "Animate Query" to visualize the ' + (view === 'local' ? 'scatter/gather' : 'global index lookup') + '.');
+  idxBusy = false;
+};
+
+document.getElementById('btn-animate-idx').addEventListener('click', () => {
+  if (idxBusy) return;
+  idxBusy = true;
+
+  if (currentIdxView === 'local') {
+    // Fan out arrows
+    ['fan1','fan2','fan3'].forEach((id, i) => {
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        anime({ targets: el, opacity: [0,1], duration: 400, easing: 'easeOutQuad' });
+      }, i * 200);
+    });
+    setTimeout(() => {
+      const ml = document.getElementById('merge-lbl');
+      anime({ targets: ml, opacity: [0,1], duration: 400, easing: 'easeOutQuad' });
+      setTrace('trace-s4', '<span class="warn">Scatter/gather:</span> query fans out to <span class="hl">all 3 partitions</span> → client merges results. Expensive but writes are simple.');
+      idxBusy = false;
+    }, 800);
+  } else {
+    // Global: show write cross-partition arrows, then read arrow
+    ['widx1','widx2','widx3'].forEach((id, i) => {
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        anime({ targets: el, opacity: [0,0.8], duration: 400, easing: 'easeOutQuad' });
+      }, i * 150);
+    });
+    setTimeout(() => {
+      const ga = document.getElementById('g-read');
+      anime({ targets: ga, opacity: [0,1], duration: 500, easing: 'easeOutQuad' });
+      setTrace('trace-s4', '<span class="ok">Read:</span> single hop to global index partition. <span class="warn">Writes:</span> may touch multiple index partitions across nodes — async updates possible.');
+      idxBusy = false;
+    }, 700);
+  }
+});
+
+// ===================== S5 — REBALANCING =====================
+window.switchRebal = function(view) {
+  ['fixed','dynamic','proportional'].forEach(v => {
+    document.getElementById('view-' + v).classList.toggle('active', v === view);
+    document.getElementById('tab-' + (v === 'fixed' ? 'fixed' : v === 'dynamic' ? 'dynamic' : 'prop')).classList.toggle('active', v === view);
+  });
+};
+
+// Fixed partitions init
+function initFixedGrid() {
+  const parts = ['p0','p1','p2','p3','p4','p5','p6','p7','p8'];
+  const containers = { na: ['p0','p1','p2'], nb: ['p3','p4','p5'], nc: ['p6','p7','p8'] };
+
+  ['na','nb','nc'].forEach(nodeId => {
+    const el = document.getElementById(nodeId + '-parts');
+    el.innerHTML = '';
+    containers[nodeId].forEach(pid => {
+      const box = document.createElement('div');
+      box.className = 'p-box';
+      box.id = 'pbox-' + pid;
+      box.textContent = pid;
+      el.appendChild(box);
+    });
+  });
+  document.getElementById('nd-parts').innerHTML = '';
+  const ndRow = document.getElementById('nd-row');
+  ndRow.style.opacity = '0';
+  ndRow.style.transform = 'translateY(8px)';
+  setTrace('trace-fixed', 'Click "Add Node D" to watch partition migration.');
+}
+initFixedGrid();
+
+let fixedDone = false;
+document.getElementById('btn-add-node-fixed').addEventListener('click', () => {
+  if (fixedDone) return;
+  fixedDone = true;
+
+  // Show Node D row
+  const ndRow = document.getElementById('nd-row');
+  anime({
+    targets: ndRow,
+    opacity: [0,1],
+    translateY: [8, 0],
+    duration: 500,
+    easing: 'easeOutQuad'
+  });
+
+  // Migrate one partition from each node to D
+  const migrate = ['p2','p5','p8'];
+  migrate.forEach((pid, i) => {
+    setTimeout(() => {
+      const box = document.getElementById('pbox-' + pid);
+      if (!box) return;
+      box.classList.add('migrating');
+
+      setTimeout(() => {
+        box.remove();
+        const ndParts = document.getElementById('nd-parts');
+        const newBox = document.createElement('div');
+        newBox.className = 'p-box migrating';
+        newBox.id = 'pbox-nd-' + pid;
+        newBox.textContent = pid;
+        ndParts.appendChild(newBox);
+        anime({ targets: newBox, opacity: [0,1], translateY: [-8,0], duration: 400, easing: 'easeOutQuad' });
+      }, 500);
+    }, i * 400);
+  });
+
+  setTrace('trace-fixed', '<span class="ok">Migrating</span> p2, p5, p8 → Node D. Other partitions untouched. Only 1/4 of data moves.');
+});
+
+document.getElementById('btn-reset-fixed').addEventListener('click', () => {
+  fixedDone = false;
+  initFixedGrid();
+});
+
+// Dynamic split
+let dynState = 'merged'; // 'merged' | 'split'
+let dynBusy = false;
+
+document.getElementById('btn-dyn-split').addEventListener('click', () => {
+  if (dynBusy || dynState === 'split') return;
+  dynBusy = true;
+
+  // Hide original bar
+  anime({ targets: document.getElementById('dyn-p1'), opacity: 0, duration: 300, easing: 'easeOutQuad' });
+  anime({ targets: document.getElementById('dyn-t1'), opacity: 0, duration: 300, easing: 'easeOutQuad' });
+
+  setTimeout(() => {
+    // Show split bars
+    ['dyn-p2','dyn-t2','dyn-p3','dyn-t3'].forEach(id => {
+      anime({ targets: document.getElementById(id), opacity: [0,1], duration: 500, easing: 'easeOutQuad' });
+    });
+    document.getElementById('dyn-size').textContent = 'Size: 5 GB each (threshold: 10 GB) — healthy';
+    setTrace('trace-dynamic', '<span class="ok">Split complete</span>: P0 → P0-left + P0-right. One half can migrate to another node for balance.');
+    dynState = 'split';
+    dynBusy = false;
+  }, 350);
+});
+
+document.getElementById('btn-dyn-merge').addEventListener('click', () => {
+  if (dynBusy || dynState === 'merged') return;
+  dynBusy = true;
+
+  ['dyn-p2','dyn-t2','dyn-p3','dyn-t3'].forEach(id => {
+    anime({ targets: document.getElementById(id), opacity: 0, duration: 300, easing: 'easeOutQuad' });
+  });
+
+  setTimeout(() => {
+    anime({ targets: document.getElementById('dyn-p1'), opacity: [0,1], duration: 500, easing: 'easeOutQuad' });
+    anime({ targets: document.getElementById('dyn-t1'), opacity: [0,1], duration: 500, easing: 'easeOutQuad' });
+    document.getElementById('dyn-size').textContent = 'Size: 8 GB (threshold: 10 GB)';
+    setTrace('trace-dynamic', '<span class="warn">Merged</span>: two small partitions merged back. Reduces metadata overhead.');
+    dynState = 'merged';
+    dynBusy = false;
+  }, 350);
+});
+
+// Proportional
+let propNodes = 3;
+const propColors = ['#4ade80','#a78bfa','#f59e0b','#60a5fa','#f472b6'];
+
+function renderPropNodes() {
+  const svg = document.getElementById('prop-svg');
+  const nodesG = document.getElementById('prop-nodes');
+  const arcsG = document.getElementById('prop-arcs');
+  while (nodesG.firstChild) nodesG.removeChild(nodesG.firstChild);
+  while (arcsG.firstChild) arcsG.removeChild(arcsG.firstChild);
+
+  const positions = [
+    {x:80,y:90},{x:240,y:90},{x:160,y:160},{x:160,y:30},{x:40,y:155}
+  ];
+
+  for (let i = 0; i < propNodes; i++) {
+    const pos = positions[i];
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', pos.x); circle.setAttribute('cy', pos.y);
+    circle.setAttribute('r', 28); circle.setAttribute('fill', propColors[i] + '22');
+    circle.setAttribute('stroke', propColors[i]); circle.setAttribute('stroke-width', '2');
+    nodesG.appendChild(circle);
+
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', pos.x); txt.setAttribute('y', pos.y - 4);
+    txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('fill', propColors[i]);
+    txt.setAttribute('font-size', '11'); txt.setAttribute('font-family', 'JetBrains Mono');
+    txt.textContent = 'Node ' + (i+1);
+    nodesG.appendChild(txt);
+
+    const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    sub.setAttribute('x', pos.x); sub.setAttribute('y', pos.y + 10);
+    sub.setAttribute('text-anchor', 'middle'); sub.setAttribute('fill', propColors[i]);
+    sub.setAttribute('font-size', '9'); sub.setAttribute('font-family', 'JetBrains Mono');
+    sub.textContent = '256 parts';
+    nodesG.appendChild(sub);
+  }
+}
+renderPropNodes();
+
+document.getElementById('btn-prop-add').addEventListener('click', () => {
+  if (propNodes >= 5) return;
+  propNodes++;
+  renderPropNodes();
+  const total = propNodes * 256;
+  setTrace('trace-prop', '<span class="ok">Node ' + propNodes + ' added</span> — total partitions: ' + total + '. Each node owns 256. Existing keys split at random points.');
+});
+document.getElementById('btn-prop-reset').addEventListener('click', () => {
+  propNodes = 3;
+  renderPropNodes();
+  setTrace('trace-prop', 'Each node owns a fixed number of partitions.');
+});
+
+// ===================== S6 — ROUTING =====================
+let currentRouting = 'client';
+let routingBusy = false;
+
+window.switchRouting = function(view) {
+  currentRouting = view;
+  ['r1','r2','r3'].forEach((id, i) => {
+    document.getElementById('tab-' + id).classList.toggle('active',
+      (i === 0 && view === 'client') || (i === 1 && view === 'routing') || (i === 2 && view === 'zk'));
+  });
+
+  ['routing-client-desc','routing-routing-desc','routing-zk-desc'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('routing-' + view + '-desc').style.display = '';
+
+  // Reset all arrows
+  ['rt-arrow1','rt-arrow2','rt-arrow3','rt-router','rt-router-lbl','rt-zk','rt-zk-lbl','rt-zk-arrow','rt-c-router','rt-lookup'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.opacity = '0'; el.setAttribute('opacity', '0'); }
+  });
+
+  // Show router or ZK box if needed
+  if (view === 'routing' || view === 'zk') {
+    ['rt-router','rt-router-lbl'].forEach(id => {
+      document.getElementById(id).setAttribute('opacity', '1');
+    });
+  }
+  if (view === 'zk') {
+    ['rt-zk','rt-zk-lbl'].forEach(id => {
+      document.getElementById(id).setAttribute('opacity', '1');
+    });
+  }
+
+  setTrace('trace-s6', 'Click "Animate Request" to visualize ' + view + ' routing.');
+  routingBusy = false;
+};
+
+document.getElementById('btn-animate-routing').addEventListener('click', () => {
+  if (routingBusy) return;
+  routingBusy = true;
+
+  // Reset arrows
+  ['rt-arrow1','rt-arrow2','rt-arrow3','rt-zk-arrow','rt-c-router','rt-lookup'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('opacity', '0');
+  });
+
+  const targetArrow = 'rt-arrow' + (Math.floor(Math.random() * 3) + 1);
+
+  if (currentRouting === 'client') {
+    // Show lookup table label then direct arrow
+    const lt = document.getElementById('rt-lookup');
+    anime({
+      targets: { v: 0 },
+      v: 1,
+      duration: 300,
+      easing: 'easeOutQuad',
+      update: (anim) => {
+        lt.setAttribute('opacity', anim.animations[0].currentValue);
+      },
+      complete: () => {
+        const arr = document.getElementById(targetArrow);
+        anime({
+          targets: { v: 0 },
+          v: 1,
+          duration: 600,
+          easing: 'easeOutQuad',
+          update: (anim) => { arr.setAttribute('opacity', anim.animations[0].currentValue); },
+          complete: () => {
+            setTrace('trace-s6', '<span class="ok">Client-aware</span>: client reads local routing table → sends directly to <span class="hl">Node ' + (targetArrow.slice(-1)) + '</span>. Zero routing hops.');
+            routingBusy = false;
+          }
+        });
+      }
+    });
+  } else if (currentRouting === 'routing') {
+    // Client → Router → Node
+    const cr = document.getElementById('rt-c-router');
+    anime({
+      targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad',
+      update: (anim) => { cr.setAttribute('opacity', anim.animations[0].currentValue); },
+      complete: () => {
+        const arr = document.getElementById(targetArrow);
+        anime({
+          targets: { v: 0 }, v: 1, duration: 500, easing: 'easeOutQuad',
+          update: (anim) => { arr.setAttribute('opacity', anim.animations[0].currentValue); },
+          complete: () => {
+            setTrace('trace-s6', '<span class="ok">Routing tier</span>: Client → Router (one hop) → Node ' + targetArrow.slice(-1) + '. Client stays simple; router holds the mapping.');
+            routingBusy = false;
+          }
+        });
+      }
+    });
+  } else {
+    // ZK: ZK→Router notification, then Client→Router→Node
+    const zkArr = document.getElementById('rt-zk-arrow');
+    anime({
+      targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad',
+      update: (anim) => { zkArr.setAttribute('opacity', anim.animations[0].currentValue); },
+      complete: () => {
+        const cr = document.getElementById('rt-c-router');
+        anime({
+          targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad',
+          update: (anim) => { cr.setAttribute('opacity', anim.animations[0].currentValue); },
+          complete: () => {
+            const arr = document.getElementById(targetArrow);
+            anime({
+              targets: { v: 0 }, v: 1, duration: 400, easing: 'easeOutQuad',
+              update: (anim) => { arr.setAttribute('opacity', anim.animations[0].currentValue); },
+              complete: () => {
+                setTrace('trace-s6', '<span class="ok">ZooKeeper</span>: ZK notifies Router of topology change → Router table updated → Client → Router → Node ' + targetArrow.slice(-1) + '.');
+                routingBusy = false;
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+});
+
+// Init routing view
+switchRouting('client');
+
+</script>
+</body>
+</html>

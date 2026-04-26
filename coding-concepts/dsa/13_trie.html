@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>13 · Trie (Prefix Tree) — DSA Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117; --bg-card: #161b22; --bg-card-hover: #1c2330; --border: #30363d;
+  --text: #e6edf3; --text-muted: #8b949e;
+  --accent: #c084fc; --accent-dim: rgba(192,132,252,0.15);
+  --good: #4ade80; --bad: #f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6}
+#progress-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;background:rgba(13,17,23,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+.nav-back{color:var(--text-muted);text-decoration:none;font-size:0.8rem;white-space:nowrap}
+.nav-back:hover{color:var(--accent)}
+.nav-pager{display:flex;align-items:center;gap:0.75rem;margin:0 auto;font-size:0.8rem}
+.nav-pager a{color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.nav-pager a:hover{color:var(--accent);border-color:var(--accent)}
+.nav-pager span{color:var(--text);font-weight:600}
+.nav-anchors{display:flex;gap:0.5rem;margin-left:auto}
+.nav-anchors a{color:var(--text-muted);text-decoration:none;font-size:0.75rem;padding:3px 8px;border-radius:4px}
+.nav-anchors a:hover{color:var(--accent);background:var(--accent-dim)}
+main{max-width:1100px;margin:0 auto;padding:80px 1.5rem 3rem}
+section{margin-bottom:4rem;opacity:0;transform:translateY(32px);transition:opacity 0.6s ease,transform 0.6s ease}
+section.visible{opacity:1;transform:translateY(0)}
+.hero{text-align:center;padding:3rem 0 2rem;opacity:1!important;transform:none!important}
+.hero .pattern-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:1rem;letter-spacing:0.1em;margin-bottom:0.5rem}
+.hero h1{font-size:3.5rem;font-weight:700;margin-bottom:0.75rem;background:linear-gradient(135deg,var(--accent),#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{color:var(--text-muted);font-size:1.1rem;max-width:600px;margin:0 auto}
+h2{font-size:1.5rem;font-weight:700;margin-bottom:1.25rem;color:var(--accent)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.card:hover{background:var(--bg-card-hover)}
+.controls{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.875rem;transition:all 0.2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{opacity:0.85}
+#viz-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+#viz-svg{width:100%;overflow:visible}
+.trace-panel{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;font-family:'JetBrains Mono',monospace;font-size:0.8rem}
+.trace-row{display:flex;gap:1rem;margin-bottom:0.4rem;flex-wrap:wrap}
+.trace-key{color:var(--text-muted)}
+.trace-val{color:var(--accent);font-weight:600}
+.code-panel{position:relative}
+.code-panel pre{background:#0d1117;border:1px solid var(--border);border-radius:10px;padding:1.5rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:0.8rem;line-height:1.7}
+.copy-btn{position:absolute;top:0.75rem;right:0.75rem;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75rem;font-family:'Inter',sans-serif}
+.copy-btn:hover{color:var(--accent);border-color:var(--accent)}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}.hero h1{font-size:2.5rem}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.875rem 1rem}
+.problem-card:hover{border-color:var(--accent);background:var(--bg-card-hover)}
+.problem-num{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:0.75rem;margin-bottom:0.25rem}
+.problem-name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}
+.problem-note{color:var(--text-muted);font-size:0.8rem}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;margin-right:0.35rem;margin-bottom:0.35rem}
+.tag-hard{background:rgba(248,113,113,0.15);color:#f87171}
+.tag-medium{background:rgba(251,191,36,0.15);color:#fbbf24}
+.tag-easy{background:rgba(74,222,128,0.15);color:#4ade80}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.staff-card h3{color:#f59e0b;font-size:1rem;margin-bottom:0.75rem}
+.staff-card p{color:var(--text-muted);font-size:0.875rem;line-height:1.7}
+.staff-card .hint{color:var(--text);margin-top:0.5rem;font-size:0.875rem}
+footer{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.75rem;border-top:1px solid var(--border)}
+.input-row{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap}
+.text-input{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:0.875rem;width:200px;outline:none}
+.text-input:focus{border-color:var(--accent)}
+.node-label{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;pointer-events:none;user-select:none}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<nav>
+  <a class="nav-back" href="00_index.html">Problem Solving Home</a>
+<div class="nav-pager">
+    <a href="12_trees_bst.html">← 12</a>
+    <span>13 · Trie</span>
+    <a href="14_graphs_bfs_dfs.html">14 →</a>
+  </div>
+  <div class="nav-anchors">
+    <a href="#s-viz">Visualize</a>
+    <a href="#s-code">Code</a>
+    <a href="#s-problems">Problems</a>
+    <a href="#s-staff">Staff</a>
+  </div>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="pattern-num">PATTERN 13</div>
+    <h1>Trie (Prefix Tree)</h1>
+    <p class="tagline">Character-by-character tree enabling O(L) prefix queries impossible with hashing. Trade memory for prefix power.</p>
+  </section>
+
+  <!-- WHEN TO USE -->
+  <section id="s-when">
+    <h2>When to Use</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+      <div class="card">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:0.5rem">Autocomplete / Prefix Search</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">Find all words sharing a prefix in O(prefix_len + results). HashMaps can't do this without scanning all keys.</div>
+      </div>
+      <div class="card">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:0.5rem">Word Existence Checks</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">insert/search/startsWith all O(L). Wildcards ('.'​) handled via DFS on trie nodes.</div>
+      </div>
+      <div class="card">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:0.5rem">XOR Trie</div>
+        <div style="color:var(--text-muted);font-size:0.875rem">Insert integers bit-by-bit MSB→LSB. Query opposite bit greedily to maximize XOR in O(32).</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:0;border-color:rgba(192,132,252,0.3)">
+      <span style="color:var(--accent);font-weight:600">Memory note:</span>
+      <span style="color:var(--text-muted);font-size:0.875rem"> Each node holds 26 child pointers (or a HashMap). A trie for 10M English words can consume several GB. Consider compressed trie / radix tree or DAWG when memory matters.</span>
+    </div>
+  </section>
+
+  <!-- VISUALIZER -->
+  <section id="s-viz">
+    <h2>Trie Builder — Visualizer</h2>
+    <div class="controls">
+      <button class="btn primary" id="btn-play">▶ Play</button>
+      <button class="btn" id="btn-step">Step →</button>
+      <button class="btn" id="btn-reset">Reset</button>
+      <span id="step-label" style="color:var(--text-muted);font-size:0.875rem">Step 0 / 0</span>
+    </div>
+    <div id="viz-container">
+      <svg id="viz-svg" height="380"></svg>
+    </div>
+    <div class="trace-panel" style="margin-bottom:1rem">
+      <div class="trace-row"><span class="trace-key">Inserting word:</span><span class="trace-val" id="tr-word">—</span></div>
+      <div class="trace-row"><span class="trace-key">Path taken:</span><span class="trace-val" id="tr-path">—</span></div>
+      <div class="trace-row"><span class="trace-key">New nodes created:</span><span class="trace-val" id="tr-new">0</span></div>
+      <div class="trace-row"><span class="trace-key">Total nodes in trie:</span><span class="trace-val" id="tr-total">1</span></div>
+    </div>
+
+    <!-- Interactive Controls -->
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:0.75rem;color:var(--text-muted)">Control 1 — Insert Custom Word</div>
+      <div class="input-row">
+        <input type="text" id="custom-word" class="text-input" placeholder="e.g. apricot" maxlength="20">
+        <button class="btn primary" id="btn-insert">Insert</button>
+      </div>
+      <div id="insert-msg" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem"></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:0.75rem;color:var(--text-muted)">Control 2 — Search Prefix (highlights matching nodes)</div>
+      <div class="input-row">
+        <input type="text" id="search-prefix" class="text-input" placeholder="e.g. app" maxlength="20">
+        <button class="btn primary" id="btn-search">Search</button>
+        <button class="btn" id="btn-clear-search">Clear</button>
+      </div>
+      <div id="search-msg" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem"></div>
+    </div>
+  </section>
+
+  <!-- JAVA CODE -->
+  <section id="s-code">
+    <h2>Java Implementation</h2>
+    <div class="code-panel">
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+      <pre><span class="cm">// TrieNode — 26-child array (faster) or HashMap (sparse/unicode)</span>
+<span class="kw">class</span> <span class="tp">TrieNode</span> {
+    <span class="tp">TrieNode</span>[] c = <span class="kw">new</span> <span class="tp">TrieNode</span>[<span class="num">26</span>];
+    <span class="kw">boolean</span> end = <span class="kw">false</span>;
+}
+
+<span class="kw">class</span> <span class="tp">Trie</span> {
+    <span class="tp">TrieNode</span> root = <span class="kw">new</span> <span class="tp">TrieNode</span>();
+
+    <span class="cm">// O(L) insert</span>
+    <span class="kw">public void</span> <span class="fn">insert</span>(<span class="tp">String</span> w) {
+        <span class="tp">TrieNode</span> cur = root;
+        <span class="kw">for</span> (<span class="kw">char</span> ch : w.<span class="fn">toCharArray</span>()) {
+            <span class="kw">int</span> i = ch - <span class="str">'a'</span>;
+            <span class="kw">if</span> (cur.c[i] == <span class="kw">null</span>) cur.c[i] = <span class="kw">new</span> <span class="tp">TrieNode</span>();
+            cur = cur.c[i];
+        }
+        cur.end = <span class="kw">true</span>;
+    }
+
+    <span class="cm">// O(L) exact search</span>
+    <span class="kw">public boolean</span> <span class="fn">search</span>(<span class="tp">String</span> w) {
+        <span class="tp">TrieNode</span> n = <span class="fn">node</span>(w);
+        <span class="kw">return</span> n != <span class="kw">null</span> &amp;&amp; n.end;
+    }
+
+    <span class="cm">// O(L) prefix check</span>
+    <span class="kw">public boolean</span> <span class="fn">startsWith</span>(<span class="tp">String</span> p) { <span class="kw">return</span> <span class="fn">node</span>(p) != <span class="kw">null</span>; }
+
+    <span class="kw">private</span> <span class="tp">TrieNode</span> <span class="fn">node</span>(<span class="tp">String</span> s) {
+        <span class="tp">TrieNode</span> cur = root;
+        <span class="kw">for</span> (<span class="kw">char</span> ch : s.<span class="fn">toCharArray</span>()) {
+            <span class="kw">int</span> i = ch - <span class="str">'a'</span>;
+            <span class="kw">if</span> (cur.c[i] == <span class="kw">null</span>) <span class="kw">return null</span>;
+            cur = cur.c[i];
+        }
+        <span class="kw">return</span> cur;
+    }
+}
+
+<span class="cm">// Word Search II — trie-based board DFS</span>
+<span class="kw">public</span> <span class="tp">List</span>&lt;<span class="tp">String</span>&gt; <span class="fn">findWords</span>(<span class="kw">char</span>[][] board, <span class="tp">String</span>[] words) {
+    <span class="tp">Trie</span> trie = <span class="kw">new</span> <span class="tp">Trie</span>();
+    <span class="kw">for</span> (<span class="tp">String</span> w : words) trie.<span class="fn">insert</span>(w);
+    <span class="tp">Set</span>&lt;<span class="tp">String</span>&gt; res = <span class="kw">new</span> <span class="tp">HashSet</span>&lt;&gt;();
+    <span class="kw">int</span> R = board.length, C = board[<span class="num">0</span>].length;
+    <span class="kw">for</span> (<span class="kw">int</span> r = <span class="num">0</span>; r &lt; R; r++)
+        <span class="kw">for</span> (<span class="kw">int</span> c = <span class="num">0</span>; c &lt; C; c++)
+            <span class="fn">dfs</span>(board, r, c, trie.root, <span class="str">""</span>, res);
+    <span class="kw">return new</span> <span class="tp">ArrayList</span>&lt;&gt;(res);
+}
+<span class="kw">void</span> <span class="fn">dfs</span>(<span class="kw">char</span>[][] b, <span class="kw">int</span> r, <span class="kw">int</span> c, <span class="tp">TrieNode</span> node, <span class="tp">String</span> path, <span class="tp">Set</span>&lt;<span class="tp">String</span>&gt; res) {
+    <span class="kw">if</span> (r &lt; <span class="num">0</span> || r &gt;= b.length || c &lt; <span class="num">0</span> || c &gt;= b[<span class="num">0</span>].length || b[r][c] == <span class="str">'#'</span>) <span class="kw">return</span>;
+    <span class="kw">int</span> i = b[r][c] - <span class="str">'a'</span>;
+    <span class="kw">if</span> (node.c[i] == <span class="kw">null</span>) <span class="kw">return</span>; <span class="cm">// prune — no trie path</span>
+    node = node.c[i]; path += b[r][c];
+    <span class="kw">if</span> (node.end) res.<span class="fn">add</span>(path);
+    <span class="kw">char</span> tmp = b[r][c]; b[r][c] = <span class="str">'#'</span>;
+    <span class="fn">dfs</span>(b,r+<span class="num">1</span>,c,node,path,res); <span class="fn">dfs</span>(b,r-<span class="num">1</span>,c,node,path,res);
+    <span class="fn">dfs</span>(b,r,c+<span class="num">1</span>,node,path,res); <span class="fn">dfs</span>(b,r,c-<span class="num">1</span>,node,path,res);
+    b[r][c] = tmp;
+}
+
+<span class="cm">// Maximum XOR of Two Numbers (XOR Trie)</span>
+<span class="kw">int</span>[][] xorTrie = <span class="kw">new int</span>[<span class="num">32</span>*<span class="num">100001</span>][<span class="num">2</span>];
+<span class="kw">int</span> xorIdx = <span class="num">1</span>;
+<span class="kw">void</span> <span class="fn">xorInsert</span>(<span class="kw">int</span> n) {
+    <span class="kw">int</span> cur = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> b = <span class="num">31</span>; b &gt;= <span class="num">0</span>; b--) {
+        <span class="kw">int</span> bit = (n &gt;&gt; b) &amp; <span class="num">1</span>;
+        <span class="kw">if</span> (xorTrie[cur][bit] == <span class="num">0</span>) xorTrie[cur][bit] = xorIdx++;
+        cur = xorTrie[cur][bit];
+    }
+}
+<span class="kw">int</span> <span class="fn">xorQuery</span>(<span class="kw">int</span> n) {
+    <span class="kw">int</span> cur = <span class="num">0</span>, result = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> b = <span class="num">31</span>; b &gt;= <span class="num">0</span>; b--) {
+        <span class="kw">int</span> want = <span class="num">1</span> - ((n &gt;&gt; b) &amp; <span class="num">1</span>); <span class="cm">// prefer opposite bit</span>
+        <span class="kw">if</span> (xorTrie[cur][want] != <span class="num">0</span>) { result |= (<span class="num">1</span> &lt;&lt; b); cur = xorTrie[cur][want]; }
+        <span class="kw">else</span> cur = xorTrie[cur][<span class="num">1</span>-want];
+    }
+    <span class="kw">return</span> result;
+}</pre>
+    </div>
+  </section>
+
+  <!-- PROBLEMS -->
+  <section id="s-problems">
+    <h2>Problem Set</h2>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-num">LC 208</div>
+        <div class="problem-name">Implement Trie</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">insert/search/startsWith; 26-child array vs HashMap for children. Foundation problem.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 212</div>
+        <div class="problem-name">Word Search II</div>
+        <span class="tag tag-hard">Hard</span>
+        <div class="problem-note">Build trie from dictionary, DFS on board. Prune when no trie path exists.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 211</div>
+        <div class="problem-name">Design Add and Search Words</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">addWord + search with '.' wildcard via DFS over trie children.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 648</div>
+        <div class="problem-name">Replace Words</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Find shortest prefix in trie; replace full word in sentence. Greedy prefix walk.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 720</div>
+        <div class="problem-name">Longest Word in Dictionary</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Trie DFS keeping only words where every prefix exists (isEnd at each step).</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 677</div>
+        <div class="problem-name">Map Sum Pairs</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">Store val at isEnd, accumulate sum during prefix traversal.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 421</div>
+        <div class="problem-name">Maximum XOR of Two Numbers</div>
+        <span class="tag tag-medium">Medium</span>
+        <div class="problem-note">XOR trie: insert bit-by-bit MSB first, query opposite bit greedily. O(32N).</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 336</div>
+        <div class="problem-name">Palindrome Pairs</div>
+        <span class="tag tag-hard">Hard</span>
+        <div class="problem-note">Trie with reversed words, palindrome condition checks during traversal.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">LC 1032</div>
+        <div class="problem-name">Stream of Characters</div>
+        <span class="tag tag-hard">Hard</span>
+        <div class="problem-note">Reversed trie (suffix trie) to match against stream suffix efficiently.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">Classic</div>
+        <div class="problem-name">Count Words with Given Prefix</div>
+        <span class="tag tag-easy">Easy</span>
+        <div class="problem-note">Count all isEnd nodes in subtree rooted at prefix end. Subtree DFS/BFS.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAFF ANGLES -->
+  <section id="s-staff">
+    <h2>Staff-Level Questions</h2>
+    <div class="staff-card">
+      <h3>Q1 — Memory at Scale</h3>
+      <p>Autocomplete trie for 10M English words consumes 8GB RAM. How do you reduce it?</p>
+      <div class="hint">
+        <strong>Compressed trie / Radix tree</strong> — merge chains of single-child nodes into edge labels, reducing node count dramatically.<br>
+        <strong>DAWG (Directed Acyclic Word Graph)</strong> — share suffixes too, not just prefixes. Recognizes equivalent subtrees and merges them.<br>
+        <strong>Ternary Search Tree</strong> — 3 pointers per node (less, equal, greater) instead of 26. Cache-friendlier traversal.<br>
+        <strong>Serialized + memory-mapped</strong> — serialize trie to compact byte array (trie.bin), mmap it; OS handles paging, no JVM heap pressure.
+      </div>
+    </div>
+    <div class="staff-card">
+      <h3>Q2 — High-Throughput Autocomplete</h3>
+      <p>Autocomplete serves 100k QPS sub-5ms P99 with a 4GB trie. How do you scale to 10M QPS?</p>
+      <div class="hint">
+        <strong>Shard by first 2 chars</strong> — 676 possible shards, route "app..." to shard for "ap". Each shard holds ~6MB.<br>
+        <strong>Read replicas</strong> — trie is read-heavy; replicate across instances. Updates batched hourly via background job.<br>
+        <strong>Pre-materialized top-K per prefix</strong> — offline compute top-5 suggestions for every prefix up to length 8. Serve from Redis hash O(1).<br>
+        <strong>Bloom filter</strong> — reject prefixes with zero matches before hitting the trie. Eliminates 60%+ of cold-miss lookups.
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt &amp; Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers</footer>
+
+<script>
+// ─── Scroll progress ────────────────────────────────────────────
+const pb = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  pb.style.transform = 'scaleX(' + window.scrollY / total + ')';
+});
+
+// ─── Section reveal ─────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.25 });
+document.querySelectorAll('section:not(.hero)').forEach(s => observer.observe(s));
+
+// ─── Trie data model ────────────────────────────────────────────
+class TrieNode {
+  constructor(char, id, depth, parentId) {
+    this.char = char;
+    this.id = id;
+    this.depth = depth;
+    this.parentId = parentId;
+    this.children = {};
+    this.isEnd = false;
+  }
+}
+
+let nodeCounter = 0;
+let trieRoot = new TrieNode('', nodeCounter++, 0, null);
+const words = ['apple', 'app', 'application', 'apply', 'banana'];
+let stepIdx = 0;
+let steps = [];
+let playing = false;
+let playTimer = null;
+
+// Build all insertion steps ahead of time
+function buildSteps() {
+  steps = [];
+  nodeCounter = 0;
+  trieRoot = new TrieNode('', nodeCounter++, 0, null);
+
+  words.forEach(word => {
+    let cur = trieRoot;
+    const path = [];
+    const newNodes = [];
+
+    for (let i = 0; i < word.length; i++) {
+      const ch = word[i];
+      path.push(ch);
+      if (!cur.children[ch]) {
+        const newNode = new TrieNode(ch, nodeCounter++, cur.depth + 1, cur.id);
+        cur.children[ch] = newNode;
+        newNodes.push(newNode.id);
+      }
+      cur = cur.children[ch];
+    }
+    cur.isEnd = true;
+
+    steps.push({
+      word,
+      path: path.join(''),
+      newNodes: newNodes.length,
+      highlightPath: collectPath(word),
+      snapshot: deepCloneTrie(trieRoot)
+    });
+  });
+}
+
+function collectPath(word) {
+  const ids = [trieRoot.id];
+  let cur = trieRoot;
+  for (const ch of word) {
+    if (!cur.children[ch]) break;
+    cur = cur.children[ch];
+    ids.push(cur.id);
+  }
+  return ids;
+}
+
+function deepCloneTrie(node) {
+  const n = { char: node.char, id: node.id, depth: node.depth, parentId: node.parentId, isEnd: node.isEnd, children: {} };
+  for (const [k, child] of Object.entries(node.children)) {
+    n.children[k] = deepCloneTrie(child);
+  }
+  return n;
+}
+
+// ─── D3 Trie Visualization ──────────────────────────────────────
+const svg = d3.select('#viz-svg');
+const W = () => document.getElementById('viz-svg').clientWidth || 800;
+
+function flattenTrie(node) {
+  const nodes = [], links = [];
+  function walk(n) {
+    nodes.push(n);
+    for (const child of Object.values(n.children)) {
+      links.push({ source: n.id, target: child.id });
+      walk(child);
+    }
+  }
+  walk(node);
+  return { nodes, links };
+}
+
+function computePositions(root) {
+  // BFS layout — assign x by breadth-first order within each depth
+  const levelNodes = {};
+  function bfs(n) {
+    if (!levelNodes[n.depth]) levelNodes[n.depth] = [];
+    levelNodes[n.depth].push(n);
+    for (const c of Object.values(n.children)) bfs(c);
+  }
+  bfs(root);
+
+  const positions = {};
+  const height = 380;
+  const maxDepth = Math.max(...Object.keys(levelNodes).map(Number));
+  const yStep = maxDepth > 0 ? (height - 60) / maxDepth : 60;
+
+  for (const [depth, nodes] of Object.entries(levelNodes)) {
+    const w = W();
+    const spacing = w / (nodes.length + 1);
+    nodes.forEach((n, i) => {
+      positions[n.id] = { x: spacing * (i + 1), y: 30 + Number(depth) * yStep };
+    });
+  }
+  return positions;
+}
+
+let currentHighlightIds = new Set();
+let currentSearchIds = new Set();
+
+function renderTrie(trieData, highlightIds, searchIds) {
+  const { nodes, links } = flattenTrie(trieData);
+  const positions = computePositions(trieData);
+
+  svg.selectAll('*').remove();
+
+  // Draw edges
+  links.forEach(link => {
+    const s = positions[link.source];
+    const t = positions[link.target];
+    if (!s || !t) return;
+    svg.append('line')
+      .attr('x1', s.x).attr('y1', s.y)
+      .attr('x2', t.x).attr('y2', t.y)
+      .attr('stroke', '#30363d').attr('stroke-width', 2);
+  });
+
+  // Draw nodes
+  nodes.forEach(node => {
+    const pos = positions[node.id];
+    if (!pos) return;
+
+    const isHighlighted = highlightIds && highlightIds.has(node.id);
+    const isSearched = searchIds && searchIds.has(node.id);
+    const isRoot = node.id === 0;
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${pos.x},${pos.y})`);
+
+    // Outer ring for isEnd
+    if (node.isEnd) {
+      g.append('circle')
+        .attr('r', 20)
+        .attr('fill', 'none')
+        .attr('stroke', '#c084fc')
+        .attr('stroke-width', 2.5);
+    }
+
+    g.append('circle')
+      .attr('r', 16)
+      .attr('fill', isSearched ? 'rgba(96,165,250,0.3)' : isHighlighted ? 'rgba(192,132,252,0.3)' : '#161b22')
+      .attr('stroke', isSearched ? '#60a5fa' : isHighlighted ? '#c084fc' : '#30363d')
+      .attr('stroke-width', isHighlighted || isSearched ? 2.5 : 1.5);
+
+    g.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('class', 'node-label')
+      .attr('fill', isRoot ? '#8b949e' : isHighlighted ? '#c084fc' : isSearched ? '#60a5fa' : '#e6edf3')
+      .text(isRoot ? '⬡' : node.char);
+  });
+}
+
+// ─── Stepper logic ──────────────────────────────────────────────
+function updateTrace(step) {
+  if (!step) {
+    document.getElementById('tr-word').textContent = '—';
+    document.getElementById('tr-path').textContent = '—';
+    document.getElementById('tr-new').textContent = '0';
+    document.getElementById('tr-total').textContent = '1';
+    return;
+  }
+  document.getElementById('tr-word').textContent = step.word;
+  document.getElementById('tr-path').textContent = step.path;
+  document.getElementById('tr-new').textContent = step.newNodes;
+  const { nodes } = flattenTrie(step.snapshot);
+  document.getElementById('tr-total').textContent = nodes.length;
+  document.getElementById('step-label').textContent = `Step ${stepIdx} / ${steps.length}`;
+}
+
+function goToStep(idx) {
+  stepIdx = Math.max(0, Math.min(idx, steps.length));
+  document.getElementById('step-label').textContent = `Step ${stepIdx} / ${steps.length}`;
+
+  if (stepIdx === 0) {
+    const empty = new TrieNode('', 0, 0, null);
+    renderTrie(empty, new Set(), new Set());
+    updateTrace(null);
+    return;
+  }
+
+  const step = steps[stepIdx - 1];
+  const highlightSet = new Set(step.highlightPath);
+  renderTrie(step.snapshot, highlightSet, currentSearchIds);
+  updateTrace(step);
+}
+
+function stepForward() {
+  if (stepIdx < steps.length) goToStep(stepIdx + 1);
+  else stopPlay();
+}
+
+function startPlay() {
+  if (playing) return;
+  playing = true;
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+  playTimer = setInterval(() => {
+    if (stepIdx >= steps.length) { stopPlay(); return; }
+    stepForward();
+  }, 900);
+}
+
+function stopPlay() {
+  playing = false;
+  clearInterval(playTimer);
+  document.getElementById('btn-play').textContent = '▶ Play';
+}
+
+document.getElementById('btn-play').addEventListener('click', () => { playing ? stopPlay() : startPlay(); });
+document.getElementById('btn-step').addEventListener('click', stepForward);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  stopPlay();
+  stepIdx = 0;
+  buildSteps();
+  currentSearchIds = new Set();
+  goToStep(0);
+  document.getElementById('step-label').textContent = `Step 0 / ${steps.length}`;
+});
+
+// ─── Custom insert ───────────────────────────────────────────────
+document.getElementById('btn-insert').addEventListener('click', () => {
+  const w = document.getElementById('custom-word').value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  const msg = document.getElementById('insert-msg');
+  if (!w) { msg.textContent = 'Enter a valid word (a-z only).'; return; }
+
+  stopPlay();
+  // Insert into the last state or current trie
+  const currentRoot = stepIdx > 0 ? steps[stepIdx - 1].snapshot : null;
+  // Re-add word to actual trie state
+  if (!words.includes(w)) words.push(w);
+  buildSteps();
+  goToStep(steps.length);
+  msg.textContent = `"${w}" inserted. Trie rebuilt with ${words.length} words.`;
+  document.getElementById('custom-word').value = '';
+});
+
+// ─── Prefix search ───────────────────────────────────────────────
+function searchPrefixInSnapshot(root, prefix) {
+  const ids = [root.id];
+  let cur = root;
+  for (const ch of prefix) {
+    if (!cur.children[ch]) return null;
+    cur = cur.children[ch];
+    ids.push(cur.id);
+  }
+  return ids;
+}
+
+document.getElementById('btn-search').addEventListener('click', () => {
+  const p = document.getElementById('search-prefix').value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  const msg = document.getElementById('search-msg');
+  if (!p) { msg.textContent = 'Enter a prefix to search.'; return; }
+
+  const root = stepIdx > 0 ? steps[stepIdx - 1].snapshot : trieRoot;
+  const ids = searchPrefixInSnapshot(root, p);
+
+  if (!ids) {
+    currentSearchIds = new Set();
+    msg.style.color = 'var(--bad)';
+    msg.textContent = `Prefix "${p}" not found in trie.`;
+  } else {
+    currentSearchIds = new Set(ids);
+    msg.style.color = 'var(--good)';
+    msg.textContent = `Prefix "${p}" found! ${ids.length - 1} nodes traversed.`;
+  }
+
+  const step = stepIdx > 0 ? steps[stepIdx - 1] : null;
+  const snapRoot = step ? step.snapshot : trieRoot;
+  const hlSet = step ? new Set(step.highlightPath) : new Set();
+  renderTrie(snapRoot, hlSet, currentSearchIds);
+});
+
+document.getElementById('btn-clear-search').addEventListener('click', () => {
+  currentSearchIds = new Set();
+  document.getElementById('search-msg').textContent = '';
+  document.getElementById('search-prefix').value = '';
+  const step = stepIdx > 0 ? steps[stepIdx - 1] : null;
+  const snapRoot = step ? step.snapshot : trieRoot;
+  renderTrie(snapRoot, new Set(), new Set());
+});
+
+// ─── Copy code ───────────────────────────────────────────────────
+function copyCode(btn) {
+  const code = btn.nextElementSibling.textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+buildSteps();
+goToStep(0);
+document.getElementById('step-label').textContent = `Step 0 / ${steps.length}`;
+
+window.addEventListener('resize', () => {
+  const step = stepIdx > 0 ? steps[stepIdx - 1] : null;
+  const snapRoot = step ? step.snapshot : trieRoot;
+  renderTrie(snapRoot, currentHighlightIds, currentSearchIds);
+});
+</script>
+</body>
+</html>

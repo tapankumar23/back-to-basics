@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Refactoring Patterns — Coding Concepts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #fb923c;
+      --accent-dim: rgba(251,146,60,0.15);
+      --good: #4ade80;
+      --bad: #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Progress bar ── */
+    #progress-bar {
+      position: fixed; top: 0; left: 0; height: 3px;
+      background: var(--accent); width: 100%; z-index: 9999;
+      transform: scaleX(0); transform-origin: left center;
+      transition: transform 0.1s linear;
+    }
+
+    /* ── Navbar ── */
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent); font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px; padding-right: 16px;
+    }
+    #navbar a.back-link:hover { color: var(--text); background: rgba(251,146,60,0.08); }
+    #navbar .chapter-pager {
+      display: flex; align-items: stretch; gap: 8px;
+      margin-right: 12px; padding-right: 14px;
+      border-right: 1px solid var(--border); flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px; padding: 5px 10px;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 1px; color: var(--text); text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center; text-align: center; background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted); font-size: 9px; line-height: 1;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title { font-size: 11px; line-height: 1.15; white-space: nowrap; }
+    .nav-sep { color: var(--border); padding: 0 4px; font-size: 14px; }
+
+    /* ── Main layout ── */
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+
+    /* ── Hero ── */
+    .page-hero { text-align: center; padding: 3rem 0 2rem; }
+    .page-hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; color: var(--text); }
+    .page-hero h1 span { color: var(--accent); }
+    .page-hero p { color: var(--text-muted); font-size: 1rem; max-width: 520px; margin: 0.75rem auto 0; }
+
+    /* ── Concept sections ── */
+    .concept-section {
+      margin-bottom: 3rem; scroll-margin-top: 72px;
+      opacity: 0; transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; display: flex; align-items: center;
+      justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Buttons ── */
+    .btn {
+      background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent);
+      border-radius: 4px; padding: 4px 12px; font-size: 11px;
+      font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(251,146,60,0.3); }
+    .btn:focus-visible, .expand-badge:focus-visible, .expandable-trigger:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px;
+    }
+
+    /* ── Diagram area ── */
+    .diagram-area {
+      padding: 20px; min-height: 160px;
+      display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px;
+    }
+    .diagram-area svg { overflow: visible; }
+
+    /* ── Code comparison ── */
+    .code-compare {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      padding: 16px; border-top: 1px solid var(--border);
+    }
+    @media (max-width: 760px) { .code-compare { grid-template-columns: 1fr; } }
+    .code-block {
+      background: #0d1117; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      transition: opacity 0.5s, filter 0.5s;
+    }
+    .code-block.degraded { opacity: 0.6; filter: blur(0.5px); }
+    .code-block-header {
+      padding: 6px 12px; font-size: 11px;
+      font-family: 'JetBrains Mono', monospace; font-weight: 600; border-bottom: 1px solid var(--border);
+    }
+    .code-block-header.bad  { color: var(--bad);  background: rgba(248,113,113,0.08); }
+    .code-block-header.good { color: var(--good); background: rgba(74,222,128,0.08); }
+    .code-block pre {
+      padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* ── Syntax highlight ── */
+    .kw  { color: #ff7b72; }
+    .fn  { color: #d2a8ff; }
+    .str { color: #a5d6ff; }
+    .cm  { color: #8b949e; font-style: italic; }
+    .num { color: #f2cc60; }
+    .tp  { color: #ffa657; }
+
+    /* ── Expandable panels ── */
+    .expand-panels {
+      border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .expand-badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px;
+      font-size: 11px; cursor: pointer; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04); color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      transition: background 0.2s, border-color 0.2s; user-select: none;
+    }
+    .expand-badge:hover { background: rgba(255,255,255,0.08); border-color: var(--text-muted); }
+    .expand-badge.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .expand-content {
+      display: none; margin-top: 8px; padding: 12px 14px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.7; width: 100%;
+    }
+    .expand-content.open { display: block; }
+
+    /* ── Metric bar ── */
+    .metric-row {
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .metric-label { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); white-space: nowrap; }
+    .metric-bar-track { flex: 1; min-width: 120px; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .metric-bar-fill {
+      height: 100%; border-radius: 4px; background: var(--bad); width: 100%;
+      transform-origin: left center; transition: transform 0.6s ease, background 0.6s ease;
+    }
+    .metric-value { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text); min-width: 36px; text-align: right; }
+
+    /* ── Cascade reveal ── */
+    .cascade-step {
+      display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      opacity: 0; transform: translateY(8px);
+      transition: opacity 0.4s, transform 0.4s;
+    }
+    .cascade-step.visible { opacity: 1; transform: translateY(0); }
+    .cascade-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .cascade-text { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+    .cascade-text strong { color: var(--text); }
+
+    /* ── Section 6.1: Extract Method ── */
+    .extract-demo { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 4px; }
+    .method-line {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
+      padding: 3px 10px; border-radius: 4px; border: 1px solid transparent;
+      transition: border-color 0.3s, background 0.3s, color 0.3s;
+    }
+    .method-line.highlight { border-color: var(--accent); background: var(--accent-dim); color: var(--text); }
+    .extracted-fn {
+      background: rgba(74,222,128,0.08); border: 1px solid var(--good); border-radius: 8px;
+      padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--good);
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.4s, transform 0.4s;
+    }
+    .extracted-fn.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Section 6.2: Guard Clauses ── */
+    .guard-demo { width: 100%; max-width: 540px; }
+    .nest-line {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      padding: 3px 0; transition: opacity 0.4s, transform 0.4s; white-space: pre;
+    }
+    .guard-line {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      padding: 3px 0; color: var(--good);
+      opacity: 0; transform: translateX(-10px);
+      transition: opacity 0.4s, transform 0.4s; white-space: pre;
+    }
+    .guard-line.visible { opacity: 1; transform: translateX(0); }
+
+    /* ── Section 6.3: Polymorphism ── */
+    #poly-svg { width: 100%; max-width: 580px; height: 200px; }
+
+    /* ── Section 6.4: Parameter Object ── */
+    .param-cards { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
+    .param-card {
+      background: rgba(248,113,113,0.1); border: 1px solid var(--bad); border-radius: 8px;
+      padding: 8px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--bad);
+      transition: opacity 0.4s, transform 0.4s; white-space: nowrap;
+    }
+    .criteria-card {
+      background: rgba(74,222,128,0.08); border: 2px solid var(--good); border-radius: 12px;
+      padding: 14px 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--good);
+      opacity: 0; transform: translateY(10px); transition: opacity 0.4s, transform 0.4s; text-align: left;
+    }
+    .criteria-card.visible { opacity: 1; transform: translateY(0); }
+    .criteria-fields { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+    .criteria-field { font-size: 10px; color: var(--text-muted); padding-left: 8px; border-left: 2px solid var(--good); }
+
+    /* ── Section 6.5 & 6.3: D3 SVGs ── */
+    #move-svg { width: 100%; max-width: 580px; height: 210px; }
+
+    /* ── Section 6.6: Rename ── */
+    .rename-demo { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 8px; }
+    .ident-token {
+      display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      padding: 2px 8px; border-radius: 4px; transition: background 0.3s, color 0.3s;
+    }
+    .ident-token.bad  { background: rgba(248,113,113,0.15); color: var(--bad); }
+    .ident-token.good { background: rgba(74,222,128,0.12); color: var(--good); }
+    .ident-token.renamed { background: rgba(251,146,60,0.25); color: var(--accent); }
+
+    /* ── Chapter page nav ── */
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+      gap: 12px; align-items: stretch;
+    }
+    .chapter-nav-link, .chapter-nav-current {
+      border: 1px solid var(--border); border-radius: 14px;
+      min-height: 62px; padding: 12px 14px; background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex; flex-direction: column; justify-content: center;
+      gap: 3px; color: var(--text); text-decoration: none;
+      transition: transform 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .chapter-nav-link:hover { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-dim); }
+    .chapter-nav-link.next { text-align: right; align-items: flex-end; }
+    .chapter-nav-link .nav-kicker, .chapter-nav-current .nav-kicker {
+      color: var(--text-muted); font-size: 10px; letter-spacing: 0.08em;
+      text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title, .chapter-nav-current .nav-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+    .chapter-nav-link .nav-arrow { color: var(--accent); font-size: 16px; line-height: 1; }
+    .chapter-nav-current {
+      display: flex; flex-direction: column; justify-content: center;
+      align-items: center; text-align: center; background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav { grid-template-columns: 1fr; }
+      .chapter-nav-link.next { text-align: left; align-items: flex-start; }
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 2rem 1rem;
+      color: var(--text-muted); font-size: 12px; border-top: 1px solid var(--border);
+    }
+    footer em { color: var(--accent); font-style: normal; }
+
+    /* ── Slider row ── */
+    .slider-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    input[type=range] { accent-color: var(--accent); width: 90px; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="navbar">
+  <a class="back-link" href="00_index.html">&#8592; Index</a>
+  <div class="chapter-pager">
+    <a class="chapter-nav-chip" href="05_code_smells.html">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Code Smells</span>
+    </a>
+    <span class="chapter-nav-chip current">
+      <span class="nav-kicker">Chapter 6</span>
+      <span class="nav-title">Refactoring Patterns</span>
+    </span>
+    <a class="chapter-nav-chip" href="07_defensive_and_advanced.html">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Defensive &amp; Advanced</span>
+    </a>
+  </div>
+  <span class="nav-sep">|</span>
+  <a href="#s61">Extract Method</a>
+  <a href="#s62">Guard Clauses</a>
+  <a href="#s63">Polymorphism</a>
+  <a href="#s64">Parameter Object</a>
+  <a href="#s65">Move Method</a>
+  <a href="#s66">Rename</a>
+</nav>
+
+<main>
+  <div class="page-hero">
+    <h1>Refactoring <span>Patterns</span></h1>
+    <p>Targeted transformations that improve code structure without changing observable behavior — each one a precise tool with a name.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       6.1  Extract Method
+  ════════════════════════════════════════════════ -->
+  <section class="concept-section" id="s61">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">6.1</span>
+          <span class="section-title">Extract Method</span>
+          <span class="section-desc">— when a comment explains a block, make that comment the method name</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-extract" aria-label="Run Extract Method animation">Extract</button>
+          <button class="btn" id="btn-extract-reset" aria-label="Reset extract method demo">Reset</button>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="flex-direction:column; align-items:center;">
+        <div class="extract-demo" id="extract-demo">
+          <!-- line 0 -->
+          <div class="method-line" id="el0" data-orig="void processOrder(Order order) {" data-type="frame"></div>
+          <!-- lines 1-12 = body (will be highlighted then replaced) -->
+          <div class="method-line" id="el1" data-orig="  // validate items..." data-type="body"></div>
+          <div class="method-line" id="el2" data-orig="  if (order.items.isEmpty()) throw ..." data-type="body"></div>
+          <div class="method-line" id="el3" data-orig="  checkStockLevels(order.items);" data-type="body"></div>
+          <div class="method-line" id="el4" data-orig="  // calculate totals..." data-type="body"></div>
+          <div class="method-line" id="el5" data-orig="  order.subtotal = items.stream()..." data-type="body"></div>
+          <div class="method-line" id="el6" data-orig="  order.tax = subtotal * taxRate;" data-type="body"></div>
+          <div class="method-line" id="el7" data-orig="  // apply discounts..." data-type="body"></div>
+          <div class="method-line" id="el8" data-orig="  applyPromoCode(order);" data-type="body"></div>
+          <div class="method-line" id="el9" data-orig="  // send confirmation email..." data-type="body"></div>
+          <div class="method-line" id="el10" data-orig="  buildEmail(); sendSMTP();" data-type="body"></div>
+          <div class="method-line" id="el11" data-orig="  // update inventory..." data-type="body"></div>
+          <div class="method-line" id="el12" data-orig="  decrementStock(order);" data-type="body"></div>
+          <!-- line 13 = closing brace -->
+          <div class="method-line" id="el13" data-orig="}" data-type="frame"></div>
+        </div>
+        <!-- Extracted function call lines (shown after extraction) -->
+        <div style="display:flex; flex-direction:column; gap:6px; width:100%; max-width:600px; margin-top:8px;" id="extracted-fns">
+          <div class="extracted-fn" id="efn1" data-label="private void validateItems(Order o) { /* extracted */ }"></div>
+          <div class="extracted-fn" id="efn2" data-label="private void calculateTotals(Order o) { /* extracted */ }"></div>
+          <div class="extracted-fn" id="efn3" data-label="private void applyDiscounts(Order o) { /* extracted */ }"></div>
+          <div class="extracted-fn" id="efn4" data-label="private void sendConfirmationEmail(Order o) { /* extracted */ }"></div>
+          <div class="extracted-fn" id="efn5" data-label="private void updateInventory(Order o) { /* extracted */ }"></div>
+        </div>
+      </div>
+
+      <div class="cascade-step" id="ex-c1">
+        <span class="cascade-icon">&#9888;&#65039;</span>
+        <span class="cascade-text"><strong>Violation:</strong> 60-line method mixing validation, calculation, email, and inventory in one body. A comment before each block screams "I should be a method."</span>
+      </div>
+      <div class="cascade-step" id="ex-c2">
+        <span class="cascade-icon">&#128165;</span>
+        <span class="cascade-text"><strong>Consequence:</strong> Hard to test in isolation, impossible to reuse a sub-task, code review is exhausting, merge conflicts are frequent.</span>
+      </div>
+      <div class="cascade-step" id="ex-c3">
+        <span class="cascade-icon">&#9989;</span>
+        <span class="cascade-text"><strong>Fix:</strong> Name the intent, extract the block. processOrder becomes a readable table of contents — five lines that each delegate.</span>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-block degraded" id="ex-bad">
+          <div class="code-block-header bad">&#10060; Before</div>
+          <pre><span class="kw">void</span> <span class="fn">processOrder</span>(<span class="tp">Order</span> order) {
+  <span class="cm">// validate items</span>
+  <span class="kw">if</span> (order.items.isEmpty())
+    <span class="kw">throw new</span> <span class="tp">IllegalStateException</span>();
+  checkStockLevels(order.items);
+  <span class="cm">// calculate totals</span>
+  order.subtotal = order.items.stream()
+    .mapToDouble(<span class="tp">Item</span>::getPrice).sum();
+  order.tax = order.subtotal * <span class="num">0.08</span>;
+  <span class="cm">// apply discounts</span>
+  <span class="kw">if</span> (order.promoCode != <span class="kw">null</span>)
+    applyPromoCode(order);
+  <span class="cm">// send confirmation (12 lines)</span>
+  <span class="cm">// update inventory (15 lines)</span>
+  <span class="cm">// ... 60 lines total</span>
+}</pre>
+        </div>
+        <div class="code-block degraded" id="ex-good">
+          <div class="code-block-header good">&#9989; After</div>
+          <pre><span class="kw">void</span> <span class="fn">processOrder</span>(<span class="tp">Order</span> order) {
+  <span class="fn">validateItems</span>(order);
+  <span class="fn">calculateTotals</span>(order);
+  <span class="fn">applyDiscounts</span>(order);
+  <span class="fn">sendConfirmationEmail</span>(order);
+  <span class="fn">updateInventory</span>(order);
+}
+
+<span class="cm">// Each sub-method is 5-15 lines,</span>
+<span class="cm">// named, testable, reusable.</span></pre>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <span class="metric-label">Method Complexity</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="ex-metric" style="transform:scaleX(0.9)"></div>
+        </div>
+        <span class="metric-value" id="ex-metric-val">High</span>
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-badge" id="ex-green-btn" aria-label="Toggle beginner tip for Extract Method">&#128994; New to this?</button>
+        <button class="expand-badge" id="ex-blue-btn" aria-label="Toggle deep dive for Extract Method">&#128309; Go deeper</button>
+        <div class="expand-content" id="ex-green">
+          <strong>Rule:</strong> If you need a comment to explain what a block of code does, extract it into a method and make that comment the method name. The code now documents itself.
+        </div>
+        <div class="expand-content" id="ex-blue">
+          <strong>Nuance:</strong> The real cost of extraction is <em>naming</em>. If you cannot give the extracted block a clear, intent-revealing name, the block itself may not be cohesive — it may need to be split further, or it truly belongs inline. A bad extracted method name (doStuff2) is worse than the original comment.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       6.2  Guard Clauses
+  ════════════════════════════════════════════════ -->
+  <section class="concept-section" id="s62">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">6.2</span>
+          <span class="section-title">Guard Clauses</span>
+          <span class="section-desc">— fail fast at the top so the happy path reads straight down</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-guard" aria-label="Apply next guard clause">Apply Guard</button>
+          <button class="btn" id="btn-guard-reset" aria-label="Reset guard clause demo">Reset</button>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="flex-direction:column; align-items:flex-start; padding-left:40px;">
+        <div class="guard-demo" id="guard-demo">
+          <div class="nest-line" id="gn0" style="color:#f87171">if (user != null) {</div>
+          <div class="nest-line" id="gn1" style="padding-left:20px; color:#f87171">  if (user.isActive()) {</div>
+          <div class="nest-line" id="gn2" style="padding-left:40px; color:#f87171">    if (user.hasPermission()) {</div>
+          <div class="nest-line" id="gn3" style="padding-left:60px; color:#8b949e">      doWork();</div>
+          <div class="nest-line" id="gn4" style="padding-left:40px; color:#f87171">    }</div>
+          <div class="nest-line" id="gn5" style="padding-left:20px; color:#f87171">  }</div>
+          <div class="nest-line" id="gn6" style="color:#f87171">}</div>
+          <div class="guard-line" id="gg0">if (user == null) return;</div>
+          <div class="guard-line" id="gg1">if (!user.isActive()) return;</div>
+          <div class="guard-line" id="gg2">if (!user.hasPermission()) return;</div>
+          <div class="guard-line" id="gg3" style="color:#4ade80">doWork();</div>
+        </div>
+        <div style="margin-top:12px; font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;" id="guard-status">Nesting depth: 3</div>
+      </div>
+
+      <div class="cascade-step" id="gc-c1">
+        <span class="cascade-icon">&#9888;&#65039;</span>
+        <span class="cascade-text"><strong>Violation:</strong> Three nested if blocks create an "arrow" or "pyramid" shape — the happy path hides at the deepest indentation level.</span>
+      </div>
+      <div class="cascade-step" id="gc-c2">
+        <span class="cascade-icon">&#128165;</span>
+        <span class="cascade-text"><strong>Consequence:</strong> Readers must mentally track all enclosing conditions simultaneously. Each additional nesting level doubles the cognitive load.</span>
+      </div>
+      <div class="cascade-step" id="gc-c3">
+        <span class="cascade-icon">&#9989;</span>
+        <span class="cascade-text"><strong>Fix:</strong> Invert each condition to an early return. Edge cases are handled at the top; the happy path flows straight down the left margin.</span>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-block degraded" id="gc-bad">
+          <div class="code-block-header bad">&#10060; Arrow Pattern</div>
+          <pre><span class="kw">if</span> (user != <span class="kw">null</span>) {
+  <span class="kw">if</span> (user.isActive()) {
+    <span class="kw">if</span> (user.hasPermission()) {
+      doWork();
+    }
+  }
+}</pre>
+        </div>
+        <div class="code-block degraded" id="gc-good">
+          <div class="code-block-header good">&#9989; Guard Clauses</div>
+          <pre><span class="kw">if</span> (user == <span class="kw">null</span>)           <span class="kw">return</span>;
+<span class="kw">if</span> (!user.isActive())      <span class="kw">return</span>;
+<span class="kw">if</span> (!user.hasPermission()) <span class="kw">return</span>;
+
+<span class="fn">doWork</span>();</pre>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <span class="metric-label">Nesting Depth</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="gc-metric" style="transform:scaleX(0.85)"></div>
+        </div>
+        <span class="metric-value" id="gc-metric-val">3</span>
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-badge" id="gc-green-btn" aria-label="Toggle beginner tip for Guard Clauses">&#128994; New to this?</button>
+        <button class="expand-badge" id="gc-blue-btn" aria-label="Toggle deep dive for Guard Clauses">&#128309; Go deeper</button>
+        <div class="expand-content" id="gc-green">
+          <strong>Rule:</strong> The happy path should read straight down the left margin. Handle edge cases at the top with early returns so the main logic stands alone without wrapping conditions.
+        </div>
+        <div class="expand-content" id="gc-blue">
+          <strong>Nuance:</strong> Some teams enforce a "single exit point" convention — every function has exactly one return. Guard clauses directly conflict with that rule. Neither is universally right. Guard clauses tend to win in modern Java/Kotlin/TypeScript style guides because readability outweighs theoretical purity of single-exit.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       6.3  Replace Conditional with Polymorphism
+  ════════════════════════════════════════════════ -->
+  <section class="concept-section" id="s63">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">6.3</span>
+          <span class="section-title">Replace Conditional with Polymorphism</span>
+          <span class="section-desc">— adding a case should mean adding a file, not modifying one</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-add-triangle" aria-label="Add Triangle shape to demonstrate polymorphism">Add Triangle</button>
+          <button class="btn" id="btn-poly-reset" aria-label="Reset polymorphism demo">Reset</button>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="flex-direction:column;">
+        <svg id="poly-svg"></svg>
+        <div style="font-size:11px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; margin-top:4px;" id="poly-msg">
+          Click "Add Triangle" to see how each design handles extension
+        </div>
+      </div>
+
+      <div class="cascade-step" id="pc-c1">
+        <span class="cascade-icon">&#9888;&#65039;</span>
+        <span class="cascade-text"><strong>Violation:</strong> A switch on a type tag. Every new shape requires opening the existing method and modifying it — violating Open/Closed Principle.</span>
+      </div>
+      <div class="cascade-step" id="pc-c2">
+        <span class="cascade-icon">&#128165;</span>
+        <span class="cascade-text"><strong>Consequence:</strong> The switch grows forever. Miss one case in one method, and the bug appears at runtime. The same type check is scattered across the codebase.</span>
+      </div>
+      <div class="cascade-step" id="pc-c3">
+        <span class="cascade-icon">&#9989;</span>
+        <span class="cascade-text"><strong>Fix:</strong> Define an interface with the behavior. Each shape implements it. Adding Triangle = creating a new class — existing code is never modified.</span>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-block degraded" id="pc-bad">
+          <div class="code-block-header bad">&#10060; Type Switch</div>
+          <pre><span class="kw">double</span> <span class="fn">area</span>(<span class="tp">Shape</span> shape) {
+  <span class="kw">switch</span> (shape.type) {
+    <span class="kw">case</span> <span class="str">"circle"</span>:
+      <span class="kw">return</span> Math.PI * r * r;
+    <span class="kw">case</span> <span class="str">"square"</span>:
+      <span class="kw">return</span> side * side;
+    <span class="kw">case</span> <span class="str">"triangle"</span>: <span class="cm">// must edit here</span>
+      <span class="kw">return</span> <span class="num">0.5</span> * base * height;
+  }
+}</pre>
+        </div>
+        <div class="code-block degraded" id="pc-good">
+          <div class="code-block-header good">&#9989; Polymorphism</div>
+          <pre><span class="kw">interface</span> <span class="tp">Shape</span> {
+  <span class="kw">double</span> <span class="fn">area</span>();
+}
+<span class="kw">class</span> <span class="tp">Circle</span> <span class="kw">implements</span> <span class="tp">Shape</span> {
+  <span class="kw">double</span> <span class="fn">area</span>() { <span class="kw">return</span> PI*r*r; }
+}
+<span class="kw">class</span> <span class="tp">Square</span> <span class="kw">implements</span> <span class="tp">Shape</span> {
+  <span class="kw">double</span> <span class="fn">area</span>() { <span class="kw">return</span> side*side; }
+}
+<span class="cm">// Triangle = new file, zero edits</span></pre>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <span class="metric-label">OCP Violation Score</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="pc-metric" style="transform:scaleX(0.75)"></div>
+        </div>
+        <span class="metric-value" id="pc-metric-val">High</span>
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-badge" id="pc-green-btn" aria-label="Toggle beginner tip for Polymorphism">&#128994; New to this?</button>
+        <button class="expand-badge" id="pc-blue-btn" aria-label="Toggle deep dive for Polymorphism">&#128309; Go deeper</button>
+        <div class="expand-content" id="pc-green">
+          <strong>Rule:</strong> When you need to add a new case, you should add a new <em>file</em>, not modify an existing one. This is the Open/Closed Principle applied directly.
+        </div>
+        <div class="expand-content" id="pc-blue">
+          <strong>Nuance:</strong> Small, <em>stable</em> switch statements — 2–3 cases that will never grow — are perfectly fine. Polymorphism only pays off when the axis of variation is expected to grow. Premature polymorphism adds classes for problems that do not exist yet. Ask: "Will I realistically add more cases?" before extracting.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       6.4  Introduce Parameter Object
+  ════════════════════════════════════════════════ -->
+  <section class="concept-section" id="s64">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">6.4</span>
+          <span class="section-title">Introduce Parameter Object</span>
+          <span class="section-desc">— when parameters travel together, they belong in a class</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-introduce" aria-label="Introduce parameter object animation">Introduce Object</button>
+          <button class="btn" id="btn-param-reset" aria-label="Reset parameter object demo">Reset</button>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="flex-direction:column; gap:16px;">
+        <div class="param-cards" id="param-cards">
+          <div class="param-card" id="pc0">keyword: String</div>
+          <div class="param-card" id="pc1">from: Date</div>
+          <div class="param-card" id="pc2">to: Date</div>
+          <div class="param-card" id="pc3">page: int</div>
+          <div class="param-card" id="pc4">pageSize: int</div>
+          <div class="param-card" id="pc5">sortBy: String</div>
+        </div>
+        <div class="criteria-card" id="criteria-card">
+          <strong>SearchCriteria</strong>
+          <div class="criteria-fields">
+            <div class="criteria-field">.keyword</div>
+            <div class="criteria-field">.dateRange &nbsp; // DateRange(from, to)</div>
+            <div class="criteria-field">.pagination &nbsp; // Pagination(page, size)</div>
+            <div class="criteria-field">.sortBy</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cascade-step" id="po-c1">
+        <span class="cascade-icon">&#9888;&#65039;</span>
+        <span class="cascade-text"><strong>Violation:</strong> Six primitive parameters passed to search(). The same six appear on every related method: searchByTag(), searchByAuthor(), exportResults()...</span>
+      </div>
+      <div class="cascade-step" id="po-c2">
+        <span class="cascade-icon">&#128165;</span>
+        <span class="cascade-text"><strong>Consequence:</strong> Change the sort order field name — update 12 call sites. Validate date range logic — duplicate it in every method. Parameters arrive in the wrong order at call sites.</span>
+      </div>
+      <div class="cascade-step" id="po-c3">
+        <span class="cascade-icon">&#9989;</span>
+        <span class="cascade-text"><strong>Fix:</strong> Group the parameters into SearchCriteria. All methods share one type. Validation lives inside the class. Adding a field changes one place.</span>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-block degraded" id="po-bad">
+          <div class="code-block-header bad">&#10060; Primitive Obsession</div>
+          <pre><span class="tp">List</span>&lt;<span class="tp">Result</span>&gt; <span class="fn">search</span>(
+  <span class="tp">String</span> keyword,
+  <span class="tp">Date</span> from,
+  <span class="tp">Date</span> to,
+  <span class="kw">int</span> page,
+  <span class="kw">int</span> pageSize,
+  <span class="tp">String</span> sortBy
+) { ... }</pre>
+        </div>
+        <div class="code-block degraded" id="po-good">
+          <div class="code-block-header good">&#9989; Parameter Object</div>
+          <pre><span class="tp">List</span>&lt;<span class="tp">Result</span>&gt; <span class="fn">search</span>(
+  <span class="tp">SearchCriteria</span> criteria
+) { ... }
+
+<span class="cm">// SearchCriteria validates itself:</span>
+<span class="cm">// dateRange.from &lt;= dateRange.to</span></pre>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <span class="metric-label">Parameter Count</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="po-metric" style="transform:scaleX(0.85)"></div>
+        </div>
+        <span class="metric-value" id="po-metric-val">6 params</span>
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-badge" id="po-green-btn" aria-label="Toggle beginner tip for Parameter Object">&#128994; New to this?</button>
+        <button class="expand-badge" id="po-blue-btn" aria-label="Toggle deep dive for Parameter Object">&#128309; Go deeper</button>
+        <div class="expand-content" id="po-green">
+          <strong>Rule:</strong> When you see the same group of parameters appearing together in multiple methods, that group wants to become a class. Give it a name — the name will reveal the concept you were missing.
+        </div>
+        <div class="expand-content" id="po-blue">
+          <strong>Nuance:</strong> Parameter objects often evolve into proper <em>value objects</em> — immutable, self-validating types like DateRange (ensures from &#8804; to) or Money (enforces currency consistency). The next step after introduction is encapsulation: move behavior that operates on the data into the object itself.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       6.5  Move Method
+  ════════════════════════════════════════════════ -->
+  <section class="concept-section" id="s65">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">6.5</span>
+          <span class="section-title">Move Method</span>
+          <span class="section-desc">— methods should live where the data they need lives</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-move" aria-label="Move method animation">Move Method</button>
+          <button class="btn" id="btn-move-reset" aria-label="Reset move method demo">Reset</button>
+        </div>
+      </div>
+
+      <div class="diagram-area">
+        <svg id="move-svg"></svg>
+      </div>
+
+      <div class="cascade-step" id="mv-c1">
+        <span class="cascade-icon">&#9888;&#65039;</span>
+        <span class="cascade-text"><strong>Violation:</strong> OrderService.calculateDiscount() reaches into 5 fields on Customer — loyalty tier, account age, promo eligibility, region, subscription status.</span>
+      </div>
+      <div class="cascade-step" id="mv-c2">
+        <span class="cascade-icon">&#128165;</span>
+        <span class="cascade-text"><strong>Consequence:</strong> Feature Envy. Every change to Customer's internal structure forces changes in OrderService. Objects are coupled across class boundaries.</span>
+      </div>
+      <div class="cascade-step" id="mv-c3">
+        <span class="cascade-icon">&#9989;</span>
+        <span class="cascade-text"><strong>Fix:</strong> Move calculateDiscount() to Customer. All the data it needs is already there. Coupling becomes internal; callers use a clean API.</span>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-block degraded" id="mv-bad">
+          <div class="code-block-header bad">&#10060; Feature Envy</div>
+          <pre><span class="kw">class</span> <span class="tp">OrderService</span> {
+  <span class="kw">double</span> <span class="fn">calculateDiscount</span>(<span class="tp">Customer</span> c) {
+    <span class="cm">// uses c.loyaltyTier</span>
+    <span class="cm">// uses c.accountAge</span>
+    <span class="cm">// uses c.promoEligible</span>
+    <span class="cm">// uses c.region</span>
+    <span class="cm">// uses c.subscription</span>
+    ...
+  }
+}</pre>
+        </div>
+        <div class="code-block degraded" id="mv-good">
+          <div class="code-block-header good">&#9989; Method Lives with Data</div>
+          <pre><span class="kw">class</span> <span class="tp">Customer</span> {
+  <span class="kw">double</span> <span class="fn">calculateDiscount</span>() {
+    <span class="cm">// this.loyaltyTier</span>
+    <span class="cm">// this.accountAge</span>
+    <span class="cm">// this.promoEligible</span>
+    <span class="cm">// all local, no coupling</span>
+  }
+}
+<span class="cm">// caller: customer.calculateDiscount()</span></pre>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <span class="metric-label">Feature Envy Score</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="mv-metric" style="transform:scaleX(0.9)"></div>
+        </div>
+        <span class="metric-value" id="mv-metric-val">High</span>
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-badge" id="mv-green-btn" aria-label="Toggle beginner tip for Move Method">&#128994; New to this?</button>
+        <button class="expand-badge" id="mv-blue-btn" aria-label="Toggle deep dive for Move Method">&#128309; Go deeper</button>
+        <div class="expand-content" id="mv-green">
+          <strong>Rule:</strong> Ask "what data does this method use most?" The answer tells you where the method belongs. If it uses more data from another class than its own, move it there.
+        </div>
+        <div class="expand-content" id="mv-blue">
+          <strong>Nuance:</strong> Moving a method requires updating all callers — a rename + delegation chain. This is exactly where automated refactoring tools (IntelliJ "Move Method", VS Code rename symbol) shine: they do the update atomically across the whole codebase, making it safe to refactor without manual find-and-replace errors.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════
+       6.6  Rename for Intent
+  ════════════════════════════════════════════════ -->
+  <section class="concept-section" id="s66">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">6.6</span>
+          <span class="section-title">Rename for Intent</span>
+          <span class="section-desc">— the cheapest, highest-leverage refactoring</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" id="btn-rename" aria-label="Run rename cascade animation">Rename</button>
+          <button class="btn" id="btn-rename-reset" aria-label="Reset rename demo">Reset</button>
+        </div>
+      </div>
+
+      <div class="diagram-area" style="flex-direction:column;">
+        <div class="rename-demo" id="rename-demo">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:2.2;">
+            <span class="ident-token bad" id="rn-def">int d</span><span style="color:#8b949e">; &nbsp;</span>
+            <span class="ident-token bad" id="rn-b">boolean f</span><span style="color:#8b949e">;</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:2.2;">
+            <span style="color:#8b949e">// reference 1: </span>
+            <span class="ident-token bad" id="rn-r1">d</span>
+            <span style="color:#8b949e"> &gt; 30 ? sendReminder() : null;</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:2.2;">
+            <span style="color:#8b949e">// reference 2: </span>
+            <span class="ident-token bad" id="rn-r2">f</span>
+            <span style="color:#8b949e"> == true ? sendVerification() : skip();</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:2.2;">
+            <span style="color:#8b949e">void </span>
+            <span class="ident-token bad" id="rn-fn">proc</span>
+            <span style="color:#8b949e">(List&lt;int[]&gt; l) { ... }</span>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; line-height:2.2;">
+            <span style="color:#8b949e">// reference 3: calling </span>
+            <span class="ident-token bad" id="rn-r3">proc</span>
+            <span style="color:#8b949e">(rawData);</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cascade-step" id="rn-c1">
+        <span class="cascade-icon">&#9888;&#65039;</span>
+        <span class="cascade-text"><strong>Violation:</strong> Single-letter variables (d, f), cryptic method names (proc), meaningless parameter names (l). Every reader must decode intent from scratch.</span>
+      </div>
+      <div class="cascade-step" id="rn-c2">
+        <span class="cascade-icon">&#128165;</span>
+        <span class="cascade-text"><strong>Consequence:</strong> High cognitive load per line. Context-switching cost is enormous. Code reviews slow down. Bugs hide in unfamiliar symbols. New team members take weeks to orient.</span>
+      </div>
+      <div class="cascade-step" id="rn-c3">
+        <span class="cascade-icon">&#9989;</span>
+        <span class="cascade-text"><strong>Fix:</strong> Rename — it is free. d &#8594; daysSinceLastLogin, f &#8594; isEmailVerified, proc &#8594; getFlaggedCells. Names are documentation that never goes stale.</span>
+      </div>
+
+      <div class="code-compare">
+        <div class="code-block degraded" id="rn-bad">
+          <div class="code-block-header bad">&#10060; Cryptic Names</div>
+          <pre><span class="kw">int</span> d;
+<span class="kw">boolean</span> f;
+<span class="kw">void</span> <span class="fn">proc</span>(<span class="tp">List</span>&lt;<span class="kw">int</span>[]&gt; l) {
+  <span class="kw">for</span> (<span class="kw">int</span>[] a : l) {
+    <span class="kw">if</span> (a[<span class="num">0</span>] == <span class="num">4</span>)
+      flagged.add(a);
+  }
+}</pre>
+        </div>
+        <div class="code-block degraded" id="rn-good">
+          <div class="code-block-header good">&#9989; Intent-Revealing Names</div>
+          <pre><span class="kw">int</span> daysSinceLastLogin;
+<span class="kw">boolean</span> isEmailVerified;
+<span class="kw">void</span> <span class="fn">getFlaggedCells</span>(
+    <span class="tp">List</span>&lt;<span class="tp">Cell</span>&gt; cells) {
+  <span class="kw">for</span> (<span class="tp">Cell</span> cell : cells) {
+    <span class="kw">if</span> (cell.status == STATUS_FLAGGED)
+      flagged.add(cell);
+  }
+}</pre>
+        </div>
+      </div>
+
+      <div class="metric-row">
+        <span class="metric-label">Cognitive Load</span>
+        <div class="metric-bar-track">
+          <div class="metric-bar-fill" id="rn-metric" style="transform:scaleX(0.92)"></div>
+        </div>
+        <span class="metric-value" id="rn-metric-val">Very High</span>
+      </div>
+
+      <div class="expand-panels">
+        <button class="expand-badge" id="rn-green-btn" aria-label="Toggle beginner tip for Rename">&#128994; New to this?</button>
+        <button class="expand-badge" id="rn-blue-btn" aria-label="Toggle deep dive for Rename">&#128309; Go deeper</button>
+        <div class="expand-content" id="rn-green">
+          <strong>Rule:</strong> If you have to think for even a second about what a variable or method name means, rename it. Clarity is not a luxury — it is the primary engineering output.
+        </div>
+        <div class="expand-content" id="rn-blue">
+          <strong>Key insight:</strong> Renaming is the cheapest, highest-leverage refactoring available. It requires zero architectural changes, zero risk of behavior change, and tools do it atomically. Yet it is often skipped because it feels cosmetic. It is not cosmetic — good names are documentation that lives with the code and is updated automatically every time the code moves. A comment describing "d" can go stale the moment someone changes what "d" stores. The name "daysSinceLastLogin" cannot.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Chapter page nav ── -->
+  <nav class="chapter-page-nav" aria-label="Chapter navigation">
+    <a class="chapter-nav-link" href="05_code_smells.html">
+      <span class="nav-arrow">&#8592;</span>
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Code Smells</span>
+    </a>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">Chapter 6</span>
+      <span class="nav-title">Refactoring Patterns</span>
+    </div>
+    <a class="chapter-nav-link next" href="07_defensive_and_advanced.html">
+      <span class="nav-arrow">&#8594;</span>
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Defensive &amp; Advanced</span>
+    </a>
+  </nav>
+
+</main>
+
+<footer>
+  Based on <em>Clean Code</em> — Robert C. Martin &middot; <em>The Pragmatic Programmer</em> — Hunt &amp; Thomas &middot; <em>Refactoring</em> — Martin Fowler &middot; <em>Working Effectively with Legacy Code</em> — Michael Feathers
+</footer>
+
+<script>
+/* ────────────────────────────────────────────
+   Progress bar (scaleX approach — not style.width)
+──────────────────────────────────────────── */
+window.addEventListener('scroll', function() {
+  var scrolled = window.scrollY;
+  var total = document.documentElement.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  document.getElementById('progress-bar').style.transform = 'scaleX(' + (scrolled / total) + ')';
+});
+
+/* ────────────────────────────────────────────
+   IntersectionObserver — trigger section animations on scroll
+──────────────────────────────────────────── */
+var sectionObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (!entry.isIntersecting) return;
+    var el = entry.target;
+    el.classList.add('visible');
+    // Remove degraded state from code blocks
+    el.querySelectorAll('.code-block.degraded').forEach(function(cb) {
+      cb.classList.remove('degraded');
+    });
+    // Stagger cascade steps
+    el.querySelectorAll('.cascade-step').forEach(function(cs, i) {
+      setTimeout(function() { cs.classList.add('visible'); }, 200 + i * 180);
+    });
+    sectionObserver.unobserve(el);
+  });
+}, { threshold: 0.25 });
+
+document.querySelectorAll('.concept-section').forEach(function(s) {
+  sectionObserver.observe(s);
+});
+
+/* ────────────────────────────────────────────
+   Expandable panels helper
+──────────────────────────────────────────── */
+function setupExpand(btnId, contentId) {
+  var btn = document.getElementById(btnId);
+  var content = document.getElementById(contentId);
+  if (!btn || !content) return;
+  btn.addEventListener('click', function() {
+    var open = content.classList.toggle('open');
+    btn.classList.toggle('active', open);
+  });
+}
+setupExpand('ex-green-btn', 'ex-green');
+setupExpand('ex-blue-btn',  'ex-blue');
+setupExpand('gc-green-btn', 'gc-green');
+setupExpand('gc-blue-btn',  'gc-blue');
+setupExpand('pc-green-btn', 'pc-green');
+setupExpand('pc-blue-btn',  'pc-blue');
+setupExpand('po-green-btn', 'po-green');
+setupExpand('po-blue-btn',  'po-blue');
+setupExpand('mv-green-btn', 'mv-green');
+setupExpand('mv-blue-btn',  'mv-blue');
+setupExpand('rn-green-btn', 'rn-green');
+setupExpand('rn-blue-btn',  'rn-blue');
+
+/* ────────────────────────────────────────────
+   6.1 — Extract Method: init text via textContent
+──────────────────────────────────────────── */
+(function initExtractLines() {
+  var lines = {
+    el0: 'void processOrder(Order order) {',
+    el1: '  // validate items...',
+    el2: '  if (order.items.isEmpty()) throw ...',
+    el3: '  checkStockLevels(order.items);',
+    el4: '  // calculate totals...',
+    el5: '  order.subtotal = items.stream()...',
+    el6: '  order.tax = subtotal * taxRate;',
+    el7: '  // apply discounts...',
+    el8: '  applyPromoCode(order);',
+    el9: '  // send confirmation email...',
+    el10: '  buildEmail(); sendSMTP();',
+    el11: '  // update inventory...',
+    el12: '  decrementStock(order);',
+    el13: '}'
+  };
+  Object.keys(lines).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = lines[id];
+  });
+
+  var fnLabels = {
+    efn1: 'private void validateItems(Order o) { /* extracted */ }',
+    efn2: 'private void calculateTotals(Order o) { /* extracted */ }',
+    efn3: 'private void applyDiscounts(Order o) { /* extracted */ }',
+    efn4: 'private void sendConfirmationEmail(Order o) { /* extracted */ }',
+    efn5: 'private void updateInventory(Order o) { /* extracted */ }'
+  };
+  Object.keys(fnLabels).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = fnLabels[id];
+  });
+})();
+
+var extractDone = false;
+
+var extractCallLines = {
+  el1: '  validateItems(order);',
+  el3: '  calculateTotals(order);',
+  el5: '  applyDiscounts(order);',
+  el7: '  sendConfirmationEmail(order);',
+  el9: '  updateInventory(order);'
+};
+var extractHideIds = ['el2','el4','el6','el8','el10','el11','el12'];
+
+function runExtract() {
+  if (extractDone) return;
+  extractDone = true;
+
+  var bodyIds = ['el1','el2','el3','el4','el5','el6','el7','el8','el9','el10','el11','el12'];
+  bodyIds.forEach(function(id, i) {
+    setTimeout(function() {
+      var el = document.getElementById(id);
+      if (el) el.classList.add('highlight');
+    }, i * 50);
+  });
+
+  setTimeout(function() {
+    bodyIds.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) anime({ targets: el, opacity: 0, translateY: -14, duration: 320, easing: 'easeInQuad' });
+    });
+
+    // Show extracted functions
+    ['efn1','efn2','efn3','efn4','efn5'].forEach(function(id, i) {
+      setTimeout(function() {
+        var el = document.getElementById(id);
+        if (el) el.classList.add('visible');
+      }, i * 110);
+    });
+
+    // Replace body lines with delegation calls
+    setTimeout(function() {
+      extractHideIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      var callKeys = Object.keys(extractCallLines);
+      callKeys.forEach(function(id, i) {
+        setTimeout(function() {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.textContent = extractCallLines[id];
+          el.classList.remove('highlight');
+          el.style.color = '#d2a8ff';
+          el.style.opacity = '';
+          el.style.transform = '';
+          anime({ targets: el, opacity: [0, 1], translateY: [8, 0], duration: 280, easing: 'easeOutCubic' });
+        }, i * 70);
+      });
+    }, 380);
+
+    // Drop complexity metric
+    setTimeout(function() {
+      var fill = document.getElementById('ex-metric');
+      var val  = document.getElementById('ex-metric-val');
+      if (fill) { fill.style.transform = 'scaleX(0.22)'; fill.style.background = 'var(--good)'; }
+      if (val) val.textContent = 'Low';
+    }, 850);
+
+  }, bodyIds.length * 50 + 350);
+}
+
+function resetExtract() {
+  extractDone = false;
+  var origLines = {
+    el1: '  // validate items...',
+    el2: '  if (order.items.isEmpty()) throw ...',
+    el3: '  checkStockLevels(order.items);',
+    el4: '  // calculate totals...',
+    el5: '  order.subtotal = items.stream()...',
+    el6: '  order.tax = subtotal * taxRate;',
+    el7: '  // apply discounts...',
+    el8: '  applyPromoCode(order);',
+    el9: '  // send confirmation email...',
+    el10: '  buildEmail(); sendSMTP();',
+    el11: '  // update inventory...',
+    el12: '  decrementStock(order);'
+  };
+  Object.keys(origLines).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = origLines[id];
+    el.classList.remove('highlight');
+    el.style.opacity = '';
+    el.style.transform = '';
+    el.style.display = '';
+    el.style.color = '';
+  });
+  ['efn1','efn2','efn3','efn4','efn5'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('visible');
+  });
+  var fill = document.getElementById('ex-metric');
+  var val  = document.getElementById('ex-metric-val');
+  if (fill) { fill.style.transform = 'scaleX(0.9)'; fill.style.background = 'var(--bad)'; }
+  if (val) val.textContent = 'High';
+}
+
+document.getElementById('btn-extract').addEventListener('click', runExtract);
+document.getElementById('btn-extract-reset').addEventListener('click', resetExtract);
+
+/* ────────────────────────────────────────────
+   6.2 — Guard Clauses
+──────────────────────────────────────────── */
+var guardStep = 0;
+var guardStepsData = [
+  { hideNest: 'gn0', closingIds: ['gn6'],       showGuard: 'gg0', depth: 2 },
+  { hideNest: 'gn1', closingIds: ['gn5'],       showGuard: 'gg1', depth: 1 },
+  { hideNest: 'gn2', closingIds: ['gn4'],       showGuard: 'gg2', depth: 0, showWork: true }
+];
+
+function applyGuard() {
+  if (guardStep >= guardStepsData.length) return;
+  var step = guardStepsData[guardStep];
+  guardStep++;
+
+  var nestEl  = document.getElementById(step.hideNest);
+  var guardEl = document.getElementById(step.showGuard);
+
+  if (nestEl) anime({ targets: nestEl, opacity: 0, translateX: -20, duration: 320, easing: 'easeInQuad',
+    complete: function() { nestEl.style.display = 'none'; } });
+
+  step.closingIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) anime({ targets: el, opacity: 0, duration: 250, easing: 'easeInQuad',
+      complete: function() { el.style.display = 'none'; } });
+  });
+
+  if (step.showWork) {
+    // Show doWork guard line and hide original gn3
+    var gn3 = document.getElementById('gn3');
+    if (gn3) anime({ targets: gn3, opacity: 0, duration: 250, easing: 'easeInQuad',
+      complete: function() { gn3.style.display = 'none'; } });
+    setTimeout(function() {
+      var gg3 = document.getElementById('gg3');
+      if (gg3) gg3.classList.add('visible');
+    }, 280);
+  }
+
+  if (guardEl) setTimeout(function() { guardEl.classList.add('visible'); }, 200);
+
+  var statusEl = document.getElementById('guard-status');
+  if (statusEl) statusEl.textContent = 'Nesting depth: ' + step.depth;
+
+  var scaleMap = [0.85, 0.55, 0.25, 0.08];
+  var colorMap = ['var(--bad)', 'var(--bad)', '#f59e0b', 'var(--good)'];
+  var fill = document.getElementById('gc-metric');
+  var val  = document.getElementById('gc-metric-val');
+  if (fill) { fill.style.transform = 'scaleX(' + scaleMap[guardStep] + ')'; fill.style.background = colorMap[guardStep]; }
+  if (val) val.textContent = String(step.depth);
+}
+
+function resetGuard() {
+  guardStep = 0;
+  ['gn0','gn1','gn2','gn3','gn4','gn5','gn6'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = '';
+    el.style.opacity = '';
+    el.style.transform = '';
+  });
+  ['gg0','gg1','gg2','gg3'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('visible');
+  });
+  var fill = document.getElementById('gc-metric');
+  var val  = document.getElementById('gc-metric-val');
+  if (fill) { fill.style.transform = 'scaleX(0.85)'; fill.style.background = 'var(--bad)'; }
+  if (val) val.textContent = '3';
+  var st = document.getElementById('guard-status');
+  if (st) st.textContent = 'Nesting depth: 3';
+}
+
+document.getElementById('btn-guard').addEventListener('click', applyGuard);
+document.getElementById('btn-guard-reset').addEventListener('click', resetGuard);
+
+/* ────────────────────────────────────────────
+   6.3 — Polymorphism D3 diagram
+──────────────────────────────────────────── */
+(function() {
+  var W = 580, H = 200;
+  var ifaceX = 345, ifaceY = 60, ifaceW = 130, ifaceH = 40;
+  var baseShapes = [
+    { label: 'Circle', x: 315, y: 150 },
+    { label: 'Square', x: 410, y: 150 }
+  ];
+
+  var badGroup, goodGroup, svgRoot;
+  var triAdded = false;
+
+  function buildPolyDiagram() {
+    var svgEl = document.getElementById('poly-svg');
+    svgRoot = d3.select(svgEl).attr('viewBox', '0 0 ' + W + ' ' + H);
+    svgRoot.selectAll('*').remove();
+
+    var defs = svgRoot.append('defs');
+    var bg = defs.append('linearGradient').attr('id','polyBadGrad').attr('x1','0%').attr('x2','100%');
+    bg.append('stop').attr('offset','0%').attr('stop-color','#f87171').attr('stop-opacity',0.25);
+    bg.append('stop').attr('offset','100%').attr('stop-color','#f87171').attr('stop-opacity',0.08);
+    var gg = defs.append('linearGradient').attr('id','polyGoodGrad').attr('x1','0%').attr('x2','100%');
+    gg.append('stop').attr('offset','0%').attr('stop-color','#4ade80').attr('stop-opacity',0.15);
+    gg.append('stop').attr('offset','100%').attr('stop-color','#4ade80').attr('stop-opacity',0.05);
+
+    // Bad design
+    badGroup = svgRoot.append('g');
+    badGroup.append('rect').attr('x',20).attr('y',60).attr('width',200).attr('height',80)
+      .attr('rx',10).attr('fill','url(#polyBadGrad)').attr('stroke','#f87171').attr('stroke-width',1.5);
+    badGroup.append('text').attr('x',120).attr('y',88).attr('text-anchor','middle')
+      .attr('fill','#f87171').attr('font-size',11).attr('font-family','JetBrains Mono,monospace')
+      .text('area(Shape s) {');
+    badGroup.append('text').attr('x',120).attr('y',104).attr('text-anchor','middle')
+      .attr('fill','#f87171').attr('font-size',10).attr('font-family','JetBrains Mono,monospace')
+      .text('switch(s.type) {');
+    badGroup.append('text').attr('x',120).attr('y',118).attr('text-anchor','middle')
+      .attr('fill','#8b949e').attr('font-size',9).attr('font-family','JetBrains Mono,monospace')
+      .text('circle | square | ???');
+    badGroup.append('text').attr('x',120).attr('y',130).attr('text-anchor','middle')
+      .attr('fill','#f87171').attr('font-size',10).attr('font-family','JetBrains Mono,monospace').text('}');
+
+    // Good design
+    goodGroup = svgRoot.append('g');
+    goodGroup.append('rect').attr('x',ifaceX).attr('y',ifaceY).attr('width',ifaceW).attr('height',ifaceH)
+      .attr('rx',8).attr('fill','url(#polyGoodGrad)').attr('stroke','#4ade80').attr('stroke-width',1.5);
+    goodGroup.append('text').attr('x',ifaceX+ifaceW/2).attr('y',ifaceY+16).attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',10).attr('font-family','JetBrains Mono,monospace')
+      .text('interface');
+    goodGroup.append('text').attr('x',ifaceX+ifaceW/2).attr('y',ifaceY+30).attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',11).attr('font-family','JetBrains Mono,monospace').text('Shape');
+
+    baseShapes.forEach(function(s) {
+      goodGroup.append('rect').attr('x',s.x-38).attr('y',s.y-18).attr('width',76).attr('height',36)
+        .attr('rx',6).attr('fill','url(#polyGoodGrad)').attr('stroke','#4ade80').attr('stroke-width',1);
+      goodGroup.append('text').attr('x',s.x).attr('y',s.y+5).attr('text-anchor','middle')
+        .attr('fill','#4ade80').attr('font-size',11).attr('font-family','JetBrains Mono,monospace').text(s.label);
+      goodGroup.append('line')
+        .attr('x1',ifaceX+ifaceW/2).attr('y1',ifaceY+ifaceH)
+        .attr('x2',s.x).attr('y2',s.y-18)
+        .attr('stroke','#4ade80').attr('stroke-width',1).attr('stroke-dasharray','4,3').attr('opacity',0.6);
+    });
+  }
+
+  buildPolyDiagram();
+
+  document.getElementById('btn-add-triangle').addEventListener('click', function() {
+    if (triAdded) return;
+    triAdded = true;
+
+    // Flash the bad design box to indicate modification needed
+    badGroup.select('rect')
+      .transition().duration(150).attr('stroke-width',3)
+      .transition().duration(150).attr('stroke-width',1.5);
+
+    // Add Triangle node to good design
+    var tx = 505, ty = 150;
+    var triG = goodGroup.append('g').attr('opacity', 0);
+    triG.append('rect').attr('x',tx-40).attr('y',ty-18).attr('width',80).attr('height',36)
+      .attr('rx',6).attr('fill','rgba(74,222,128,0.2)').attr('stroke','#4ade80').attr('stroke-width',1.5);
+    triG.append('text').attr('x',tx).attr('y',ty+5).attr('text-anchor','middle')
+      .attr('fill','#4ade80').attr('font-size',11).attr('font-family','JetBrains Mono,monospace').text('Triangle');
+    triG.append('line')
+      .attr('x1',ifaceX+ifaceW/2).attr('y1',ifaceY+ifaceH)
+      .attr('x2',tx).attr('y2',ty-18)
+      .attr('stroke','#4ade80').attr('stroke-width',1).attr('stroke-dasharray','4,3').attr('opacity',0.6);
+    triG.transition().duration(500).attr('opacity',1);
+
+    var msg = document.getElementById('poly-msg');
+    if (msg) {
+      msg.style.color = 'var(--good)';
+      msg.textContent = 'Good design: Triangle is a new class — no existing code was touched';
+    }
+    var fill = document.getElementById('pc-metric');
+    var val  = document.getElementById('pc-metric-val');
+    if (fill) { fill.style.transform = 'scaleX(0.12)'; fill.style.background = 'var(--good)'; }
+    if (val) val.textContent = 'Low';
+  });
+
+  document.getElementById('btn-poly-reset').addEventListener('click', function() {
+    triAdded = false;
+    buildPolyDiagram();
+    var msg = document.getElementById('poly-msg');
+    if (msg) { msg.style.color = ''; msg.textContent = 'Click "Add Triangle" to see how each design handles extension'; }
+    var fill = document.getElementById('pc-metric');
+    var val  = document.getElementById('pc-metric-val');
+    if (fill) { fill.style.transform = 'scaleX(0.75)'; fill.style.background = 'var(--bad)'; }
+    if (val) val.textContent = 'High';
+  });
+})();
+
+/* ────────────────────────────────────────────
+   6.4 — Introduce Parameter Object
+──────────────────────────────────────────── */
+var paramDone = false;
+
+function runIntroduce() {
+  if (paramDone) return;
+  paramDone = true;
+  var ids = ['pc0','pc1','pc2','pc3','pc4','pc5'];
+  ids.forEach(function(id, i) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    anime({ targets: el, translateX: (3 - i) * 8, translateY: 20, opacity: 0,
+      duration: 380, delay: i * 40, easing: 'easeInQuad' });
+  });
+  setTimeout(function() {
+    var cc = document.getElementById('criteria-card');
+    if (cc) cc.classList.add('visible');
+    var fill = document.getElementById('po-metric');
+    var val  = document.getElementById('po-metric-val');
+    if (fill) { fill.style.transform = 'scaleX(0.17)'; fill.style.background = 'var(--good)'; }
+    if (val) val.textContent = '1 object';
+  }, 500);
+}
+
+function resetParam() {
+  paramDone = false;
+  ['pc0','pc1','pc2','pc3','pc4','pc5'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.style.opacity = ''; el.style.transform = ''; }
+  });
+  var cc = document.getElementById('criteria-card');
+  if (cc) cc.classList.remove('visible');
+  var fill = document.getElementById('po-metric');
+  var val  = document.getElementById('po-metric-val');
+  if (fill) { fill.style.transform = 'scaleX(0.85)'; fill.style.background = 'var(--bad)'; }
+  if (val) val.textContent = '6 params';
+}
+
+document.getElementById('btn-introduce').addEventListener('click', runIntroduce);
+document.getElementById('btn-param-reset').addEventListener('click', resetParam);
+
+/* ────────────────────────────────────────────
+   6.5 — Move Method D3 diagram
+──────────────────────────────────────────── */
+(function() {
+  var W = 580, H = 210;
+  var moved = false;
+
+  function drawMoveDiagram(state) {
+    var svgEl = document.getElementById('move-svg');
+    var svg = d3.select(svgEl).attr('viewBox', '0 0 ' + W + ' ' + H);
+    svg.selectAll('*').remove();
+
+    var defs = svg.append('defs');
+    var bg = defs.append('linearGradient').attr('id','mvBad').attr('x1','0%').attr('x2','100%');
+    bg.append('stop').attr('offset','0%').attr('stop-color','#f87171').attr('stop-opacity',0.2);
+    bg.append('stop').attr('offset','100%').attr('stop-color','#f87171').attr('stop-opacity',0.05);
+    var gg = defs.append('linearGradient').attr('id','mvGood').attr('x1','0%').attr('x2','100%');
+    gg.append('stop').attr('offset','0%').attr('stop-color','#4ade80').attr('stop-opacity',0.15);
+    gg.append('stop').attr('offset','100%').attr('stop-color','#4ade80').attr('stop-opacity',0.05);
+
+    var osX = 30, osY = 20, osW = 200;
+    var osH = state === 'before' ? 160 : 80;
+    var cX = 340, cY = 20, cW = 200;
+    var cH = state === 'after' ? 160 : 80;
+
+    // OrderService box
+    svg.append('rect').attr('x',osX).attr('y',osY).attr('width',osW).attr('height',osH)
+      .attr('rx',10)
+      .attr('fill', state === 'before' ? 'url(#mvBad)' : 'rgba(255,255,255,0.03)')
+      .attr('stroke', state === 'before' ? '#f87171' : 'var(--border)')
+      .attr('stroke-width',1.5);
+    svg.append('text').attr('x',osX+osW/2).attr('y',osY+18).attr('text-anchor','middle')
+      .attr('fill', state === 'before' ? '#f87171' : 'var(--text-muted)')
+      .attr('font-size',11).attr('font-family','JetBrains Mono,monospace').text('OrderService');
+
+    // Customer box
+    svg.append('rect').attr('x',cX).attr('y',cY).attr('width',cW).attr('height',cH)
+      .attr('rx',10)
+      .attr('fill', state === 'after' ? 'url(#mvGood)' : 'rgba(255,255,255,0.03)')
+      .attr('stroke', state === 'after' ? '#4ade80' : 'var(--border)')
+      .attr('stroke-width',1.5);
+    svg.append('text').attr('x',cX+cW/2).attr('y',cY+18).attr('text-anchor','middle')
+      .attr('fill', state === 'after' ? '#4ade80' : 'var(--text-muted)')
+      .attr('font-size',11).attr('font-family','JetBrains Mono,monospace').text('Customer');
+
+    var fields = ['loyaltyTier','accountAge','promoEligible','region','subscription'];
+
+    if (state === 'before') {
+      // calculateDiscount lives in OrderService
+      svg.append('rect').attr('x',osX+20).attr('y',osY+30).attr('width',160).attr('height',30)
+        .attr('rx',6).attr('fill','rgba(248,113,113,0.15)').attr('stroke','#f87171').attr('stroke-width',1);
+      svg.append('text').attr('x',osX+100).attr('y',osY+50).attr('text-anchor','middle')
+        .attr('fill','#f87171').attr('font-size',10).attr('font-family','JetBrains Mono,monospace')
+        .text('calculateDiscount()');
+
+      fields.forEach(function(f, i) {
+        svg.append('text').attr('x',cX+12).attr('y',cY+38+i*14)
+          .attr('fill','#8b949e').attr('font-size',9).attr('font-family','JetBrains Mono,monospace')
+          .text('.' + f);
+        svg.append('line')
+          .attr('x1',osX+osW).attr('y1',osY+55)
+          .attr('x2',cX).attr('y2',cY+38+i*14)
+          .attr('stroke','#f87171').attr('stroke-width',1)
+          .attr('stroke-dasharray','4,3').attr('opacity',0.45);
+      });
+
+    } else {
+      // calculateDiscount moved to Customer
+      fields.forEach(function(f, i) {
+        svg.append('text').attr('x',cX+12).attr('y',cY+38+i*14)
+          .attr('fill','#4ade80').attr('font-size',9).attr('font-family','JetBrains Mono,monospace')
+          .text('.' + f);
+      });
+      svg.append('rect').attr('x',cX+20).attr('y',cY+115).attr('width',160).attr('height',30)
+        .attr('rx',6).attr('fill','rgba(74,222,128,0.15)').attr('stroke','#4ade80').attr('stroke-width',1);
+      svg.append('text').attr('x',cX+100).attr('y',cY+135).attr('text-anchor','middle')
+        .attr('fill','#4ade80').attr('font-size',10).attr('font-family','JetBrains Mono,monospace')
+        .text('calculateDiscount()');
+
+      svg.append('text').attr('x',osX+osW/2).attr('y',osY+52).attr('text-anchor','middle')
+        .attr('fill','#8b949e').attr('font-size',9).attr('font-family','JetBrains Mono,monospace')
+        .text('c.calculateDiscount()');
+      svg.append('line').attr('x1',osX+osW).attr('y1',osY+45)
+        .attr('x2',cX).attr('y2',cY+130)
+        .attr('stroke','#4ade80').attr('stroke-width',1).attr('stroke-dasharray','6,3').attr('opacity',0.5);
+    }
+  }
+
+  drawMoveDiagram('before');
+
+  document.getElementById('btn-move').addEventListener('click', function() {
+    if (moved) return;
+    moved = true;
+    drawMoveDiagram('after');
+    var fill = document.getElementById('mv-metric');
+    var val  = document.getElementById('mv-metric-val');
+    if (fill) { fill.style.transform = 'scaleX(0.08)'; fill.style.background = 'var(--good)'; }
+    if (val) val.textContent = 'None';
+  });
+
+  document.getElementById('btn-move-reset').addEventListener('click', function() {
+    moved = false;
+    drawMoveDiagram('before');
+    var fill = document.getElementById('mv-metric');
+    var val  = document.getElementById('mv-metric-val');
+    if (fill) { fill.style.transform = 'scaleX(0.9)'; fill.style.background = 'var(--bad)'; }
+    if (val) val.textContent = 'High';
+  });
+})();
+
+/* ────────────────────────────────────────────
+   6.6 — Rename for Intent
+──────────────────────────────────────────── */
+var renameDone = false;
+var renameTargets = [
+  { id: 'rn-def', after: 'int daysSinceLastLogin' },
+  { id: 'rn-b',   after: 'boolean isEmailVerified' },
+  { id: 'rn-r1',  after: 'daysSinceLastLogin' },
+  { id: 'rn-r2',  after: 'isEmailVerified' },
+  { id: 'rn-fn',  after: 'getFlaggedCells' },
+  { id: 'rn-r3',  after: 'getFlaggedCells' }
+];
+var renameOriginals = {
+  'rn-def': 'int d',
+  'rn-b':   'boolean f',
+  'rn-r1':  'd',
+  'rn-r2':  'f',
+  'rn-fn':  'proc',
+  'rn-r3':  'proc'
+};
+
+function runRename() {
+  if (renameDone) return;
+  renameDone = true;
+  renameTargets.forEach(function(t, i) {
+    var el = document.getElementById(t.id);
+    if (!el) return;
+    setTimeout(function() {
+      el.classList.add('renamed');
+      setTimeout(function() {
+        el.textContent = t.after;
+        el.classList.remove('bad', 'renamed');
+        el.classList.add('good');
+      }, 320);
+    }, i * 230);
+  });
+  setTimeout(function() {
+    var fill = document.getElementById('rn-metric');
+    var val  = document.getElementById('rn-metric-val');
+    if (fill) { fill.style.transform = 'scaleX(0.1)'; fill.style.background = 'var(--good)'; }
+    if (val) val.textContent = 'Very Low';
+  }, renameTargets.length * 230 + 200);
+}
+
+function resetRename() {
+  renameDone = false;
+  Object.keys(renameOriginals).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = renameOriginals[id];
+    el.className = 'ident-token bad';
+  });
+  var fill = document.getElementById('rn-metric');
+  var val  = document.getElementById('rn-metric-val');
+  if (fill) { fill.style.transform = 'scaleX(0.92)'; fill.style.background = 'var(--bad)'; }
+  if (val) val.textContent = 'Very High';
+}
+
+document.getElementById('btn-rename').addEventListener('click', runRename);
+document.getElementById('btn-rename-reset').addEventListener('click', resetRename);
+</script>
+</body>
+</html>

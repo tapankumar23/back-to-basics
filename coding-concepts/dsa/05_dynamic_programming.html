@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 - Dynamic Programming — Problem Solving Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-card-hover: #1c2330;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #38bdf8;
+  --accent-dim: rgba(56,189,248,0.15);
+  --good: #4ade80;
+  --bad: #f87171;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;overflow-x:hidden}
+#scroll-bar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:1000;transform:scaleX(0);transform-origin:left center;background:var(--accent)}
+nav{position:fixed;top:3px;left:0;right:0;z-index:999;backdrop-filter:blur(12px);background:rgba(13,17,23,0.85);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;gap:1rem}
+nav a{color:var(--text-muted);text-decoration:none;font-size:.85rem;transition:color .2s;white-space:nowrap}
+nav a:hover{color:var(--accent)}
+.nav-divider{color:var(--border);user-select:none}
+.nav-chapter{display:flex;align-items:center;gap:.5rem;margin-left:auto}
+.nav-chapter a{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:.2rem .6rem;font-size:.8rem}
+.nav-chapter span{color:var(--text-muted);font-size:.8rem}
+.nav-anchors{display:flex;gap:.5rem;flex-wrap:wrap}
+.nav-anchors a{font-size:.75rem;color:var(--text-muted);padding:.15rem .5rem;border-radius:4px;border:1px solid transparent}
+.nav-anchors a:hover{border-color:var(--accent);color:var(--accent)}
+main{padding-top:72px;max-width:1100px;margin:0 auto;padding-left:1.5rem;padding-right:1.5rem}
+section{padding:3rem 0;border-bottom:1px solid var(--border)}
+section:last-child{border-bottom:none}
+h1{font-size:2.8rem;font-weight:700;line-height:1.2}
+h2{font-size:1.6rem;font-weight:600;margin-bottom:1.2rem;color:var(--accent)}
+h3{font-size:1.1rem;font-weight:600;margin-bottom:.8rem;color:var(--text)}
+p{color:var(--text-muted);margin-bottom:.8rem}
+.tag{display:inline-block;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:.2rem .8rem;font-size:.8rem;font-weight:600;letter-spacing:.04em}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;transition:border-color .2s}
+.card:hover{border-color:var(--accent)}
+.concept-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:1.5rem}
+@media(max-width:800px){.concept-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:500px){.concept-grid{grid-template-columns:1fr}}
+.concept-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;text-align:center;opacity:0;transform:translateY(30px);transition:border-color .2s}
+.concept-card:hover{border-color:var(--accent)}
+.concept-card .icon{font-size:1.8rem;margin-bottom:.6rem}
+.concept-card h4{font-size:.9rem;font-weight:600;margin-bottom:.4rem;color:var(--accent)}
+.concept-card p{font-size:.78rem;color:var(--text-muted);margin:0}
+.stepper-controls{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+.btn{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-size:.85rem;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn.active{background:var(--accent);color:#0d1117;border-color:var(--accent)}
+.btn.toggle-on{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+select{background:var(--bg-card);border:1px solid var(--border);color:var(--text);padding:.4rem .8rem;border-radius:6px;font-size:.85rem;font-family:'Inter',sans-serif;cursor:pointer}
+select:focus{outline:none;border-color:var(--accent)}
+label{font-size:.85rem;color:var(--text-muted)}
+input[type=range]{accent-color:var(--accent);cursor:pointer}
+.stepper-layout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem}
+@media(max-width:850px){.stepper-layout{grid-template-columns:1fr}}
+.viz-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem;min-height:320px;overflow:auto}
+.trace-box{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.trace-box h4{font-size:.85rem;font-weight:600;color:var(--accent);margin-bottom:.8rem;text-transform:uppercase;letter-spacing:.06em}
+.trace-row{display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.trace-row:last-child{border-bottom:none}
+.trace-label{color:var(--text-muted)}
+.trace-val{color:var(--text);font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.78rem}
+.recurrence-box{background:var(--bg);border:1px solid var(--accent);border-radius:8px;padding:.8rem 1rem;margin-top:.8rem;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent)}
+/* DP TABLE */
+.dp-table-wrap{overflow-x:auto}
+table.dp-table{border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:.78rem}
+table.dp-table th,table.dp-table td{border:1px solid var(--border);padding:.3rem .5rem;text-align:center;min-width:36px;transition:background .2s,color .2s}
+table.dp-table th{background:var(--bg);color:var(--text-muted);font-weight:600}
+table.dp-table td{background:var(--bg-card);color:var(--text-muted)}
+table.dp-table td.active{background:var(--accent-dim);color:var(--accent);border-color:var(--accent);font-weight:700}
+table.dp-table td.done{background:rgba(56,189,248,0.07);color:var(--text)}
+table.dp-table td.highlight{background:rgba(74,222,128,0.12);color:var(--good);border-color:var(--good)}
+/* CODE PANEL */
+.code-panel{background:#0d1117;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.code-header{background:var(--bg-card);border-bottom:1px solid var(--border);padding:.6rem 1rem;display:flex;justify-content:space-between;align-items:center}
+.code-header span{font-size:.82rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+pre{padding:1.2rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.7}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#f2cc60}.tp{color:#ffa657}
+/* PROBLEMS GROUPED */
+.problems-section-title{font-size:1rem;font-weight:600;color:var(--accent);margin:1.5rem 0 .6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border)}
+.problems-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.5rem}
+@media(max-width:700px){.problems-grid{grid-template-columns:1fr}}
+.problem-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem;opacity:0;transform:translateY(20px);transition:border-color .2s}
+.problem-card:hover{border-color:var(--accent)}
+.problem-title{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.2rem}
+.problem-note{font-size:.76rem;color:var(--text-muted)}
+.complexity-badge{display:inline-block;font-size:.7rem;font-family:'JetBrains Mono',monospace;background:var(--accent-dim);color:var(--accent);border-radius:4px;padding:.1rem .4rem;margin-top:.25rem}
+.difficulty-hard{color:var(--bad);font-size:.72rem;font-weight:600;margin-left:.4rem}
+.staff-card{background:var(--bg-card);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:1.2rem;margin-bottom:1rem}
+.staff-q{font-size:.9rem;color:var(--text);font-style:italic;margin-bottom:.5rem}
+.staff-a{font-size:.82rem;color:var(--text-muted)}
+.hero-subtitle{font-size:1.1rem;color:var(--text-muted);margin:1rem 0 1.5rem;max-width:600px}
+.hero-meta{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
+.meta-pill{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:.3rem .9rem;font-size:.82rem;color:var(--text-muted)}
+.meta-pill strong{color:var(--text)}
+footer{text-align:center;padding:2rem 1.5rem;color:var(--text-muted);font-size:.78rem;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div id="scroll-bar"></div>
+
+<nav>
+  <a href="00_index.html">Problem Solving Home</a>
+  <span class="nav-divider">|</span>
+<span class="nav-divider">|</span>
+  <div class="nav-anchors">
+    <a href="#hero">Hero</a>
+    <a href="#concept">Concept</a>
+    <a href="#stepper">Stepper</a>
+    <a href="#code">Code</a>
+    <a href="#problems">Problems</a>
+    <a href="#staff">Staff</a>
+  </div>
+  <div class="nav-chapter">
+    <a href="04_monotonic_stack.html">Prev</a>
+    <span>05 Dynamic Programming</span>
+    <a href="06_heap_priority_queue.html">Next</a>
+  </div>
+</nav>
+
+<main>
+  <section id="hero">
+    <div style="margin-bottom:.6rem"><span class="tag">Pattern 05</span></div>
+    <h1 style="color:var(--accent)">Dynamic Programming</h1>
+    <p class="hero-subtitle">Use when the problem has <strong style="color:var(--text)">optimal substructure</strong> and <strong style="color:var(--text)">overlapping subproblems</strong>. Identify state variables, write the recurrence, set base cases, then choose traversal order.</p>
+    <div class="hero-meta">
+      <div class="meta-pill"><strong>Signal</strong> — "optimal", "count ways", "min/max"</div>
+      <div class="meta-pill"><strong>State</strong> — variables that uniquely identify a subproblem</div>
+      <div class="meta-pill"><strong>Recurrence</strong> — how dp[i] depends on smaller states</div>
+    </div>
+  </section>
+
+  <section id="concept">
+    <h2>Core Concepts</h2>
+    <p>DP is about recognizing that the brute force recursion visits the same subproblems repeatedly. Memoize top-down or fill a table bottom-up. The table dimensions equal the number of state variables.</p>
+    <div class="concept-grid">
+      <div class="concept-card" id="cc1">
+        <div class="icon">🎒</div>
+        <h4>Knapsack</h4>
+        <p>Include/exclude item. State: (item index, remaining capacity).</p>
+      </div>
+      <div class="concept-card" id="cc2">
+        <div class="icon">🧬</div>
+        <h4>LCS / Strings</h4>
+        <p>Two sequences. State: (i, j) positions. Match or skip.</p>
+      </div>
+      <div class="concept-card" id="cc3">
+        <div class="icon">📈</div>
+        <h4>LIS Pattern</h4>
+        <p>Subsequence with constraint. dp[i] = best ending at i.</p>
+      </div>
+      <div class="concept-card" id="cc4">
+        <div class="icon">🔲</div>
+        <h4>Grid DP</h4>
+        <p>Navigate grid. State: (row, col). Direction constraints.</p>
+      </div>
+    </div>
+    <div style="margin-top:2rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card" id="dp-rule1" style="opacity:0;transform:translateY(20px)">
+        <h3>Top-Down vs Bottom-Up</h3>
+        <p>Top-down (memoization): write the recursion naturally, add a cache. Easier to reason about. Bottom-up (tabulation): fill table in dependency order. No stack overhead, easier to optimize space.</p>
+      </div>
+      <div class="card" id="dp-rule2" style="opacity:0;transform:translateY(20px)">
+        <h3>Space Optimization</h3>
+        <p>If dp[i][j] only depends on dp[i-1][...], use two rows (rolling array). Reduces O(m*n) to O(n). For some problems, even O(1) extra space is achievable.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="stepper">
+    <h2>Algorithm Stepper</h2>
+    <p>Watch the DP table fill cell by cell. The highlighted cell is being computed now.</p>
+    <div class="stepper-controls">
+      <select id="pattern-select">
+        <option value="knapsack">0/1 Knapsack</option>
+        <option value="lcs">LCS</option>
+        <option value="coin">Coin Change</option>
+        <option value="lis">LIS</option>
+      </select>
+      <button class="btn" id="mode-toggle">Mode: Bottom-Up</button>
+      <button class="btn primary" id="play-btn">Play</button>
+      <button class="btn" id="step-btn">Step</button>
+      <button class="btn" id="reset-btn">Reset</button>
+      <span id="step-counter" style="color:var(--text-muted);font-size:.82rem;margin-left:.5rem">Step 0 / 0</span>
+    </div>
+    <div class="stepper-layout">
+      <div>
+        <div class="viz-box" id="dp-viz">
+          <div class="dp-table-wrap" id="dp-table-wrap"></div>
+        </div>
+        <div class="recurrence-box" id="recurrence-display">Select a pattern and press Play</div>
+      </div>
+      <div>
+        <div class="trace-box">
+          <h4>Trace</h4>
+          <div class="trace-row"><span class="trace-label">Computing</span><span class="trace-val" id="tr-cell">—</span></div>
+          <div class="trace-row"><span class="trace-label">i</span><span class="trace-val" id="tr-i">—</span></div>
+          <div class="trace-row"><span class="trace-label">j / w</span><span class="trace-val" id="tr-j">—</span></div>
+          <div class="trace-row"><span class="trace-label">dp[i][j]</span><span class="trace-val" id="tr-dpval">—</span></div>
+          <div class="trace-row"><span class="trace-label">Recurrence used</span><span class="trace-val" id="tr-rec" style="font-size:.72rem">—</span></div>
+          <div class="trace-row"><span class="trace-label">Optimal so far</span><span class="trace-val" id="tr-opt">—</span></div>
+        </div>
+        <div class="card" style="margin-top:.8rem;padding:1rem">
+          <h4 style="font-size:.82rem;color:var(--text-muted);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em">Problem Instance</h4>
+          <div id="problem-instance" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text-muted);line-height:1.8"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="code">
+    <h2>Java Templates</h2>
+    <div class="code-panel">
+      <div class="code-header">
+        <span>DynamicProgramming.java</span>
+        <button class="btn" id="copy-btn">Copy</button>
+      </div>
+      <pre id="code-content"><span class="cm">// 0/1 KNAPSACK — O(n*cap) time, O(n*cap) space</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">knapsack</span>(<span class="tp">int</span>[] w, <span class="tp">int</span>[] v, <span class="tp">int</span> cap) {
+    <span class="tp">int</span> n = w.length; <span class="tp">int</span>[][] dp = <span class="kw">new</span> <span class="tp">int</span>[n+<span class="num">1</span>][cap+<span class="num">1</span>];
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">1</span>; i &lt;= n; i++)
+        <span class="kw">for</span> (<span class="tp">int</span> c = <span class="num">0</span>; c &lt;= cap; c++) {
+            dp[i][c] = dp[i-<span class="num">1</span>][c];
+            <span class="kw">if</span> (w[i-<span class="num">1</span>] &lt;= c) dp[i][c] = <span class="tp">Math</span>.<span class="fn">max</span>(dp[i][c], dp[i-<span class="num">1</span>][c-w[i-<span class="num">1</span>]] + v[i-<span class="num">1</span>]);
+        }
+    <span class="kw">return</span> dp[n][cap];
+}
+
+<span class="cm">// LCS — O(mn) time and space</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">lcs</span>(<span class="tp">String</span> s1, <span class="tp">String</span> s2) {
+    <span class="tp">int</span> m = s1.length(), n = s2.length(); <span class="tp">int</span>[][] dp = <span class="kw">new</span> <span class="tp">int</span>[m+<span class="num">1</span>][n+<span class="num">1</span>];
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">1</span>; i &lt;= m; i++)
+        <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">1</span>; j &lt;= n; j++)
+            dp[i][j] = s1.charAt(i-<span class="num">1</span>) == s2.charAt(j-<span class="num">1</span>)
+                ? dp[i-<span class="num">1</span>][j-<span class="num">1</span>] + <span class="num">1</span>
+                : <span class="tp">Math</span>.<span class="fn">max</span>(dp[i-<span class="num">1</span>][j], dp[i][j-<span class="num">1</span>]);
+    <span class="kw">return</span> dp[m][n];
+}
+
+<span class="cm">// LIS — O(n log n) patience sorting</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">lis</span>(<span class="tp">int</span>[] nums) {
+    <span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; tails = <span class="kw">new</span> <span class="fn">ArrayList</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="tp">int</span> num : nums) {
+        <span class="tp">int</span> pos = <span class="tp">Collections</span>.<span class="fn">binarySearch</span>(tails, num);
+        <span class="kw">if</span> (pos &lt; <span class="num">0</span>) pos = -(pos + <span class="num">1</span>);
+        <span class="kw">if</span> (pos == tails.size()) tails.add(num); <span class="kw">else</span> tails.set(pos, num);
+    }
+    <span class="kw">return</span> tails.size();
+}
+
+<span class="cm">// COIN CHANGE (min coins) — O(n*amount)</span>
+<span class="kw">public</span> <span class="tp">int</span> <span class="fn">coinChange</span>(<span class="tp">int</span>[] coins, <span class="tp">int</span> amount) {
+    <span class="tp">int</span>[] dp = <span class="kw">new</span> <span class="tp">int</span>[amount+<span class="num">1</span>];
+    <span class="tp">Arrays</span>.<span class="fn">fill</span>(dp, amount+<span class="num">1</span>); dp[<span class="num">0</span>] = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">1</span>; i &lt;= amount; i++)
+        <span class="kw">for</span> (<span class="tp">int</span> c : coins)
+            <span class="kw">if</span> (c &lt;= i) dp[i] = <span class="tp">Math</span>.<span class="fn">min</span>(dp[i], dp[i-c] + <span class="num">1</span>);
+    <span class="kw">return</span> dp[amount] &gt; amount ? -<span class="num">1</span> : dp[amount];
+}</pre>
+    </div>
+  </section>
+
+  <section id="problems">
+    <h2>Problem Set</h2>
+    <p>30 DP problems grouped by pattern family. Master each family's recurrence template.</p>
+
+    <div class="problems-section-title">Knapsack Family</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">1. 0/1 Knapsack</div>
+        <div class="problem-note">Include/exclude item. State: (item, capacity). dp[i][c] = max(skip, take).</div>
+        <div class="complexity-badge">O(n*cap)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">2. Subset Sum</div>
+        <div class="problem-note">Boolean DP: can we reach target sum? dp[i][s] = dp[i-1][s] || dp[i-1][s-arr[i]].</div>
+        <div class="complexity-badge">O(n*sum)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">3. Equal Sum Partition</div>
+        <div class="problem-note">Subset sum where target = totalSum / 2. Return false if totalSum is odd.</div>
+        <div class="complexity-badge">O(n*sum)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">4. Count Subsets with Given Sum</div>
+        <div class="problem-note">Count variant of subset sum. dp[i][s] += dp[i-1][s-arr[i]].</div>
+        <div class="complexity-badge">O(n*sum)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">5. Minimum Subset Sum Difference</div>
+        <div class="problem-note">Fill last row of subset-sum table. Best split minimizes |S1 - S2|.</div>
+        <div class="complexity-badge">O(n*sum)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">6. Target Sum (LC 494)</div>
+        <div class="problem-note">Assign +/- to elements. Reduces to count subsets with sum = (target+total)/2.</div>
+        <div class="complexity-badge">O(n*sum)</div>
+      </div>
+    </div>
+
+    <div class="problems-section-title">Unbounded Knapsack</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">7. Coin Change Min Coins (LC 322)</div>
+        <div class="problem-note">dp[i] = min coins for amount i. Iterate amounts, inner loop over coins.</div>
+        <div class="complexity-badge">O(n*amount)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">8. Coin Change Ways (LC 518)</div>
+        <div class="problem-note">Count distinct ways. Outer loop: coins. Inner: amounts. Avoids duplicates.</div>
+        <div class="complexity-badge">O(n*amount)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">9. Rod Cutting</div>
+        <div class="problem-note">Maximize profit. Same item can be used multiple times. Unbounded knapsack.</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+    </div>
+
+    <div class="problems-section-title">LCS Pattern</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">10. LCS (LC 1143)</div>
+        <div class="problem-note">2D DP. Match extends dp[i-1][j-1]+1. Mismatch: max(skip one from either).</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">11. Longest Common Substring</div>
+        <div class="problem-note">Must be contiguous. Reset to 0 on mismatch instead of taking max.</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">12. Print LCS</div>
+        <div class="problem-note">Traceback from dp[m][n]. Follow diagonal on match, larger neighbor otherwise.</div>
+        <div class="complexity-badge">O(m+n) trace</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">13. Shortest Common Supersequence (LC 1092)</div>
+        <div class="problem-note">Length = m + n - LCS. Reconstruct by tracing DP table.</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">14. Min Insertions to Make Palindrome</div>
+        <div class="problem-note">= n - LPS(s). LPS = LCS(s, reverse(s)).</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">15. Longest Palindromic Subsequence (LC 516)</div>
+        <div class="problem-note">LPS(s) = LCS(s, reverse(s)). Classic reduction.</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">16. Min Deletions to Make Strings Equal</div>
+        <div class="problem-note">= m + n - 2*LCS(s1, s2). Each deletion removes a non-LCS character.</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+    </div>
+
+    <div class="problems-section-title">Interval / Advanced DP</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">17. Matrix Chain Multiplication</div>
+        <div class="problem-note">Minimize multiplications. dp[i][j] = min over all split points k.</div>
+        <div class="complexity-badge">O(n^3)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">18. Palindrome Partitioning (LC 132)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Min cuts. Precompute palindrome table. dp[i] = min cuts for s[0..i].</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">19. Boolean Parenthesization</div>
+        <div class="problem-note">Count ways to evaluate true/false. dp[i][j][true/false].</div>
+        <div class="complexity-badge">O(n^3)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">20. Egg Dropping (LC 887)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Binary search + DP. Think: with t trials and k eggs, max floors testable.</div>
+        <div class="complexity-badge">O(k*n log n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">21. Burst Balloons (LC 312)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Think about the last balloon burst in interval, not the first.</div>
+        <div class="complexity-badge">O(n^3)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">22. Scramble String (LC 87)</div>
+        <div class="problem-note">3D memoization. Split at each point: normal or swapped.</div>
+        <div class="complexity-badge">O(n^4) memo</div>
+      </div>
+    </div>
+
+    <div class="problems-section-title">LIS Pattern</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">23. LIS (LC 300)</div>
+        <div class="problem-note">O(n log n) with patience sorting. Binary search on tails array.</div>
+        <div class="complexity-badge">O(n log n)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">24. Maximum Sum Increasing Subsequence</div>
+        <div class="problem-note">LIS tracking sum instead of length. dp[i] = max sum ending at i.</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">25. Longest Bitonic Subsequence</div>
+        <div class="problem-note">LIS from left + LIS from right - 1. Subtract 1 to avoid double-counting peak.</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+    </div>
+
+    <div class="problems-section-title">Grid DP</div>
+    <div class="problems-grid">
+      <div class="problem-card">
+        <div class="problem-title">26. Unique Paths (LC 62)</div>
+        <div class="problem-note">dp[i][j] = dp[i-1][j] + dp[i][j-1]. Only right and down.</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">27. Min Path Sum (LC 64)</div>
+        <div class="problem-note">dp[i][j] = grid[i][j] + min(dp[i-1][j], dp[i][j-1]).</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">28. Triangle (LC 120)</div>
+        <div class="problem-note">Bottom-up. O(n) space using in-place on last row.</div>
+        <div class="complexity-badge">O(n^2)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">29. Maximal Square (LC 221)</div>
+        <div class="problem-note">dp[i][j] = min(left, up, diagonal) + 1 when cell is 1.</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-title">30. Dungeon Game (LC 174)<span class="difficulty-hard">HARD</span></div>
+        <div class="problem-note">Reverse DP from target. dp[i][j] = min health needed to reach exit.</div>
+        <div class="complexity-badge">O(mn)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="staff">
+    <h2>Staff Engineer Angles</h2>
+    <div class="staff-card">
+      <div class="staff-q">"DP table is O(m*n) = 10GB for m=n=100k. Streaming alignment where you only need the score?"</div>
+      <div class="staff-a">Use a rolling array: only keep two rows (or one row for some formulations), reducing space from O(m*n) to O(min(m,n)). For traceback, use Hirschberg's algorithm: divide-and-conquer recursion that computes the optimal alignment in O(n) space by finding the midpoint of the optimal path, then recursing. Time stays O(mn), space drops to O(n). For streaming where you can't store even one row, approximate alignment with MinHash or locality-sensitive hashing.</div>
+    </div>
+    <div class="staff-card">
+      <div class="staff-q">"Knapsack over 1B items that won't fit on one machine. How to partition and solve?"</div>
+      <div class="staff-a">Sort items by weight-to-value ratio and group them into buckets. Use branch-and-bound distributed across machines: each machine explores a subtree of the decision tree, pruning with LP relaxation upper bounds. For approximate solutions, FPTAS gives (1+epsilon) approximation in polynomial time by scaling and rounding item values. For exact large instances: split-in-half meet-in-the-middle (O(2^(n/2))) if n is small enough, or DP on deduplicated/grouped items when many items have identical properties.</div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Clean Code — Robert C. Martin · The Pragmatic Programmer — Hunt &amp; Thomas · Refactoring — Martin Fowler · Working Effectively with Legacy Code — Michael Feathers
+</footer>
+
+<script>
+(function() {
+  'use strict';
+
+  var bar = document.getElementById('scroll-bar');
+  window.addEventListener('scroll', function() {
+    var total = document.body.scrollHeight - window.innerHeight;
+    if (total <= 0) return;
+    bar.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+  });
+
+  function observe(sel, cb) {
+    var els = document.querySelectorAll(sel);
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) { cb(e.target); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.25 });
+    els.forEach(function(el) { io.observe(el); });
+  }
+
+  observe('.concept-card', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [30,0], duration: 600, easing: 'easeOutExpo' });
+  });
+  observe('.problem-card', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [20,0], duration: 500, easing: 'easeOutExpo' });
+  });
+  observe('#dp-rule1', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [20,0], duration: 500, easing: 'easeOutExpo' });
+  });
+  observe('#dp-rule2', function(el) {
+    anime({ targets: el, opacity: [0,1], translateY: [20,0], duration: 500, delay: 150, easing: 'easeOutExpo' });
+  });
+
+  // ---- PATTERNS ----
+  var PATTERNS = {
+    knapsack: {
+      label: '0/1 Knapsack',
+      weights: [2, 3, 4, 5],
+      values: [3, 4, 5, 6],
+      cap: 8,
+      instance: function(p) {
+        return 'weights: [' + p.weights.join(',') + ']\nvalues:  [' + p.values.join(',') + ']\ncap:     ' + p.cap;
+      },
+      build: function(p) {
+        var n = p.weights.length;
+        var cap = p.cap;
+        var dp = [];
+        for (var i = 0; i <= n; i++) { dp.push([]); for (var c = 0; c <= cap; c++) dp[i].push(0); }
+        var steps = [];
+        for (var i2 = 1; i2 <= n; i2++) {
+          for (var c2 = 0; c2 <= cap; c2++) {
+            dp[i2][c2] = dp[i2-1][c2];
+            var rec = 'skip: dp[' + (i2-1) + '][' + c2 + ']=' + dp[i2-1][c2];
+            if (p.weights[i2-1] <= c2) {
+              var take = dp[i2-1][c2 - p.weights[i2-1]] + p.values[i2-1];
+              if (take > dp[i2][c2]) { dp[i2][c2] = take; rec += ', take:' + take; }
+              else rec += ', take:' + take + '(skip better)';
+            }
+            steps.push({ i: i2, j: c2, val: dp[i2][c2], rec: rec, table: JSON.parse(JSON.stringify(dp)), opt: dp[i2][cap] });
+          }
+        }
+        return { steps: steps, rows: n + 1, cols: cap + 1, rowLabels: ['i=0'].concat(p.weights.map(function(w, k) { return 'item' + (k+1) + '(w=' + w + ')'; })), colLabels: Array.from({ length: cap + 1 }, function(_, i) { return i; }) };
+      }
+    },
+    lcs: {
+      label: 'LCS',
+      s1: 'ABCBDAB',
+      s2: 'BDCAB',
+      instance: function(p) { return 's1: "' + p.s1 + '"\ns2: "' + p.s2 + '"'; },
+      build: function(p) {
+        var m = p.s1.length, n = p.s2.length;
+        var dp = [];
+        for (var i = 0; i <= m; i++) { dp.push([]); for (var j = 0; j <= n; j++) dp[i].push(0); }
+        var steps = [];
+        for (var i2 = 1; i2 <= m; i2++) {
+          for (var j2 = 1; j2 <= n; j2++) {
+            var rec;
+            if (p.s1[i2-1] === p.s2[j2-1]) {
+              dp[i2][j2] = dp[i2-1][j2-1] + 1;
+              rec = p.s1[i2-1] + '==' + p.s2[j2-1] + ': dp[' + (i2-1) + '][' + (j2-1) + ']+1=' + dp[i2][j2];
+            } else {
+              dp[i2][j2] = Math.max(dp[i2-1][j2], dp[i2][j2-1]);
+              rec = 'max(dp[' + (i2-1) + '][' + j2 + ']=' + dp[i2-1][j2] + ', dp[' + i2 + '][' + (j2-1) + ']=' + dp[i2][j2-1] + ')=' + dp[i2][j2];
+            }
+            steps.push({ i: i2, j: j2, val: dp[i2][j2], rec: rec, table: JSON.parse(JSON.stringify(dp)), opt: dp[m][n] });
+          }
+        }
+        return { steps: steps, rows: m + 1, cols: n + 1, rowLabels: ['-'].concat(p.s1.split('')), colLabels: ['-'].concat(p.s2.split('')) };
+      }
+    },
+    coin: {
+      label: 'Coin Change',
+      coins: [1, 3, 4],
+      amount: 7,
+      instance: function(p) { return 'coins:  [' + p.coins.join(',') + ']\namount: ' + p.amount; },
+      build: function(p) {
+        var amt = p.amount;
+        var INF = amt + 1;
+        var dp = new Array(amt + 1).fill(INF);
+        dp[0] = 0;
+        var steps = [];
+        for (var i = 1; i <= amt; i++) {
+          var dpCopy = dp.slice();
+          var rec = '';
+          for (var k = 0; k < p.coins.length; k++) {
+            var c = p.coins[k];
+            if (c <= i && dp[i - c] + 1 < dp[i]) {
+              dp[i] = dp[i - c] + 1;
+              rec = 'coin=' + c + ': dp[' + (i-c) + ']+1=' + dp[i];
+            }
+          }
+          if (!rec) rec = 'no improvement';
+          steps.push({ i: i, j: -1, val: dp[i] >= INF ? 'INF' : dp[i], rec: rec, table: [dp.slice()], opt: dp[amt] >= INF ? -1 : dp[amt] });
+        }
+        return { steps: steps, rows: 1, cols: amt + 1, rowLabels: ['dp'], colLabels: Array.from({ length: amt + 1 }, function(_, i) { return i; }), is1D: true };
+      }
+    },
+    lis: {
+      label: 'LIS',
+      arr: [10, 9, 2, 5, 3, 7, 101, 18],
+      instance: function(p) { return 'arr: [' + p.arr.join(',') + ']'; },
+      build: function(p) {
+        var arr = p.arr, n = arr.length;
+        var dp = new Array(n).fill(1);
+        var steps = [];
+        for (var i = 1; i < n; i++) {
+          for (var j = 0; j < i; j++) {
+            if (arr[j] < arr[i] && dp[j] + 1 > dp[i]) {
+              dp[i] = dp[j] + 1;
+            }
+          }
+          var rec = 'dp[' + i + ']=max(1,max dp[j]+1 for j<' + i + ' where arr[j]<' + arr[i] + ')=' + dp[i];
+          steps.push({ i: 0, j: i, val: dp[i], rec: rec, table: [dp.slice()], opt: Math.max.apply(null, dp), is1D: true });
+        }
+        return { steps: steps, rows: 1, cols: n, rowLabels: ['dp'], colLabels: arr.map(function(v) { return v; }), is1D: true };
+      }
+    }
+  };
+
+  var currentPattern = null;
+  var steps = [];
+  var stepIdx = 0;
+  var playTimer = null;
+  var isPlaying = false;
+  var isTopDown = false;
+
+  var patternSelect = document.getElementById('pattern-select');
+  var modeToggle = document.getElementById('mode-toggle');
+  var playBtn = document.getElementById('play-btn');
+  var stepBtn = document.getElementById('step-btn');
+  var resetBtn = document.getElementById('reset-btn');
+  var stepCounter = document.getElementById('step-counter');
+
+  patternSelect.addEventListener('change', buildSteps);
+  modeToggle.addEventListener('click', function() {
+    isTopDown = !isTopDown;
+    modeToggle.textContent = 'Mode: ' + (isTopDown ? 'Top-Down' : 'Bottom-Up');
+    modeToggle.className = isTopDown ? 'btn toggle-on' : 'btn';
+    buildSteps();
+  });
+
+  function buildSteps() {
+    stopPlay();
+    var key = patternSelect.value;
+    var pat = PATTERNS[key];
+    currentPattern = pat.build(pat);
+    steps = currentPattern.steps;
+    stepIdx = 0;
+    // Show problem instance
+    document.getElementById('problem-instance').textContent = pat.instance(pat);
+    renderStep();
+  }
+
+  function renderTable(cp, stepData) {
+    var wrap = document.getElementById('dp-table-wrap');
+    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+    var table = document.createElement('table');
+    table.className = 'dp-table';
+
+    // Header row
+    var thead = document.createElement('tr');
+    var thCorner = document.createElement('th');
+    thCorner.textContent = ' ';
+    thead.appendChild(thCorner);
+    (cp.colLabels || []).forEach(function(cl) {
+      var th = document.createElement('th');
+      th.textContent = cl;
+      thead.appendChild(th);
+    });
+    table.appendChild(thead);
+
+    var tableData = stepData.table;
+
+    if (cp.is1D) {
+      // 1D table
+      var row = tableData[0];
+      var tr = document.createElement('tr');
+      var rowTh = document.createElement('th');
+      rowTh.textContent = cp.rowLabels ? cp.rowLabels[0] : '';
+      tr.appendChild(rowTh);
+      for (var j = 0; j < row.length; j++) {
+        var td = document.createElement('td');
+        var v = row[j];
+        td.textContent = v > 1000 ? 'INF' : v;
+        if (j === stepData.j || (stepData.j === -1 && j === stepData.i)) td.className = 'active';
+        else if (v !== 0 && v <= 1000) td.className = 'done';
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    } else {
+      // 2D table
+      for (var i = 0; i < tableData.length; i++) {
+        var tr2 = document.createElement('tr');
+        var rowTh2 = document.createElement('th');
+        rowTh2.textContent = cp.rowLabels ? cp.rowLabels[i] : i;
+        tr2.appendChild(rowTh2);
+        for (var j2 = 0; j2 < tableData[i].length; j2++) {
+          var td2 = document.createElement('td');
+          td2.textContent = tableData[i][j2];
+          if (i === stepData.i && j2 === stepData.j) td2.className = 'active';
+          else if (i < stepData.i || (i === stepData.i && j2 < stepData.j)) td2.className = (tableData[i][j2] > 0 ? 'done' : '');
+          tr2.appendChild(td2);
+        }
+        table.appendChild(tr2);
+      }
+    }
+
+    wrap.appendChild(table);
+  }
+
+  function renderStep() {
+    if (!steps.length || !currentPattern) return;
+    stepIdx = Math.max(0, Math.min(stepIdx, steps.length - 1));
+    stepCounter.textContent = 'Step ' + (stepIdx + 1) + ' / ' + steps.length;
+    var s = steps[stepIdx];
+    document.getElementById('tr-cell').textContent = currentPattern.is1D ? 'dp[' + (s.j >= 0 ? s.j : s.i) + ']' : 'dp[' + s.i + '][' + s.j + ']';
+    document.getElementById('tr-i').textContent = s.i;
+    document.getElementById('tr-j').textContent = s.j >= 0 ? s.j : '—';
+    document.getElementById('tr-dpval').textContent = s.val;
+    document.getElementById('tr-rec').textContent = s.rec.length > 40 ? s.rec.slice(0,40)+'...' : s.rec;
+    document.getElementById('tr-opt').textContent = s.opt;
+    document.getElementById('recurrence-display').textContent = s.rec;
+    renderTable(currentPattern, s);
+  }
+
+  playBtn.addEventListener('click', togglePlay);
+  stepBtn.addEventListener('click', function() { stopPlay(); stepIdx++; if (stepIdx >= steps.length) stepIdx = steps.length - 1; renderStep(); });
+  resetBtn.addEventListener('click', function() { stopPlay(); stepIdx = 0; renderStep(); });
+
+  function togglePlay() {
+    if (isPlaying) stopPlay(); else startPlay();
+  }
+
+  function startPlay() {
+    isPlaying = true;
+    playBtn.textContent = 'Pause';
+    playBtn.classList.add('active');
+    playTimer = setInterval(function() {
+      stepIdx++;
+      if (stepIdx >= steps.length) { stopPlay(); stepIdx = steps.length - 1; }
+      renderStep();
+    }, 600);
+  }
+
+  function stopPlay() {
+    isPlaying = false;
+    clearInterval(playTimer);
+    playBtn.textContent = 'Play';
+    playBtn.classList.remove('active');
+  }
+
+  document.getElementById('copy-btn').addEventListener('click', function() {
+    var code = document.getElementById('code-content').textContent;
+    navigator.clipboard.writeText(code).then(function() {
+      var btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      btn.classList.add('active');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('active'); }, 2000);
+    });
+  });
+
+  buildSteps();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ch 10-12: Batch, Stream &amp; Future — DDIA Animated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg-card:#161b22;--bg-card-hover:#1c2330;
+  --border:#30363d;--text:#e6edf3;--text-muted:#8b949e;
+  --accent:#818cf8;--accent-dim:rgba(129,140,248,0.15);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;line-height:1.6;padding-top:56px}
+a{color:inherit;text-decoration:none}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.str{color:#a5d6ff}.cm{color:#8b949e}.num{color:#79c0ff}.tp{color:#ffa657}
+.container{max-width:1100px;margin:0 auto;padding:0 20px}
+.section{padding:5rem 0}
+.section-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:700;color:var(--accent);margin-bottom:.5rem}
+.section-sub{color:var(--text-muted);font-size:15px;margin-bottom:2.5rem}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.5rem;transition:background .2s}
+.card:hover{background:var(--bg-card-hover)}
+.card-title{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.05em}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+pre{background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all .2s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-accent{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.btn-accent:hover{background:var(--accent);color:#000}
+.tab-btn{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all .2s}
+.tab-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
+.will-animate{opacity:0;transform:translateY(20px)}
+svg text{font-family:'Inter',sans-serif}
+.info-box{background:var(--accent-dim);border:1px solid rgba(129,140,248,.3);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--text-muted);}
+.info-box strong{color:var(--accent)}
+.pipe-box{background:var(--bg-card);border:1px solid var(--accent);border-radius:8px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);white-space:nowrap;}
+.arch-box{border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;font-size:13px;font-weight:600;}
+.arch-box.batch{border-color:#60a5fa;background:rgba(96,165,250,.08);color:#60a5fa;}
+.arch-box.speed{border-color:#f59e0b;background:rgba(245,158,11,.08);color:#f59e0b;}
+.arch-box.serving{border-color:#4ade80;background:rgba(74,222,128,.08);color:#4ade80;}
+.arch-box.stream{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);}
+.ev-chip{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;display:inline-block;}
+.log-block{display:inline-flex;align-items:center;justify-content:center;width:40px;height:36px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);flex-shrink:0;transition:opacity .4s;}
+.log-block.hi{border-color:var(--accent);color:var(--accent);}
+.log-block.dim{opacity:0.2;}
+</style>
+</head>
+<body>
+
+<div id="progress-bar" style="position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);transform:scaleX(0);transform-origin:left center;z-index:1000;pointer-events:none;"></div>
+
+<nav id="navbar" style="position:fixed;top:0;left:0;right:0;padding:6px 20px;background:rgba(13,17,23,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;z-index:999;flex-wrap:wrap;">
+  <a href="00_index.html" style="font-weight:700;color:var(--accent);text-decoration:none;font-size:15px;">DDIA</a>
+  <div style="display:flex;gap:6px;align-items:center;">
+    <a href="07_distributed_problems_consensus.html" style="display:flex;flex-direction:column;padding:3px 10px;border:1px solid var(--border);border-radius:6px;text-decoration:none;color:var(--text-muted);font-size:11px;"><span>&#8592; prev</span><span style="color:var(--text);font-size:12px;font-weight:500;">Distributed Problems</span></a>
+    <span style="display:flex;flex-direction:column;padding:3px 10px;border:1px solid var(--accent);border-radius:6px;font-size:11px;color:var(--accent);"><span>ch 10-12</span><span style="font-size:12px;font-weight:600;">Batch, Stream &amp; Future</span></span>
+    <span style="display:flex;flex-direction:column;padding:3px 10px;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);opacity:0.4;cursor:default;"><span>next &#8594;</span><span style="font-size:12px;font-weight:500;">&#8212;</span></span>
+  </div>
+  <div style="display:flex;gap:8px;font-size:12px;margin-left:auto;flex-wrap:wrap;">
+    <a href="#s1" style="color:var(--text-muted);">Unix&#8594;MR</a>
+    <a href="#s2" style="color:var(--text-muted);">MR Internals</a>
+    <a href="#s3" style="color:var(--text-muted);">Joins</a>
+    <a href="#s4" style="color:var(--text-muted);">Pregel</a>
+    <a href="#s5" style="color:var(--text-muted);">Outputs</a>
+    <a href="#s6" style="color:var(--text-muted);">Dataflow</a>
+    <a href="#s7" style="color:var(--text-muted);">Kafka</a>
+    <a href="#s8" style="color:var(--text-muted);">Sync</a>
+    <a href="#s9" style="color:var(--text-muted);">CDC</a>
+    <a href="#s10" style="color:var(--text-muted);">Event Sourcing</a>
+    <a href="#s11" style="color:var(--text-muted);">Stream Joins</a>
+    <a href="#s12" style="color:var(--text-muted);">Lambda/Kappa</a>
+    <a href="#s13" style="color:var(--text-muted);">Exactly-Once</a>
+    <a href="#s14" style="color:var(--text-muted);">Future</a>
+    <a href="#s15" style="color:var(--text-muted);">Ethics</a>
+    <a href="../system-design-concepts/00_index.html" style="color:var(--text-muted);">System Design</a>
+    <a href="../coding-concepts/00_index.html" style="color:var(--text-muted);">Coding Concepts</a>
+  </div>
+</nav>
+
+<div style="padding:4rem 20px 2rem;text-align:center;">
+  <div class="container">
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border:1px solid var(--accent);border-radius:20px;font-size:12px;color:var(--accent);margin-bottom:1rem;">Chapters 10 &middot; 11 &middot; 12</div>
+    <h1 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:700;margin-bottom:1rem;">Batch, Stream &amp; Future</h1>
+    <p style="color:var(--text-muted);max-width:640px;margin:0 auto;font-size:16px;">MapReduce to dataflow engines, Kafka partitioned logs, CDC and event sourcing, Lambda vs Kappa, exactly-once semantics, and the unbundled database future.</p>
+  </div>
+</div>
+
+<!-- S1: Unix → MapReduce -->
+<section id="s1" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Unix Philosophy &#8594; MapReduce</h2>
+    <p class="section-sub will-animate">Unix pipes compose simple tools into powerful pipelines. MapReduce extends the same idea to distributed batch processing across thousands of machines.</p>
+    <div class="card will-animate" style="margin-bottom:1.5rem;">
+      <div class="card-title">Unix Pipe Chain</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:1rem 0;overflow-x:auto;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div class="pipe-box">cat access.log</div><div style="font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:4px;padding:2px 6px;">&#128196; input</div></div>
+        <span style="color:var(--text-muted);font-size:18px;">|</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div class="pipe-box">grep 'error'</div><div id="pf1" style="font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:4px;padding:2px 6px;opacity:0;">tmp1</div></div>
+        <span style="color:var(--text-muted);font-size:18px;">|</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div class="pipe-box">awk '{print $7}'</div><div id="pf2" style="font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:4px;padding:2px 6px;opacity:0;">tmp2</div></div>
+        <span style="color:var(--text-muted);font-size:18px;">|</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div class="pipe-box">sort</div><div id="pf3" style="font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:4px;padding:2px 6px;opacity:0;">tmp3</div></div>
+        <span style="color:var(--text-muted);font-size:18px;">|</span>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div class="pipe-box">uniq -c</div><div id="pf4" style="font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:4px;padding:2px 6px;opacity:0;">&#128196; output</div></div>
+      </div>
+      <p id="pipe-status" style="font-size:13px;color:var(--text-muted);min-height:20px;margin-bottom:.75rem;"></p>
+      <button class="btn btn-accent" onclick="runPipeline()">&#9654; Run Pipeline</button>
+    </div>
+    <div class="grid2 will-animate">
+      <div class="card">
+        <div class="card-title">Hadoop / MapReduce</div>
+        <p style="font-size:13px;color:var(--text-muted);">Same pipeline logic, but each stage is a MapReduce job. Intermediate output is materialized to HDFS before the next stage — enabling fault tolerance by re-running failed stages from the last checkpoint.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">&#128274; Immutable Input</div>
+        <p style="font-size:13px;color:var(--text-muted);">The original input dataset is never modified. You can re-run any stage or debug by replaying from any intermediate file. This is the foundation of reproducible batch processing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S2: MapReduce Internals -->
+<section id="s2" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">MapReduce Internals</h2>
+    <p class="section-sub will-animate">Map phase emits (key, value) pairs. Shuffle routes pairs to the correct reducer by key hash. Reducers sort and aggregate each key group.</p>
+    <div class="card will-animate">
+      <svg id="mr-svg" viewBox="0 0 680 250" width="100%" style="margin-bottom:1rem;"></svg>
+      <p id="mr-status" style="font-size:13px;color:var(--accent);min-height:20px;margin-bottom:.75rem;text-align:center;font-weight:600;"></p>
+      <button class="btn btn-accent" onclick="runMapReduce()">&#9654; Simulate MapReduce</button>
+    </div>
+  </div>
+</section>
+
+<!-- S3: Join Strategies -->
+<section id="s3" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">MapReduce Join Strategies</h2>
+    <p class="section-sub will-animate">Three strategies trade off between shuffle cost, memory usage, and pre-processing requirements.</p>
+    <div style="display:flex;gap:8px;margin-bottom:1.5rem;" class="will-animate">
+      <button class="tab-btn active" onclick="showJoin('reduce')" id="jt-reduce">Reduce-Side</button>
+      <button class="tab-btn" onclick="showJoin('broadcast')" id="jt-broadcast">Broadcast Hash</button>
+      <button class="tab-btn" onclick="showJoin('partitioned')" id="jt-partitioned">Partitioned Map-Side</button>
+    </div>
+    <div id="join-reduce" class="card will-animate">
+      <div class="card-title">Reduce-Side Join</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Both datasets A and B are shuffled by join key to the same reducer. Works for any dataset sizes but requires a full shuffle — the most expensive network operation in MapReduce.</p>
+      <svg viewBox="0 0 580 140" width="100%">
+        <rect x="10" y="20" width="90" height="36" rx="6" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="55" y="43" text-anchor="middle" fill="#818cf8" font-size="12" font-weight="600">Dataset A</text>
+        <rect x="10" y="85" width="90" height="36" rx="6" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="55" y="108" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600">Dataset B</text>
+        <text x="155" y="40" fill="#8b949e" font-size="10">shuffle by key</text>
+        <text x="155" y="110" fill="#8b949e" font-size="10">shuffle by key</text>
+        <rect x="290" y="52" width="100" height="40" rx="6" fill="rgba(74,222,128,.15)" stroke="#4ade80" stroke-width="1.5"/>
+        <text x="340" y="77" text-anchor="middle" fill="#4ade80" font-size="12" font-weight="600">Reducer</text>
+        <line x1="100" y1="38" x2="290" y2="72" stroke="#818cf8" stroke-width="1" stroke-dasharray="4,3"/>
+        <line x1="100" y1="103" x2="290" y2="72" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3"/>
+        <rect x="420" y="57" width="90" height="30" rx="6" fill="rgba(129,140,248,.08)" stroke="#30363d" stroke-width="1"/>
+        <text x="465" y="77" text-anchor="middle" fill="#e6edf3" font-size="11">Result</text>
+        <line x1="390" y1="72" x2="420" y2="72" stroke="#4ade80" stroke-width="1"/>
+      </svg>
+    </div>
+    <div id="join-broadcast" class="card will-animate" style="display:none;">
+      <div class="card-title">Broadcast Hash Join</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Small dataset B is loaded into each mapper's memory. Each mapper joins against the in-memory hash. No shuffle needed — fastest when one dataset fits in RAM.</p>
+      <svg viewBox="0 0 560 150" width="100%">
+        <rect x="10" y="55" width="80" height="36" rx="6" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="50" y="78" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600">Small B</text>
+        <rect x="180" y="15" width="80" height="36" rx="6" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="220" y="38" text-anchor="middle" fill="#818cf8" font-size="11" font-weight="600">Mapper 1</text>
+        <rect x="180" y="57" width="80" height="36" rx="6" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="220" y="80" text-anchor="middle" fill="#818cf8" font-size="11" font-weight="600">Mapper 2</text>
+        <rect x="180" y="99" width="80" height="36" rx="6" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="220" y="122" text-anchor="middle" fill="#818cf8" font-size="11" font-weight="600">Mapper 3</text>
+        <line x1="90" y1="73" x2="180" y2="33" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="90" y1="73" x2="180" y2="75" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3"/>
+        <line x1="90" y1="73" x2="180" y2="117" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="125" y="48" fill="#f59e0b" font-size="9" text-anchor="middle">broadcast</text>
+        <rect x="380" y="57" width="80" height="30" rx="6" fill="rgba(74,222,128,.1)" stroke="#4ade80" stroke-width="1"/>
+        <text x="420" y="77" text-anchor="middle" fill="#4ade80" font-size="10">Results</text>
+        <line x1="260" y1="75" x2="380" y2="72" stroke="#4ade80" stroke-width="1" stroke-dasharray="4,3"/>
+      </svg>
+    </div>
+    <div id="join-partitioned" class="card will-animate" style="display:none;">
+      <div class="card-title">Partitioned Map-Side Join</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Both datasets are pre-partitioned and pre-sorted by join key. Each mapper joins its local co-located partitions — no shuffle, no extra memory. Fastest but requires pre-processing.</p>
+      <svg viewBox="0 0 500 140" width="100%">
+        <rect x="0" y="15" width="65" height="28" rx="5" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="32" y="34" text-anchor="middle" fill="#818cf8" font-size="10">A part-0</text>
+        <rect x="0" y="55" width="65" height="28" rx="5" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="32" y="74" text-anchor="middle" fill="#818cf8" font-size="10">A part-1</text>
+        <rect x="0" y="95" width="65" height="28" rx="5" fill="rgba(129,140,248,.15)" stroke="#818cf8" stroke-width="1.5"/>
+        <text x="32" y="114" text-anchor="middle" fill="#818cf8" font-size="10">A part-2</text>
+        <rect x="72" y="15" width="65" height="28" rx="5" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="104" y="34" text-anchor="middle" fill="#f59e0b" font-size="10">B part-0</text>
+        <rect x="72" y="55" width="65" height="28" rx="5" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="104" y="74" text-anchor="middle" fill="#f59e0b" font-size="10">B part-1</text>
+        <rect x="72" y="95" width="65" height="28" rx="5" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="104" y="114" text-anchor="middle" fill="#f59e0b" font-size="10">B part-2</text>
+        <rect x="200" y="15" width="80" height="28" rx="6" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1.5"/>
+        <text x="240" y="34" text-anchor="middle" fill="#4ade80" font-size="10">Mapper 1</text>
+        <rect x="200" y="55" width="80" height="28" rx="6" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1.5"/>
+        <text x="240" y="74" text-anchor="middle" fill="#4ade80" font-size="10">Mapper 2</text>
+        <rect x="200" y="95" width="80" height="28" rx="6" fill="rgba(74,222,128,.12)" stroke="#4ade80" stroke-width="1.5"/>
+        <text x="240" y="114" text-anchor="middle" fill="#4ade80" font-size="10">Mapper 3</text>
+        <line x1="65" y1="29" x2="200" y2="29" stroke="#818cf8" stroke-width="1"/>
+        <line x1="137" y1="29" x2="200" y2="29" stroke="#f59e0b" stroke-width="1"/>
+        <line x1="65" y1="69" x2="200" y2="69" stroke="#818cf8" stroke-width="1"/>
+        <line x1="137" y1="69" x2="200" y2="69" stroke="#f59e0b" stroke-width="1"/>
+        <line x1="65" y1="109" x2="200" y2="109" stroke="#818cf8" stroke-width="1"/>
+        <line x1="137" y1="109" x2="200" y2="109" stroke="#f59e0b" stroke-width="1"/>
+        <rect x="310" y="57" width="80" height="28" rx="6" fill="rgba(129,140,248,.08)" stroke="#30363d"/>
+        <text x="350" y="76" text-anchor="middle" fill="#e6edf3" font-size="10">Output</text>
+        <text x="350" y="100" text-anchor="middle" fill="#8b949e" font-size="9">no shuffle</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- S4: Pregel -->
+<section id="s4" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">Graph &amp; Iterative Processing (Pregel)</h2>
+    <p class="section-sub will-animate">Pregel's Bulk Synchronous Parallel model: nodes exchange messages each superstep, separated by a global barrier. Vertex state stays in memory — far faster than MapReduce disk I/O.</p>
+    <div class="card will-animate">
+      <svg id="pregel-svg" viewBox="0 0 580 200" width="100%"></svg>
+      <div style="margin-top:1rem;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem;">PageRank per node</div>
+        <div id="pr-bars" style="display:flex;gap:6px;align-items:flex-end;height:60px;"></div>
+      </div>
+      <p id="pregel-status" style="font-size:13px;color:var(--accent);min-height:20px;margin:.75rem 0;font-weight:600;"></p>
+      <button class="btn btn-accent" onclick="pregelNextStep()">Next Superstep &#8594;</button>
+      <button class="btn" onclick="pregelReset()" style="margin-left:8px;">Reset</button>
+    </div>
+    <div class="card will-animate" style="margin-top:1.25rem;">
+      <div class="card-title">&#128190; Why MapReduce Struggles with Graphs</div>
+      <p style="font-size:13px;color:var(--text-muted);">Each MapReduce iteration must write all vertex state to disk and re-read it — even if only a few nodes changed. For 50 iterations on a billion-node graph, that is 50x disk I/O. Pregel keeps vertex state in memory across supersteps.</p>
+    </div>
+  </div>
+</section>
+
+<!-- S5: Batch Outputs -->
+<section id="s5" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Output of Batch Workflows</h2>
+    <p class="section-sub will-animate">Batch jobs build the derived datasets that power production systems — not just reports.</p>
+    <div class="grid3 will-animate" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">&#128269; Search Index</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">Build Lucene segment files offline, then atomically swap the directory pointer. Old index serves traffic until the new one is ready.</p>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-family:'JetBrains Mono',monospace;"><span style="color:#f87171;text-decoration:line-through;">old/</span><span style="color:var(--text-muted);">&#8594;</span><span style="color:#4ade80;">new/</span><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(74,222,128,.15);color:#4ade80;border:1px solid rgba(74,222,128,.3);">atomic</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#128202; Key-Value Store</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">Build read-only RocksDB files in the batch job, copy to app servers. Zero-downtime serving swap.</p>
+        <div style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);">SST files &#8594; scp &#8594; app servers</div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#129302; ML Features</div>
+        <p style="font-size:13px;color:var(--text-muted);">Pre-compute feature vectors in the batch job. Store in a feature store for real-time serving — avoids expensive recomputation at inference time.</p>
+      </div>
+    </div>
+    <div class="card will-animate">
+      <div class="card-title">Immutable Output + Atomic Swap</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:.5rem 0;">
+        <div id="swap-v1" style="padding:10px 24px;border-radius:8px;background:rgba(96,165,250,.15);border:2px solid #60a5fa;color:#60a5fa;font-weight:700;font-size:14px;">v1 (serving)</div>
+        <span style="color:var(--text-muted);font-size:20px;">&#8644;</span>
+        <div id="swap-v2" style="padding:10px 24px;border-radius:8px;background:rgba(74,222,128,.15);border:2px solid #4ade80;color:#4ade80;font-weight:700;font-size:14px;">v2 (ready)</div>
+        <button class="btn btn-accent" onclick="doSwap()">Swap / Rollback</button>
+        <span id="swap-status" style="font-size:13px;color:var(--text-muted);"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S6: Dataflow Engines -->
+<section id="s6" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">Dataflow Engines (Spark / Flink)</h2>
+    <p class="section-sub will-animate">Operator DAGs replace the two-stage map/reduce split. Data flows in-memory between operators — no intermediate materialization.</p>
+    <div class="card will-animate">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;">
+        <button class="tab-btn active" id="df-mr-btn" onclick="setDfMode('mr')">MapReduce Mode</button>
+        <button class="tab-btn" id="df-df-btn" onclick="setDfMode('df')">Dataflow Mode</button>
+      </div>
+      <svg id="df-svg" viewBox="0 0 640 120" width="100%"></svg>
+      <p id="df-desc" style="font-size:13px;color:var(--text-muted);margin-top:.75rem;">MapReduce writes intermediate files to disk between each stage. A 5-stage pipeline requires 4 full disk round-trips before the final result.</p>
+    </div>
+    <div class="card will-animate" style="margin-top:1.25rem;">
+      <div class="card-title">Fault Tolerance via Lineage</div>
+      <p style="font-size:13px;color:var(--text-muted);">Spark tracks the lineage graph of transformations. On node failure, only the lost partition is recomputed from its upstream source — no need to checkpoint all intermediate state to disk.</p>
+    </div>
+  </div>
+</section>
+
+<!-- S7: Kafka -->
+<section id="s7" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Partitioned Logs (Kafka)</h2>
+    <p class="section-sub will-animate">A log is an append-only, ordered sequence of records. Consumers track their own offset — any consumer can replay from any point, independently.</p>
+    <div class="card will-animate">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:.5rem;">Partition 0</div>
+      <div id="kafka-log" style="display:flex;gap:6px;flex-wrap:wrap;min-height:44px;align-items:center;padding:.5rem 0;"></div>
+      <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:4px;">
+        <div style="font-size:12px;color:var(--text-muted);">Consumer Group A &mdash; offset: <span id="cg-a-off" style="color:var(--accent);font-weight:700;">0</span></div>
+        <div style="font-size:12px;color:var(--text-muted);">Consumer Group B &mdash; offset: <span id="cg-b-off" style="color:#f59e0b;font-weight:700;">0</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.75rem;">
+        <button class="btn btn-accent" onclick="kafkaProduce()">+ Produce</button>
+        <button class="btn" onclick="kafkaConsume('a')">CG-A Read &#8594;</button>
+        <button class="btn" onclick="kafkaConsume('b')" style="border-color:#f59e0b;color:#f59e0b;">CG-B Read &#8594;</button>
+        <button class="btn" onclick="kafkaCompact()">Compact Log</button>
+      </div>
+    </div>
+    <div class="grid2 will-animate" style="margin-top:1.25rem;">
+      <div class="card">
+        <div class="card-title">Log vs Queue</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <thead><tr style="color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:4px 8px;text-align:left;">Property</th><th style="padding:4px 8px;">Queue</th><th style="padding:4px 8px;">Log</th></tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 8px;">Delete on consume</td><td style="padding:4px 8px;text-align:center;color:#4ade80;">&#10003;</td><td style="padding:4px 8px;text-align:center;color:#f87171;">&#10007;</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 8px;">Replay from offset</td><td style="padding:4px 8px;text-align:center;color:#f87171;">&#10007;</td><td style="padding:4px 8px;text-align:center;color:#4ade80;">&#10003;</td></tr>
+            <tr><td style="padding:4px 8px;">Multiple consumers</td><td style="padding:4px 8px;text-align:center;color:#f87171;">one copy</td><td style="padding:4px 8px;text-align:center;color:#4ade80;">unlimited</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">Log Compaction</div>
+        <p style="font-size:13px;color:var(--text-muted);">For changelog-style topics, Kafka retains only the latest value per key. Old entries are replaced during compaction. A compacted log equals the full current state — not the full history.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S8: Dual-Write -->
+<section id="s8" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">Keeping Systems in Sync</h2>
+    <p class="section-sub will-animate">Dual-write: writing to two systems independently creates a race condition. If one write fails, the systems permanently diverge.</p>
+    <div class="card will-animate">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:.5rem 0;">
+        <div style="padding:10px 18px;border:2px solid var(--accent);border-radius:8px;background:var(--accent-dim);color:var(--accent);font-weight:700;font-size:13px;">App</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;gap:8px;"><div style="width:60px;height:2px;background:var(--border);"></div><div id="dw-db" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;background:var(--bg-card);">DB &#128194;</div></div>
+          <div style="display:flex;align-items:center;gap:8px;"><div style="width:60px;height:2px;background:var(--border);"></div><div id="dw-search" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;background:var(--bg-card);">Search &#128269;</div></div>
+        </div>
+      </div>
+      <p id="dw-status" style="font-size:13px;min-height:20px;margin:.75rem 0;color:var(--text-muted);"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-accent" onclick="dualWriteDemo()">&#9654; Simulate Failure</button>
+        <button class="btn" onclick="dualWriteReset()">Reset</button>
+      </div>
+    </div>
+    <div class="info-box will-animate" style="margin-top:1.25rem;">
+      <strong>CDC as the fix:</strong> Write only to the DB. A CDC consumer reads the DB replication log and propagates changes to all downstream systems in order — a single ordered source of truth with guaranteed delivery.
+    </div>
+  </div>
+</section>
+
+<!-- S9: CDC -->
+<section id="s9" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Change Data Capture (CDC)</h2>
+    <p class="section-sub will-animate">CDC taps into the database write-ahead log to stream every INSERT, UPDATE, and DELETE to downstream consumers — without touching application code.</p>
+    <div class="card will-animate">
+      <svg id="cdc-svg" viewBox="0 0 640 180" width="100%"></svg>
+      <button class="btn btn-accent" style="margin-top:.75rem;" onclick="runCDC()">&#9654; Stream Events</button>
+    </div>
+    <div class="grid2 will-animate" style="margin-top:1.25rem;">
+      <div class="card">
+        <div class="card-title">Schema Evolution</div>
+        <p style="font-size:13px;color:var(--text-muted);">When you ALTER TABLE ADD COLUMN, Debezium-style CDC captures before/after images. Downstream consumers receive both old and new schema events and can handle them independently.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">CDC vs Dual-Write</div>
+        <p style="font-size:13px;color:var(--text-muted);">CDC: DB log is the single writer. All downstream updates are after-the-fact, ordered, and replayable.<br/><br/>Dual-write: App writes to two systems independently. Partial failure = permanent divergence.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S10: Event Sourcing -->
+<section id="s10" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">Event Sourcing</h2>
+    <p class="section-sub will-animate">Store business events as the source of truth. Current state is derived by replaying the log — never stored directly.</p>
+    <div class="card will-animate">
+      <div id="es-log" style="display:flex;gap:6px;flex-wrap:wrap;min-height:50px;align-items:center;padding:.5rem 0;"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:.75rem;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text-muted);">Current state:</span>
+        <div id="es-state" style="padding:8px 16px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;min-width:200px;">&#8212;</div>
+        <span id="es-snap-badge" style="display:none;font-size:11px;padding:3px 8px;border-radius:4px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(129,140,248,.3);">&#128190; from snapshot</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:.75rem;">
+        <button class="btn btn-accent" onclick="esPlay()">&#9654; Next Event</button>
+        <button class="btn" onclick="esSnapshot()">&#128190; Snapshot</button>
+        <button class="btn" onclick="esReset()">Reset</button>
+      </div>
+    </div>
+    <div class="grid2 will-animate" style="margin-top:1.25rem;">
+      <div class="card">
+        <div class="card-title">Event Sourcing vs CDC</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <thead><tr style="color:var(--text-muted);border-bottom:1px solid var(--border);"><th style="padding:4px 8px;text-align:left;"></th><th style="padding:4px 8px;text-align:left;">CDC</th><th style="padding:4px 8px;text-align:left;">Event Sourcing</th></tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 8px;color:var(--text-muted);">Level</td><td style="padding:4px 8px;">DB rows</td><td style="padding:4px 8px;">Business intents</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 8px;color:var(--text-muted);">Events</td><td style="padding:4px 8px;">INSERT/UPDATE</td><td style="padding:4px 8px;">OrderPlaced</td></tr>
+            <tr><td style="padding:4px 8px;color:var(--text-muted);">Role</td><td style="padding:4px 8px;">Impl detail</td><td style="padding:4px 8px;">Core design</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">CQRS</div>
+        <p style="font-size:13px;color:var(--text-muted);">Command Query Responsibility Segregation pairs naturally with event sourcing. The command side appends events; the query side maintains read-optimized projections by replaying the same log. Read and write models can scale independently.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S11: Stream Joins -->
+<section id="s11" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Stream Processing Joins</h2>
+    <p class="section-sub will-animate">Three join types for streaming data — different latency, state, and ordering requirements.</p>
+    <div style="display:flex;gap:8px;margin-bottom:1.5rem;" class="will-animate">
+      <button class="tab-btn active" onclick="showSJ('st')" id="sjt-st">Stream-Table</button>
+      <button class="tab-btn" onclick="showSJ('ss')" id="sjt-ss">Stream-Stream</button>
+      <button class="tab-btn" onclick="showSJ('tt')" id="sjt-tt">Table-Table</button>
+    </div>
+    <div id="sj-st" class="card will-animate">
+      <div class="card-title">Stream-Table Join (Enrichment)</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Each click event is enriched by looking up the user profile from a cached copy of the user_profile table in the stream processor's memory.</p>
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Click stream</div><div id="st-clicks" style="display:flex;flex-direction:column;gap:4px;"></div></div>
+        <div style="font-size:20px;color:var(--text-muted);padding-top:16px;">+</div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">user_profile (cached)</div><pre style="font-size:12px;padding:8px;">{u1: "Alice", u2: "Bob"}</pre></div>
+        <div style="font-size:20px;color:var(--text-muted);padding-top:16px;">&#8594;</div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Enriched</div><div id="st-enriched" style="display:flex;flex-direction:column;gap:4px;"></div></div>
+      </div>
+      <button class="btn btn-accent" style="margin-top:.75rem;" onclick="runST()">&#9654; Stream Clicks</button>
+    </div>
+    <div id="sj-ss" class="card will-animate" style="display:none;">
+      <div class="card-title">Stream-Stream Join (Windowed)</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Ad impressions and clicks joined within a 1-hour window. State held per ad-id; matches emit enriched records.</p>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Impressions</div><div id="ss-imps" style="display:flex;flex-direction:column;gap:4px;"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Clicks</div><div id="ss-clicks" style="display:flex;flex-direction:column;gap:4px;"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Matches</div><div id="ss-matches" style="display:flex;flex-direction:column;gap:4px;"></div></div>
+      </div>
+      <button class="btn btn-accent" style="margin-top:.75rem;" onclick="runSS()">&#9654; Simulate</button>
+    </div>
+    <div id="sj-tt" class="card will-animate" style="display:none;">
+      <div class="card-title">Table-Table Join (Materialized View)</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Both tables stream changes. Any update to either table triggers an immediate view update for the affected keys.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">users</div><div id="tt-users" style="font-size:12px;font-family:'JetBrains Mono',monospace;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px;min-width:140px;white-space:pre;"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">orders</div><div id="tt-orders" style="font-size:12px;font-family:'JetBrains Mono',monospace;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:8px;min-width:140px;white-space:pre;"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Materialized view</div><div id="tt-view" style="font-size:12px;font-family:'JetBrains Mono',monospace;background:var(--bg-card);border:1px solid rgba(129,140,248,.4);border-radius:6px;padding:8px;min-width:180px;white-space:pre;"></div></div>
+      </div>
+      <button class="btn btn-accent" style="margin-top:.75rem;" onclick="runTT()">&#9654; Update Tables</button>
+    </div>
+    <div class="card will-animate" style="margin-top:1.25rem;">
+      <div class="card-title" style="margin-bottom:.75rem;">Window Types</div>
+      <div style="display:flex;gap:8px;margin-bottom:.75rem;">
+        <button class="tab-btn active" onclick="showWin('tumbling')" id="wt-tumbling">Tumbling</button>
+        <button class="tab-btn" onclick="showWin('sliding')" id="wt-sliding">Sliding</button>
+        <button class="tab-btn" onclick="showWin('session')" id="wt-session">Session</button>
+      </div>
+      <svg id="win-svg" viewBox="0 0 600 80" width="100%"></svg>
+      <p id="win-desc" style="font-size:12px;color:var(--text-muted);margin-top:.5rem;">Tumbling: fixed-size, non-overlapping windows. Each event belongs to exactly one window.</p>
+    </div>
+  </div>
+</section>
+
+<!-- S12: Lambda vs Kappa -->
+<section id="s12" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">Lambda vs Kappa Architecture</h2>
+    <p class="section-sub will-animate">Two approaches to handling both historical and real-time data in the same system.</p>
+    <div class="card will-animate">
+      <div style="display:flex;gap:8px;margin-bottom:1.5rem;">
+        <button class="tab-btn active" id="lk-l-btn" onclick="showArch('lambda')">&#955; Lambda</button>
+        <button class="tab-btn" id="lk-k-btn" onclick="showArch('kappa')">&#954; Kappa</button>
+      </div>
+      <div id="lk-lambda">
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:480px;">
+          <div class="arch-box batch">Batch Layer &mdash; historical, accurate, slow (hours)</div>
+          <div class="arch-box speed">Speed Layer &mdash; real-time, approximate, fast</div>
+          <div style="font-size:12px;color:var(--text-muted);text-align:center;">&#8595; query must merge both &#8595;</div>
+          <div class="arch-box serving">Serving Layer &mdash; merged result</div>
+        </div>
+        <p style="margin-top:1rem;font-size:13px;color:var(--text-muted);">Two codebases to maintain. Query logic must merge results from both layers. High operational complexity.</p>
+      </div>
+      <div id="lk-kappa" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:480px;">
+          <div class="arch-box stream">Single Streaming Pipeline &mdash; handles all data</div>
+          <div style="font-size:12px;color:var(--text-muted);text-align:center;">&#8635; replay old data through the same pipeline</div>
+          <div class="arch-box serving">Serving Layer &mdash; single consistent result</div>
+        </div>
+        <p style="margin-top:1rem;font-size:13px;color:var(--text-muted);">One codebase. Historical data replayed through the same stream processor. Simpler — but reprocessing large backlogs can be slow.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S13: Exactly-Once -->
+<section id="s13" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Exactly-Once Semantics</h2>
+    <p class="section-sub will-animate">Delivery guarantees in distributed systems — and how to achieve exactly-once despite failures and retries.</p>
+    <div class="grid3 will-animate" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">At-Most-Once</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">Fire and forget. If the send fails, the message is lost — no retry.</p>
+        <svg viewBox="0 0 200 60" width="100%">
+          <circle cx="20" cy="30" r="10" fill="rgba(129,140,248,.3)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="20" y="34" text-anchor="middle" fill="var(--accent)" font-size="9">Src</text>
+          <line x1="30" y1="30" x2="90" y2="30" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4,3"/>
+          <text x="75" y="22" fill="#f87171" font-size="10">&#10007; fail</text>
+          <circle cx="180" cy="30" r="10" fill="rgba(248,113,113,.1)" stroke="#f87171" stroke-width="1.5"/>
+          <text x="180" y="34" text-anchor="middle" fill="#f87171" font-size="9">Dst</text>
+          <text x="100" y="52" text-anchor="middle" fill="#8b949e" font-size="9">message lost</text>
+        </svg>
+      </div>
+      <div class="card">
+        <div class="card-title">At-Least-Once</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">Retry on failure. Message delivered, but possibly duplicated.</p>
+        <svg viewBox="0 0 200 60" width="100%">
+          <circle cx="20" cy="30" r="10" fill="rgba(129,140,248,.3)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="20" y="34" text-anchor="middle" fill="var(--accent)" font-size="9">Src</text>
+          <line x1="30" y1="24" x2="160" y2="24" stroke="var(--accent)" stroke-width="1.5"/>
+          <line x1="30" y1="37" x2="160" y2="37" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <circle cx="180" cy="30" r="10" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="180" y="34" text-anchor="middle" fill="#f59e0b" font-size="9">Dst</text>
+          <text x="100" y="56" text-anchor="middle" fill="#8b949e" font-size="9">duplicate!</text>
+        </svg>
+      </div>
+      <div class="card">
+        <div class="card-title">Exactly-Once</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">Idempotent dedup: duplicate detected by dedup key, dropped at destination.</p>
+        <svg viewBox="0 0 200 60" width="100%">
+          <circle cx="20" cy="30" r="10" fill="rgba(129,140,248,.3)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="20" y="34" text-anchor="middle" fill="var(--accent)" font-size="9">Src</text>
+          <line x1="30" y1="24" x2="155" y2="24" stroke="var(--accent)" stroke-width="1.5"/>
+          <line x1="30" y1="37" x2="85" y2="37" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="100" y="42" fill="#f87171" font-size="9">dropped</text>
+          <circle cx="180" cy="30" r="10" fill="rgba(74,222,128,.15)" stroke="#4ade80" stroke-width="1.5"/>
+          <text x="180" y="34" text-anchor="middle" fill="#4ade80" font-size="9">Dst</text>
+          <text x="100" y="57" text-anchor="middle" fill="#8b949e" font-size="9">dedup key</text>
+        </svg>
+      </div>
+    </div>
+    <div class="card will-animate">
+      <div class="card-title">Distributed Transactions in Streams</div>
+      <p style="font-size:13px;color:var(--text-muted);">Kafka Streams and Flink achieve exactly-once by committing the output offset and the external DB write atomically. If either fails, both are rolled back and the input is reprocessed from the last committed offset.</p>
+    </div>
+  </div>
+</section>
+
+<!-- S14: Future -->
+<section id="s14" class="section" style="background:rgba(129,140,248,.03);">
+  <div class="container">
+    <h2 class="section-title will-animate">The Future: Unbundling Databases</h2>
+    <p class="section-sub will-animate">Decompose the monolithic database into specialized components wired together by event streams.</p>
+    <div class="grid2 will-animate" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">Dataflow Architecture</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">No central DB. Each service owns its derived view, updated by subscribing to event streams. The stream is the source of truth.</p>
+        <svg viewBox="0 0 280 140" width="100%">
+          <rect x="100" y="5" width="80" height="28" rx="6" fill="var(--accent-dim)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="140" y="24" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="600">Event Stream</text>
+          <rect x="10" y="80" width="70" height="26" rx="6" fill="rgba(96,165,250,.15)" stroke="#60a5fa" stroke-width="1"/>
+          <text x="45" y="98" text-anchor="middle" fill="#60a5fa" font-size="10">Search</text>
+          <rect x="105" y="80" width="70" height="26" rx="6" fill="rgba(74,222,128,.15)" stroke="#4ade80" stroke-width="1"/>
+          <text x="140" y="98" text-anchor="middle" fill="#4ade80" font-size="10">Cache</text>
+          <rect x="200" y="80" width="70" height="26" rx="6" fill="rgba(245,158,11,.15)" stroke="#f59e0b" stroke-width="1"/>
+          <text x="235" y="98" text-anchor="middle" fill="#f59e0b" font-size="10">Analytics</text>
+          <line x1="140" y1="33" x2="45" y2="80" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4,3"/>
+          <line x1="140" y1="33" x2="140" y2="80" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4,3"/>
+          <line x1="140" y1="33" x2="235" y2="80" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4,3"/>
+        </svg>
+      </div>
+      <div class="card">
+        <div class="card-title">Timeliness vs Integrity</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">These two properties can be decoupled. Eventual consistency for timeliness (stale reads are OK) while enforcing strong integrity (no data loss, no corruption).</p>
+        <div class="card" style="padding:1rem;margin-top:.5rem;">
+          <div class="card-title" style="font-size:12px;">Async Saga Pattern</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;">
+            <div style="display:flex;align-items:center;gap:6px;"><span style="padding:3px 8px;border:1px solid var(--accent);border-radius:4px;color:var(--accent);">Place Order</span><span style="color:var(--text-muted);">&#8594;</span><span style="padding:3px 8px;border:1px solid #4ade80;border-radius:4px;color:#4ade80;">Accept</span><span style="color:var(--text-muted);">&#8594;</span><span style="padding:3px 8px;border:1px solid #f59e0b;border-radius:4px;color:#f59e0b;">Async check</span><span style="color:var(--text-muted);">&#8594;</span><span style="padding:3px 8px;border:1px solid #f87171;border-radius:4px;color:#f87171;">Compensate</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S15: Ethics -->
+<section id="s15" class="section">
+  <div class="container">
+    <h2 class="section-title will-animate">Doing the Right Thing</h2>
+    <p class="section-sub will-animate">The systems we build affect real people. Data systems can amplify biases and erode privacy in ways that compound over time.</p>
+    <div class="grid2 will-animate" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-title">&#128260; Predictive Analytics Feedback Loop</div>
+        <svg viewBox="0 0 280 110" width="100%">
+          <path d="M60 25 Q140 5 220 25 Q265 52 220 80 Q140 105 60 80 Q12 56 60 25" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <text x="140" y="20" text-anchor="middle" fill="var(--accent)" font-size="10">Model</text>
+          <text x="253" y="57" text-anchor="middle" fill="var(--accent)" font-size="10">Predictions</text>
+          <text x="140" y="108" text-anchor="middle" fill="var(--accent)" font-size="10">User Behavior</text>
+          <text x="25" y="57" text-anchor="middle" fill="var(--accent)" font-size="10">Training Data</text>
+          <text x="140" y="58" text-anchor="middle" fill="#f87171" font-size="12" font-weight="700">Bias &#8593;</text>
+        </svg>
+        <p style="font-size:13px;color:var(--text-muted);">Predictions influence behavior, which becomes training data for the next model iteration. A self-fulfilling prophecy that amplifies initial biases.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">&#128274; Privacy as Liability</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:.75rem;">Data you do not collect cannot be breached. Minimize data collection and enforce retention policies.</p>
+        <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:.75rem;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:.5rem;">Retention policy: 90-day auto-delete</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);font-size:11px;color:#4ade80;">day 1</div>
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(74,222,128,.08);font-size:11px;color:#4ade80;opacity:.6;">day 30</div>
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(74,222,128,.04);font-size:11px;color:#4ade80;opacity:.3;">day 60</div>
+            <div style="padding:3px 8px;border-radius:4px;background:rgba(248,113,113,.15);border:1px solid rgba(248,113,113,.3);font-size:11px;color:#f87171;">day 90 &#8594; deleted</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card will-animate">
+      <div class="card-title">Right to Be Forgotten vs Immutable Log</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">An append-only log makes deletion impossible — but encryption solves this. Encrypt each user's data with a per-user key. To forget a user, delete their key. Without the key, ciphertext is unreadable.</p>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">
+        <div style="padding:8px 12px;border:1px solid var(--accent);border-radius:6px;color:var(--accent);">Encrypted log &#128272;</div>
+        <span style="color:var(--text-muted);">&#8594;</span>
+        <div style="padding:8px 12px;border:1px solid #f87171;border-radius:6px;color:#f87171;">Delete key</div>
+        <span style="color:var(--text-muted);">&#8594;</span>
+        <div style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;color:var(--text-muted);">&#128683; Data unreadable (effectively forgotten)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer style="text-align:center;padding:3rem 2rem;color:var(--text-muted);font-size:13px;border-top:1px solid var(--border);margin-top:4rem;">
+  Designing Data-Intensive Applications &#8212; Martin Kleppmann
+</footer>
+
+<script>
+// Progress bar
+const pb = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const total = document.body.scrollHeight - window.innerHeight;
+  if (total <= 0) return;
+  pb.style.transform = 'scaleX(' + (window.scrollY / total) + ')';
+});
+
+// IntersectionObserver
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      anime({ targets: entry.target, opacity:[0,1], translateY:[20,0], duration:600, easing:'easeOutCubic' });
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.25 });
+document.querySelectorAll('.will-animate').forEach(el => observer.observe(el));
+
+// S1: Pipeline
+let pipeRunning = false;
+function runPipeline() {
+  if (pipeRunning) return;
+  pipeRunning = true;
+  const statusEl = document.getElementById('pipe-status');
+  const files = ['pf1','pf2','pf3','pf4'];
+  const labels = ['Filtering errors...','Extracting URLs...','Sorting...','Counting unique URLs...'];
+  let i = 0;
+  document.getElementById('pf1').style.opacity = '0';
+  document.getElementById('pf2').style.opacity = '0';
+  document.getElementById('pf3').style.opacity = '0';
+  document.getElementById('pf4').style.opacity = '0';
+  statusEl.textContent = 'Reading input...';
+  const step = () => {
+    if (i >= files.length) { statusEl.textContent = 'Pipeline complete'; pipeRunning = false; return; }
+    statusEl.textContent = labels[i];
+    anime({ targets: '#' + files[i], opacity:[0,1], translateY:[-8,0], duration:400, easing:'easeOutCubic' });
+    i++;
+    setTimeout(step, 700);
+  };
+  setTimeout(step, 500);
+}
+
+// S2: MapReduce SVG
+(function initMR() {
+  const svg = d3.select('#mr-svg');
+  const mappers = [{x:80,y:45},{x:80,y:130},{x:80,y:215}];
+  const reducers = [{x:440,y:85},{x:440,y:180}];
+  mappers.forEach((m,i) => {
+    svg.append('rect').attr('x',m.x-40).attr('y',m.y-18).attr('width',82).attr('height',36).attr('rx',6)
+      .attr('fill','rgba(129,140,248,.15)').attr('stroke','#818cf8').attr('stroke-width',1.5);
+    svg.append('text').attr('x',m.x+1).attr('y',m.y+5).attr('text-anchor','middle').attr('fill','#818cf8').attr('font-size',12).attr('font-weight',600).text('Mapper '+(i+1));
+  });
+  reducers.forEach((r,i) => {
+    svg.append('rect').attr('x',r.x-40).attr('y',r.y-18).attr('width',82).attr('height',36).attr('rx',6)
+      .attr('fill','rgba(74,222,128,.15)').attr('stroke','#4ade80').attr('stroke-width',1.5);
+    svg.append('text').attr('x',r.x+1).attr('y',r.y+5).attr('text-anchor','middle').attr('fill','#4ade80').attr('font-size',12).attr('font-weight',600).text('Reducer '+(i+1));
+  });
+  svg.append('rect').attr('x',570).attr('y',115).attr('width',70).attr('height',30).attr('rx',6)
+    .attr('fill','rgba(129,140,248,.08)').attr('stroke','#30363d').attr('stroke-width',1);
+  svg.append('text').attr('x',605).attr('y',135).attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',11).text('Output');
+})();
+
+let mrRunning = false;
+function runMapReduce() {
+  if (mrRunning) return;
+  mrRunning = true;
+  const svgEl = document.getElementById('mr-svg');
+  const statusEl = document.getElementById('mr-status');
+  const mapperY = [45,130,215];
+  const reducerPos = [{x:440,y:85},{x:440,y:180}];
+  statusEl.textContent = 'Mapping...';
+  const dots = [];
+  mapperY.forEach((my) => {
+    [0,1].forEach((ki) => {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('r','6');
+      dot.setAttribute('fill', ki===0 ? '#818cf8' : '#f59e0b');
+      dot.setAttribute('cx','80');
+      dot.setAttribute('cy', String(my));
+      svgEl.appendChild(dot);
+      dots.push({el:dot, startX:80, startY:my, key:ki});
+    });
+  });
+  setTimeout(() => {
+    statusEl.textContent = 'Shuffling by key...';
+    dots.forEach(d => {
+      const tr = reducerPos[d.key];
+      anime({ targets: d.el, translateX: tr.x - d.startX, translateY: tr.y - d.startY, duration:900, easing:'easeInOutSine' });
+    });
+    setTimeout(() => {
+      statusEl.textContent = 'Reducing...';
+      setTimeout(() => {
+        dots.forEach(d => { try { svgEl.removeChild(d.el); } catch(e){} });
+        const out = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        out.setAttribute('r','7'); out.setAttribute('fill','#4ade80');
+        out.setAttribute('cx','480'); out.setAttribute('cy','130');
+        svgEl.appendChild(out);
+        anime({ targets: out, translateX:[0,90], duration:500, easing:'easeOutCubic',
+          complete: () => { try{svgEl.removeChild(out);}catch(e){} } });
+        statusEl.textContent = 'Done ✓';
+        mrRunning = false;
+      }, 700);
+    }, 1000);
+  }, 700);
+}
+
+// S3: Join tabs
+function showJoin(type) {
+  ['reduce','broadcast','partitioned'].forEach(t => {
+    document.getElementById('join-'+t).style.display = t===type ? 'block' : 'none';
+    document.getElementById('jt-'+t).classList.toggle('active', t===type);
+  });
+}
+
+// S4: Pregel
+const pregelNodes = [
+  {id:0,x:220,y:50},{id:1,x:360,y:40},{id:2,x:440,y:130},
+  {id:3,x:360,y:200},{id:4,x:200,y:190},{id:5,x:140,y:110}
+];
+const pregelEdges = [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,3],[1,4]];
+const stepColors = ['#30363d','rgba(129,140,248,.5)','rgba(129,140,248,.8)','#818cf8'];
+let pregelSt = 0;
+let nodeRanks = pregelNodes.map(() => 0.167);
+
+function drawPregelGraph() {
+  const svg = d3.select('#pregel-svg');
+  svg.selectAll('*').remove();
+  pregelEdges.forEach(([a,b]) => {
+    svg.append('line')
+      .attr('x1',pregelNodes[a].x).attr('y1',pregelNodes[a].y)
+      .attr('x2',pregelNodes[b].x).attr('y2',pregelNodes[b].y)
+      .attr('stroke','#30363d').attr('stroke-width',2);
+  });
+  pregelNodes.forEach(n => {
+    svg.append('circle').attr('cx',n.x).attr('cy',n.y).attr('r',22)
+      .attr('fill',stepColors[pregelSt]).attr('stroke','#818cf8').attr('stroke-width',1.5).attr('id','pn'+n.id);
+    svg.append('text').attr('x',n.x).attr('y',n.y+5).attr('text-anchor','middle').attr('fill','#e6edf3').attr('font-size',11).attr('font-weight',600).text(n.id);
+  });
+  updatePRBars();
+}
+
+function updatePRBars() {
+  const cont = document.getElementById('pr-bars');
+  while (cont.firstChild) cont.removeChild(cont.firstChild);
+  nodeRanks.forEach((rank, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;';
+    const bar = document.createElement('div');
+    bar.style.cssText = 'width:32px;height:50px;border-radius:4px;background:rgba(129,140,248,.2);position:relative;overflow:hidden;';
+    const fill = document.createElement('div');
+    fill.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:var(--accent);border-radius:4px;transform-origin:bottom center;transform:scaleY('+rank.toFixed(2)+');transition:transform .5s;height:100%;';
+    bar.appendChild(fill);
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:10px;color:var(--text-muted);font-family:JetBrains Mono,monospace;';
+    lbl.textContent = 'N'+i;
+    wrap.appendChild(bar);
+    wrap.appendChild(lbl);
+    cont.appendChild(wrap);
+  });
+}
+
+function pregelNextStep() {
+  const statusEl = document.getElementById('pregel-status');
+  if (pregelSt >= 3) { statusEl.textContent = 'Converged — all nodes uniform'; return; }
+  pregelSt++;
+  const col = stepColors[pregelSt];
+  statusEl.textContent = 'Superstep ' + pregelSt + ' — propagating...';
+  nodeRanks = nodeRanks.map(() => 0.1 + 0.3 * (pregelSt / 3));
+  pregelNodes.forEach(n => {
+    d3.select('#pn'+n.id).transition().duration(500).attr('fill', col);
+  });
+  setTimeout(updatePRBars, 100);
+  if (pregelSt === 3) statusEl.textContent = 'Converged after 3 supersteps ✓';
+}
+
+function pregelReset() {
+  pregelSt = 0;
+  nodeRanks = pregelNodes.map(() => 0.167);
+  drawPregelGraph();
+  document.getElementById('pregel-status').textContent = '';
+}
+drawPregelGraph();
+
+// S5: Swap
+let swapActive = false;
+function doSwap() {
+  const v1 = document.getElementById('swap-v1');
+  const v2 = document.getElementById('swap-v2');
+  const st = document.getElementById('swap-status');
+  if (!swapActive) {
+    v1.textContent = 'v2 (serving)'; v1.style.cssText += ';border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.15);';
+    v2.textContent = 'v1 (stale)'; v2.style.cssText += ';border-color:#30363d;color:var(--text-muted);background:var(--bg-card);';
+    st.textContent = 'Swapped — v2 now serving';
+    swapActive = true;
+  } else {
+    v1.textContent = 'v1 (serving)'; v1.style.cssText += ';border-color:#60a5fa;color:#60a5fa;background:rgba(96,165,250,.15);';
+    v2.textContent = 'v2 (ready)'; v2.style.cssText += ';border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.15);';
+    st.textContent = 'Rolled back to v1';
+    swapActive = false;
+  }
+  anime({ targets: '#swap-v1,#swap-v2', opacity:[0.4,1], translateY:[-4,0], duration:400, easing:'easeOutCubic' });
+}
+
+// S6: Dataflow
+(function initDF() { drawDF('mr'); })();
+function drawDF(mode) {
+  const svg = d3.select('#df-svg');
+  svg.selectAll('*').remove();
+  const stages = ['Source','Filter','Join','Aggregate','Sink'];
+  const colors = ['#60a5fa','#818cf8','#f59e0b','#4ade80','#fb923c'];
+  const rgbs = ['96,165,250','129,140,248','245,158,11','74,222,128','251,146,60'];
+  const xs = [20,150,280,410,540];
+  stages.forEach((s,i) => {
+    svg.append('rect').attr('x',xs[i]).attr('y',40).attr('width',90).attr('height',40).attr('rx',6)
+      .attr('fill','rgba('+rgbs[i]+',.15)').attr('stroke',colors[i]).attr('stroke-width',1.5);
+    svg.append('text').attr('x',xs[i]+45).attr('y',65).attr('text-anchor','middle').attr('fill',colors[i]).attr('font-size',12).attr('font-weight',600).text(s);
+    if (i < stages.length-1) {
+      if (mode === 'mr') {
+        svg.append('rect').attr('x',xs[i]+98).attr('y',48).attr('width',44).attr('height',24).attr('rx',4)
+          .attr('fill','rgba(139,148,158,.08)').attr('stroke','#30363d').attr('stroke-dasharray','3,2').attr('stroke-width',1);
+        svg.append('text').attr('x',xs[i]+120).attr('y',64).attr('text-anchor','middle').attr('fill','#8b949e').attr('font-size',9).text('disk');
+      } else {
+        svg.append('line').attr('x1',xs[i]+90).attr('y1',60).attr('x2',xs[i]+150).attr('y2',60)
+          .attr('stroke','var(--accent)').attr('stroke-width',2);
+      }
+    }
+  });
+}
+function setDfMode(mode) {
+  drawDF(mode);
+  document.getElementById('df-mr-btn').classList.toggle('active', mode==='mr');
+  document.getElementById('df-df-btn').classList.toggle('active', mode==='df');
+  const descEl = document.getElementById('df-desc');
+  descEl.textContent = mode==='mr'
+    ? 'MapReduce writes intermediate files to disk between each stage. A 5-stage pipeline requires 4 full disk round-trips.'
+    : 'Dataflow engines stream data in-memory between operators. No intermediate materialization — significantly faster for multi-stage pipelines.';
+}
+
+// S7: Kafka
+let kafkaLog = [];
+let cgAOff = 0, cgBOff = 0;
+let kafkaNextKey = 0;
+const kafkaKeys = ['user:1','user:2','user:3','user:1','user:2'];
+
+function renderKafkaLog() {
+  const cont = document.getElementById('kafka-log');
+  while (cont.firstChild) cont.removeChild(cont.firstChild);
+  kafkaLog.forEach((block, i) => {
+    const el = document.createElement('div');
+    el.className = 'log-block' + (block.compacted ? ' dim' : (i === kafkaLog.length-1 ? ' hi' : ''));
+    el.textContent = String(i);
+    cont.appendChild(el);
+  });
+}
+
+function kafkaProduce() {
+  kafkaLog.push({ key: kafkaKeys[kafkaNextKey % kafkaKeys.length], compacted: false });
+  kafkaNextKey++;
+  renderKafkaLog();
+}
+function kafkaConsume(grp) {
+  if (grp === 'a' && cgAOff < kafkaLog.length) { cgAOff++; document.getElementById('cg-a-off').textContent = String(cgAOff); }
+  if (grp === 'b' && cgBOff < kafkaLog.length) { cgBOff++; document.getElementById('cg-b-off').textContent = String(cgBOff); }
+}
+function kafkaCompact() {
+  const seen = new Set();
+  const reversed = kafkaLog.slice().reverse().map(b => {
+    if (seen.has(b.key)) { b.compacted = true; } else { seen.add(b.key); b.compacted = false; }
+    return b;
+  });
+  kafkaLog = reversed.reverse();
+  renderKafkaLog();
+}
+for (let i = 0; i < 7; i++) kafkaProduce();
+
+// S8: Dual-Write
+function dualWriteDemo() {
+  const statusEl = document.getElementById('dw-status');
+  const db = document.getElementById('dw-db');
+  const search = document.getElementById('dw-search');
+  statusEl.textContent = 'Writing to DB...';
+  db.style.borderColor = '#f59e0b'; db.style.color = '#f59e0b';
+  setTimeout(() => {
+    db.style.borderColor = '#4ade80'; db.style.color = '#4ade80';
+    statusEl.textContent = 'DB write succeeded. Writing to Search...';
+    search.style.borderColor = '#f59e0b'; search.style.color = '#f59e0b';
+    setTimeout(() => {
+      search.style.borderColor = '#f87171'; search.style.color = '#f87171';
+      statusEl.textContent = 'Search write FAILED — systems permanently diverged.';
+    }, 800);
+  }, 700);
+}
+function dualWriteReset() {
+  ['dw-db','dw-search'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.borderColor = 'var(--border)'; el.style.color = 'var(--text)';
+  });
+  document.getElementById('dw-status').textContent = '';
+}
+
+// S9: CDC SVG
+(function initCDC() {
+  const svg = d3.select('#cdc-svg');
+  const boxes = [
+    {x:5,y:55,w:90,h:70,label:'DB WAL',color:'#60a5fa'},
+    {x:155,y:67,w:90,h:40,label:'Debezium',color:'#818cf8'},
+    {x:305,y:67,w:82,h:40,label:'Kafka Topic',color:'#f59e0b'},
+    {x:455,y:15,w:90,h:30,label:'Search Index',color:'#4ade80'},
+    {x:455,y:67,w:90,h:30,label:'Cache',color:'#fb923c'},
+    {x:455,y:119,w:90,h:30,label:'Data Warehouse',color:'#a78bfa'}
+  ];
+  boxes.forEach(b => {
+    svg.append('rect').attr('x',b.x).attr('y',b.y).attr('width',b.w).attr('height',b.h).attr('rx',6)
+      .attr('fill','rgba(0,0,0,0)').attr('stroke',b.color).attr('stroke-width',1.5)
+      .style('fill','rgba('+parseInt(b.color.slice(1,3),16)+','+parseInt(b.color.slice(3,5),16)+','+parseInt(b.color.slice(5,7),16)+',0.12)');
+    svg.append('text').attr('x',b.x+b.w/2).attr('y',b.y+b.h/2+5).attr('text-anchor','middle').attr('fill',b.color).attr('font-size',11).attr('font-weight',600).text(b.label);
+  });
+  [[0,1],[1,2],[2,3],[2,4],[2,5]].forEach(([a,b]) => {
+    const ba=boxes[a], bb=boxes[b];
+    svg.append('line').attr('x1',ba.x+ba.w).attr('y1',ba.y+ba.h/2)
+      .attr('x2',bb.x).attr('y2',bb.y+bb.h/2)
+      .attr('stroke','#30363d').attr('stroke-width',1.5).attr('stroke-dasharray','4,3');
+  });
+})();
+
+function runCDC() {
+  const svgEl = document.getElementById('cdc-svg');
+  const segs = [
+    {fx:95,fy:90,tx:155,ty:87},
+    {fx:245,fy:87,tx:305,ty:87},
+    {fx:387,fy:87,tx:455,ty:30},
+    {fx:387,fy:87,tx:455,ty:82},
+    {fx:387,fy:87,tx:455,ty:134}
+  ];
+  segs.forEach((s,i) => {
+    setTimeout(() => {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('r','5'); dot.setAttribute('fill','#818cf8');
+      dot.setAttribute('cx',String(s.fx)); dot.setAttribute('cy',String(s.fy));
+      svgEl.appendChild(dot);
+      anime({ targets:dot, translateX:s.tx-s.fx, translateY:s.ty-s.fy, duration:500, easing:'easeInOutSine',
+        complete:()=>{ try{svgEl.removeChild(dot);}catch(e){} } });
+    }, i*280);
+  });
+}
+
+// S10: Event Sourcing
+const esEvents = [
+  {label:'UserRegistered',color:'#60a5fa',state:'User: Alice (pending)'},
+  {label:'EmailVerified',color:'#4ade80',state:'User: Alice (active)'},
+  {label:'OrderPlaced',color:'#818cf8',state:'Order #1: placed'},
+  {label:'OrderShipped',color:'#f59e0b',state:'Order #1: shipped'},
+  {label:'OrderCancelled',color:'#f87171',state:'Order #1: cancelled'}
+];
+let esIdx = 0;
+function esPlay() {
+  if (esIdx >= esEvents.length) return;
+  const ev = esEvents[esIdx];
+  const cont = document.getElementById('es-log');
+  const chip = document.createElement('div');
+  chip.className = 'ev-chip';
+  chip.style.cssText = 'border:1px solid '+ev.color+';color:'+ev.color+';background:'+ev.color+'22;opacity:0;';
+  chip.textContent = ev.label;
+  cont.appendChild(chip);
+  anime({ targets:chip, opacity:[0,1], translateY:[-8,0], duration:400, easing:'easeOutCubic' });
+  document.getElementById('es-state').textContent = ev.state;
+  esIdx++;
+}
+function esSnapshot() {
+  const badge = document.getElementById('es-snap-badge');
+  badge.style.display = 'inline-block';
+  badge.textContent = 'Snapshot @ event ' + esIdx;
+}
+function esReset() {
+  esIdx = 0;
+  const cont = document.getElementById('es-log');
+  while (cont.firstChild) cont.removeChild(cont.firstChild);
+  document.getElementById('es-state').textContent = '—';
+  document.getElementById('es-snap-badge').style.display = 'none';
+}
+
+// S11: Stream joins
+function showSJ(type) {
+  ['st','ss','tt'].forEach(t => {
+    document.getElementById('sj-'+t).style.display = t===type ? 'block' : 'none';
+    document.getElementById('sjt-'+t).classList.toggle('active', t===type);
+  });
+}
+function makeChip(text, color) {
+  const el = document.createElement('div');
+  el.style.cssText = 'padding:4px 10px;border-radius:5px;font-size:12px;font-family:JetBrains Mono,monospace;border:1px solid '+color+';color:'+color+';background:'+color+'22;opacity:0;';
+  el.textContent = text;
+  return el;
+}
+function runST() {
+  const clicks = [{u:'u1',page:'/home'},{u:'u2',page:'/docs'},{u:'u1',page:'/pricing'}];
+  const users = {u1:'Alice',u2:'Bob'};
+  const cc = document.getElementById('st-clicks');
+  const ec = document.getElementById('st-enriched');
+  while(cc.firstChild) cc.removeChild(cc.firstChild);
+  while(ec.firstChild) ec.removeChild(ec.firstChild);
+  clicks.forEach((c,i) => {
+    setTimeout(() => {
+      const chip = makeChip(c.u+' -> '+c.page, '#818cf8');
+      cc.appendChild(chip);
+      anime({targets:chip, opacity:[0,1], translateX:[-10,0], duration:350, easing:'easeOutCubic'});
+      setTimeout(() => {
+        const ec2 = makeChip(users[c.u]+' -> '+c.page, '#4ade80');
+        ec.appendChild(ec2);
+        anime({targets:ec2, opacity:[0,1], translateX:[-10,0], duration:350, easing:'easeOutCubic'});
+      }, 300);
+    }, i*600);
+  });
+}
+function runSS() {
+  const imps = ['ad-A','ad-B','ad-C'];
+  const clicks = ['ad-A','ad-C'];
+  const ic = document.getElementById('ss-imps');
+  const cc = document.getElementById('ss-clicks');
+  const mc = document.getElementById('ss-matches');
+  [ic,cc,mc].forEach(c => { while(c.firstChild) c.removeChild(c.firstChild); });
+  imps.forEach((a,i) => {
+    setTimeout(() => {
+      const el = makeChip('imp:'+a, '#60a5fa');
+      ic.appendChild(el);
+      anime({targets:el, opacity:[0,1], duration:300});
+    }, i*350);
+  });
+  clicks.forEach((a,i) => {
+    setTimeout(() => {
+      const el = makeChip('click:'+a, '#f59e0b');
+      cc.appendChild(el);
+      anime({targets:el, opacity:[0,1], duration:300});
+      setTimeout(() => {
+        const me = makeChip('match:'+a, '#4ade80');
+        mc.appendChild(me);
+        anime({targets:me, opacity:[0,1], duration:300});
+      }, 300);
+    }, 1200+i*400);
+  });
+}
+function runTT() {
+  const uc = document.getElementById('tt-users');
+  const oc = document.getElementById('tt-orders');
+  const vc = document.getElementById('tt-view');
+  uc.textContent = 'u1: Alice\nu2: Bob';
+  oc.textContent = '#1: u1, $50\n#2: u2, $30';
+  vc.textContent = '';
+  setTimeout(() => { vc.textContent = 'Alice -> $50\nBob -> $30'; anime({targets:vc,opacity:[0.3,1],duration:400}); }, 600);
+  setTimeout(() => { uc.textContent = 'u1: Alice\nu2: Bob\nu3: Carol'; anime({targets:uc,opacity:[0.3,1],duration:300}); }, 1200);
+  setTimeout(() => {
+    oc.textContent = '#1: u1, $50\n#2: u2, $30\n#3: u3, $80';
+    vc.textContent = 'Alice -> $50\nBob -> $30\nCarol -> $80';
+    anime({targets:[vc,oc],opacity:[0.3,1],duration:400});
+  }, 1800);
+}
+
+// Window types
+function showWin(type) {
+  ['tumbling','sliding','session'].forEach(t => {
+    document.getElementById('wt-'+t).classList.toggle('active', t===type);
+  });
+  const svg = d3.select('#win-svg');
+  svg.selectAll('*').remove();
+  const evts = [30,85,120,170,220,310,360,430,520,560];
+  if (type === 'tumbling') {
+    [0,150,300,450].forEach(x => {
+      svg.append('rect').attr('x',x+1).attr('y',15).attr('width',148).attr('height',50).attr('rx',4)
+        .attr('fill','rgba(129,140,248,.08)').attr('stroke','#818cf8').attr('stroke-width',1).attr('stroke-dasharray','4,3');
+    });
+  } else if (type === 'sliding') {
+    [0,100,200,300,400].forEach(x => {
+      svg.append('rect').attr('x',x).attr('y',10).attr('width',200).attr('height',60).attr('rx',4)
+        .attr('fill','rgba(129,140,248,.05)').attr('stroke','#818cf8').attr('stroke-width',1).attr('stroke-dasharray','4,3').attr('opacity',0.8);
+    });
+  } else {
+    [[20,200],[280,200],[500,90]].forEach(([x,w]) => {
+      svg.append('rect').attr('x',x).attr('y',12).attr('width',w).attr('height',56).attr('rx',4)
+        .attr('fill','rgba(245,158,11,.07)').attr('stroke','#f59e0b').attr('stroke-width',1).attr('stroke-dasharray','4,3');
+    });
+  }
+  evts.forEach(x => {
+    svg.append('circle').attr('cx',x).attr('cy',40).attr('r',5).attr('fill','#818cf8');
+  });
+  const descs = {
+    tumbling: 'Tumbling: fixed-size, non-overlapping windows. Each event belongs to exactly one window.',
+    sliding: 'Sliding: overlapping windows advancing by a step. Events can belong to multiple windows.',
+    session: 'Session: gap-based windows that close after a period of inactivity. Boundaries determined by the event stream.'
+  };
+  document.getElementById('win-desc').textContent = descs[type];
+}
+showWin('tumbling');
+
+// S12: Lambda / Kappa
+function showArch(type) {
+  document.getElementById('lk-lambda').style.display = type==='lambda' ? 'block' : 'none';
+  document.getElementById('lk-kappa').style.display = type==='kappa' ? 'block' : 'none';
+  document.getElementById('lk-l-btn').classList.toggle('active', type==='lambda');
+  document.getElementById('lk-k-btn').classList.toggle('active', type==='kappa');
+}
+</script>
+</body>
+</html>

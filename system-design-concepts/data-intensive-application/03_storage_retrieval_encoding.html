@@ -476,6 +476,33 @@
       <div class="section-desc">Binary formats shrink payload size and enable schema evolution. The choice affects forward/backward compatibility between service versions.</div>
     </div>
     <div class="card reveal" id="s9-card">
+
+      <!-- Wire format visualizer -->
+      <div style="margin-bottom:2rem">
+        <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);margin-bottom:0.75rem">
+          Encoding the same record: &nbsp;<span style="color:var(--text)">{ id: 1, name: "Alice", age: 30 }</span>
+        </div>
+        <div class="toggle-row" style="margin-bottom:1rem;align-items:center">
+          <button class="btn s9-fmt-btn" data-fmt="json">JSON</button>
+          <button class="btn s9-fmt-btn" data-fmt="thrift">Thrift</button>
+          <button class="btn s9-fmt-btn" data-fmt="proto">Protobuf</button>
+          <button class="btn s9-fmt-btn" data-fmt="avro">Avro</button>
+          <button class="btn" id="btn-animate-encode" style="margin-left:auto">&#9654; Animate Encode</button>
+        </div>
+        <div id="wire-format-display" style="min-height:110px;padding:1rem 1.25rem;background:rgba(13,17,23,0.6);border:1px solid var(--border);border-radius:8px;margin-bottom:0.75rem"></div>
+        <div id="wire-desc" style="font-size:12px;color:var(--text-muted);margin-bottom:0.5rem"></div>
+        <div id="wire-stats" style="margin-bottom:0.75rem"></div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>field name (overhead)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#8b949e"></div>punctuation</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>field type byte</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>field tag / number</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>length prefix</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>value bytes</div>
+        </div>
+      </div>
+
+      <!-- Size comparison + compat grid -->
       <div class="grid-2" style="gap:2rem">
         <div>
           <div class="card-title">Byte-Size Comparison</div>
@@ -1165,80 +1192,238 @@ function clearSvg(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild);
 // S9 — Encoding Formats
 // ═══════════════════════════════════════════════════════════════════
 (function initS9() {
+
+  // ── Wire format data ─────────────────────────────────────────────
+  const wireFormats = {
+    json: {
+      bytes: 34,
+      desc: 'Self-describing text — field names sent in every record. Schema-free: any JSON parser can decode without prior knowledge.',
+      rows: [{ label: '', blocks: [
+        {text:'{',        type:'punct'},
+        {text:'"id"',     type:'key'},   {text:':', type:'punct'}, {text:'1',       type:'val'},
+        {text:',',        type:'punct'},
+        {text:'"name"',   type:'key'},   {text:':', type:'punct'}, {text:'"Alice"', type:'val'},
+        {text:',',        type:'punct'},
+        {text:'"age"',    type:'key'},   {text:':', type:'punct'}, {text:'30',      type:'val'},
+        {text:'}',        type:'punct'},
+      ]}]
+    },
+    thrift: {
+      bytes: 27,
+      desc: 'Binary — numeric field IDs replace names (must match .thrift schema). Type byte per field; stop byte terminates the record.',
+      rows: [
+        { label: 'id:',   blocks: [{text:'i32',type:'type'},{text:'fid:1',type:'tag'},{text:'0x00000001',type:'val'}] },
+        { label: 'name:', blocks: [{text:'str',type:'type'},{text:'fid:2',type:'tag'},{text:'len:5',type:'len'},{text:'Alice',type:'val'}] },
+        { label: 'age:',  blocks: [{text:'i32',type:'type'},{text:'fid:3',type:'tag'},{text:'0x0000001E',type:'val'}] },
+        { label: '',      blocks: [{text:'STOP',type:'stop'}] },
+      ]
+    },
+    proto: {
+      bytes: 12,
+      desc: 'Binary — one tag varint encodes both field number and wire type together (smaller than Thrift). No separate type byte.',
+      rows: [
+        { label: 'id:',   blocks: [{text:'tag=0x08',type:'tag'},{text:'0x01',type:'val'}] },
+        { label: 'name:', blocks: [{text:'tag=0x12',type:'tag'},{text:'len:5',type:'len'},{text:'Alice',type:'val'}] },
+        { label: 'age:',  blocks: [{text:'tag=0x18',type:'tag'},{text:'0x1E',type:'val'}] },
+      ]
+    },
+    avro: {
+      bytes: 8,
+      desc: 'Binary — zero tags, just values in schema-defined order. Both writer and reader must share a compatible schema to decode.',
+      rows: [
+        { label: 'id:',   blocks: [{text:'0x02',type:'val'}] },
+        { label: 'name:', blocks: [{text:'len:5',type:'len'},{text:'Alice',type:'val'}] },
+        { label: 'age:',  blocks: [{text:'0x3C',type:'val'}] },
+      ]
+    }
+  };
+
+  const fmtOrder = ['json','thrift','proto','avro'];
+  const fmtLabels = {json:'JSON',thrift:'Thrift',proto:'Protobuf',avro:'Avro'};
+
+  const blockStyle = {
+    key:   {bg:'rgba(248,113,113,0.2)',  border:'#f87171', color:'#f87171'},
+    punct: {bg:'rgba(139,148,158,0.12)', border:'#8b949e', color:'#8b949e'},
+    type:  {bg:'rgba(167,139,250,0.2)',  border:'#a78bfa', color:'#a78bfa'},
+    tag:   {bg:'rgba(251,191,36,0.2)',   border:'#fbbf24', color:'#fbbf24'},
+    len:   {bg:'rgba(96,165,250,0.2)',   border:'#60a5fa', color:'#60a5fa'},
+    val:   {bg:'rgba(74,222,128,0.2)',   border:'#4ade80', color:'#4ade80'},
+    stop:  {bg:'rgba(239,68,68,0.12)',   border:'#ef4444', color:'#ef4444'},
+  };
+
+  let currentFmt = 'json';
+
+  function makeBlock(block) {
+    const s = blockStyle[block.type] || blockStyle.val;
+    const el = document.createElement('span');
+    el.style.cssText = [
+      'display:inline-flex','align-items:center','justify-content:center',
+      'padding:4px 10px','border-radius:6px',
+      'border:1px solid ' + s.border,
+      'background:' + s.bg,
+      'color:' + s.color,
+      "font-family:'JetBrains Mono',monospace",
+      'font-size:11px','white-space:nowrap',
+      'opacity:0','transform:translateY(-6px)',
+      'transition:opacity 0.25s ease, transform 0.25s ease'
+    ].join(';');
+    el.textContent = block.text;
+    return el;
+  }
+
+  function drawFormat(fmtKey, animate) {
+    const fmt = wireFormats[fmtKey];
+    const container = document.getElementById('wire-format-display');
+    while (container.firstChild) container.removeChild(container.firstChild);
+    const allBlocks = [];
+
+    fmt.rows.forEach(function(row) {
+      const rowEl = document.createElement('div');
+      rowEl.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;';
+      if (row.label) {
+        const lbl = document.createElement('span');
+        lbl.style.cssText = "font-size:10px;color:#8b949e;font-family:'JetBrains Mono',monospace;min-width:44px;text-align:right;flex-shrink:0;";
+        lbl.textContent = row.label;
+        rowEl.appendChild(lbl);
+      }
+      row.blocks.forEach(function(block) {
+        const el = makeBlock(block);
+        rowEl.appendChild(el);
+        allBlocks.push(el);
+      });
+      container.appendChild(rowEl);
+    });
+
+    // Description
+    document.getElementById('wire-desc').textContent = fmt.desc;
+
+    // Stats chips
+    const statsEl = document.getElementById('wire-stats');
+    while (statsEl.firstChild) statsEl.removeChild(statsEl.firstChild);
+    fmtOrder.forEach(function(k) {
+      const f = wireFormats[k];
+      const chip = document.createElement('span');
+      const active = k === fmtKey;
+      chip.style.cssText = [
+        'display:inline-block','font-size:11px',
+        "font-family:'JetBrains Mono',monospace",
+        'padding:2px 8px','border-radius:10px','margin-right:6px',
+        active
+          ? 'background:rgba(251,146,60,0.2);color:#fb923c;border:1px solid rgba(251,146,60,0.4)'
+          : 'background:rgba(255,255,255,0.04);color:#8b949e;border:1px solid #30363d'
+      ].join(';');
+      chip.textContent = fmtLabels[k] + ' · ' + f.bytes + 'B';
+      statsEl.appendChild(chip);
+    });
+
+    // Show blocks
+    if (animate) {
+      allBlocks.forEach(function(el, i) {
+        setTimeout(function() {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, i * 90);
+      });
+    } else {
+      allBlocks.forEach(function(el) {
+        el.style.transition = 'none';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+      });
+    }
+  }
+
+  // ── Format tab buttons ───────────────────────────────────────────
+  function syncTabButtons(activeFmt) {
+    document.querySelectorAll('.s9-fmt-btn').forEach(function(btn) {
+      const isActive = btn.getAttribute('data-fmt') === activeFmt;
+      btn.style.background = isActive ? 'var(--accent)' : 'var(--accent-dim)';
+      btn.style.color      = isActive ? '#0d1117'       : 'var(--accent)';
+    });
+  }
+
+  document.querySelectorAll('.s9-fmt-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      currentFmt = this.getAttribute('data-fmt');
+      syncTabButtons(currentFmt);
+      drawFormat(currentFmt, false);
+    });
+  });
+
+  document.getElementById('btn-animate-encode').addEventListener('click', function() {
+    drawFormat(currentFmt, true);
+  });
+
+  // ── Codec size bars ──────────────────────────────────────────────
   const codecs = [
-    {name:'JSON',    size:1.0,  color:'#f87171'},
-    {name:'Thrift',  size:0.35, color:'#fbbf24'},
-    {name:'Protobuf',size:0.30, color:'#fb923c'},
-    {name:'Avro',    size:0.28, color:'#4ade80'},
+    {name:'JSON',    size:1.0,  color:'#f87171', bytes:34},
+    {name:'Thrift',  size:0.79, color:'#fbbf24', bytes:27},
+    {name:'Protobuf',size:0.35, color:'#fb923c', bytes:12},
+    {name:'Avro',    size:0.24, color:'#4ade80', bytes:8},
   ];
 
   function renderCodecBars() {
     const container = document.getElementById('codec-bars');
-    // Clear children via DOM
     while (container.firstChild) container.removeChild(container.firstChild);
     codecs.forEach(function(c) {
       const wrap = document.createElement('div');
       wrap.className = 'metric-bar-wrap';
-
       const label = document.createElement('div');
       label.className = 'metric-label';
       const nameSpan = document.createElement('span');
       nameSpan.textContent = c.name;
       const valSpan = document.createElement('span');
       valSpan.style.color = c.color;
-      valSpan.textContent = Math.round(c.size * 100) + '% of JSON size';
+      valSpan.textContent = c.bytes + ' bytes';
       label.appendChild(nameSpan);
       label.appendChild(valSpan);
-
       const track = document.createElement('div');
       track.className = 'metric-track';
       const fill = document.createElement('div');
       fill.className = 'metric-fill';
       fill.id = 'codec-bar-' + c.name;
-      fill.style.background = c.color;
-      fill.style.width = '100%';
+      fill.style.cssText = 'background:' + c.color + ';width:100%;';
       track.appendChild(fill);
-
       wrap.appendChild(label);
       wrap.appendChild(track);
       container.appendChild(wrap);
     });
   }
 
+  // ── Compat grid ──────────────────────────────────────────────────
   const writerVersions = ['W:v1','W:v2','W:v3','W:v4'];
   const readerVersions = ['R:v1','R:v2','R:v3','R:v4'];
 
   function buildCompatGrid(mode) {
     const grid = document.getElementById('compat-grid');
     while (grid.firstChild) grid.removeChild(grid.firstChild);
-
     function makeCell(cls, text) {
       const c = document.createElement('div');
       c.className = 'compat-cell ' + cls;
       c.textContent = text;
       return c;
     }
-
     grid.appendChild(makeCell('header', ''));
     writerVersions.forEach(function(wv) { grid.appendChild(makeCell('header', wv)); });
-
     readerVersions.forEach(function(rv, ri) {
       grid.appendChild(makeCell('header', rv));
       writerVersions.forEach(function(wv, ci) {
-        let ok = ri === ci;
-        let extra = '';
-        if (mode === 'forward') { ok = ri <= ci; if (ok && ri < ci) extra = ' highlight'; }
-        else if (mode === 'backward') { ok = ri >= ci; if (ok && ri > ci) extra = ' highlight'; }
-        grid.appendChild(makeCell((ok ? 'ok' : 'fail') + extra, ok ? 'checked' : 'fail'));
+        let ok = ri === ci, extra = '';
+        if (mode === 'forward')  { ok = ri <= ci; if (ok && ri < ci) extra = ' highlight'; }
+        if (mode === 'backward') { ok = ri >= ci; if (ok && ri > ci) extra = ' highlight'; }
+        grid.appendChild(makeCell((ok ? 'ok' : 'fail') + extra, ok ? '✓' : '×'));
       });
     });
   }
 
+  // ── Init ─────────────────────────────────────────────────────────
   observeOnce(document.getElementById('s9-card'), function() {
+    syncTabButtons('json');
+    drawFormat('json', false);
     renderCodecBars();
     buildCompatGrid('none');
     codecs.forEach(function(c) {
-      anime({ targets: '#codec-bar-' + c.name, scaleX: [0, c.size], duration: 700, delay: 100, easing: 'easeOutExpo', transformOrigin: 'left center' });
+      anime({ targets: '#codec-bar-' + c.name, scaleX: [0, c.size], duration: 700, delay: 150, easing: 'easeOutExpo', transformOrigin: 'left center' });
     });
   });
 

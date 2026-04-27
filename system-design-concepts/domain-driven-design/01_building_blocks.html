@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDD Building Blocks — Domain-Driven Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-card-hover: #1c2330;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #4ade80;
+      --accent-dim: rgba(74,222,128,0.15);
+      --blue: #60a5fa;
+      --orange: #fb923c;
+      --red: #f87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+    }
+    #progress-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent);
+      transform: scaleX(0); transform-origin: left center;
+      z-index: 2000;
+    }
+    #navbar {
+      position: fixed; top: 3px; left: 0; right: 0;
+      background: rgba(13,17,23,0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 0;
+      height: 48px; z-index: 999;
+      overflow-x: auto;
+    }
+    #navbar .nav-brand {
+      font-weight: 700; color: var(--accent);
+      font-size: 13px; white-space: nowrap;
+      margin-right: 1.5rem;
+    }
+    #navbar a {
+      color: var(--text-muted); text-decoration: none;
+      font-size: 12px; padding: 0 10px; height: 48px;
+      display: flex; align-items: center; white-space: nowrap;
+      transition: color 0.2s;
+    }
+    #navbar a:hover { color: var(--accent); }
+    #navbar a.back-link {
+      color: var(--accent);
+      font-weight: 600;
+      border-right: 1px solid var(--border);
+      margin-right: 10px;
+      padding-right: 16px;
+    }
+    #navbar a.back-link:hover {
+      color: var(--text);
+      background: rgba(74,222,128,0.08);
+    }
+    #navbar .chapter-pager {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin-right: 12px;
+      padding-right: 14px;
+      border-right: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+    #navbar .chapter-nav-chip,
+    #navbar .chapter-nav-chip.disabled,
+    #navbar .chapter-nav-chip.current {
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+    }
+    #navbar .chapter-nav-chip {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    #navbar .chapter-nav-chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    #navbar .chapter-nav-chip.current {
+      justify-content: center;
+      text-align: center;
+      background: rgba(255,255,255,0.06);
+    }
+    #navbar .chapter-nav-chip.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    #navbar .chapter-nav-chip .nav-kicker {
+      color: var(--text-muted);
+      font-size: 9px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #navbar .chapter-nav-chip .nav-title {
+      font-size: 11px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+    #navbar .chapter-nav-chip .nav-arrow {
+      color: var(--accent);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+    main { padding: 80px 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+    .concept-section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 72px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .concept-section.visible { opacity: 1; transform: translateY(0); }
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .section-num { color: var(--accent); font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+    .section-title { color: var(--text); font-weight: 600; font-size: 14px; }
+    .section-desc { color: var(--text-muted); font-size: 12px; }
+    .header-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(74,222,128,0.25); }
+    .btn.danger { border-color: var(--red); color: var(--red); background: rgba(248,113,113,0.1); }
+    .btn.danger:hover { background: rgba(248,113,113,0.2); }
+    .btn.info { border-color: var(--blue); color: var(--blue); background: rgba(96,165,250,0.1); }
+    .btn.info:hover { background: rgba(96,165,250,0.2); }
+    .diagram-area {
+      padding: 20px;
+      min-height: 200px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .diagram-area svg { width: 100%; overflow: visible; }
+    .insight-panel {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-left: 3px solid var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-page-nav {
+      margin: 2.5rem 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .chapter-nav-link,
+    .chapter-nav-disabled,
+    .chapter-nav-current {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      min-height: 62px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.03);
+    }
+    .chapter-nav-link {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .chapter-nav-link:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .chapter-nav-link.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-link .nav-kicker,
+    .chapter-nav-disabled .nav-kicker,
+    .chapter-nav-current .nav-kicker {
+      color: var(--text-muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .chapter-nav-link .nav-title,
+    .chapter-nav-disabled .nav-title,
+    .chapter-nav-current .nav-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .chapter-nav-link .nav-arrow,
+    .chapter-nav-disabled .nav-arrow {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+    .chapter-nav-disabled {
+      opacity: 0.38;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+    .chapter-nav-disabled.next {
+      text-align: right;
+      align-items: flex-end;
+    }
+    .chapter-nav-current {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background: rgba(255,255,255,0.05);
+    }
+    @media (max-width: 760px) {
+      .chapter-page-nav {
+        grid-template-columns: 1fr;
+      }
+      .chapter-nav-link.next,
+      .chapter-nav-disabled.next {
+        text-align: left;
+        align-items: flex-start;
+      }
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+    body.sidebar-open { overflow: hidden; }
+    #sidebar-toggle {
+      position: fixed;
+      top: 60px;
+      left: 16px;
+      z-index: 1001;
+      border: 1px solid var(--border);
+      background: rgba(22,27,34,0.92);
+      color: var(--accent);
+      border-radius: 14px;
+      width: 46px;
+      height: 46px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.2s, background 0.2s, color 0.2s;
+    }
+    #sidebar-toggle:hover {
+      transform: translateY(-1px);
+      background: rgba(28,35,48,0.98);
+      color: var(--text);
+    }
+    #sidebar-toggle .hamburger-line {
+      width: 18px;
+      height: 2px;
+      border-radius: 999px;
+      background: currentColor;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(1) {
+      transform: translateY(6px) rotate(45deg);
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(2) {
+      opacity: 0;
+    }
+    body.sidebar-open #sidebar-toggle .hamburger-line:nth-child(3) {
+      transform: translateY(-6px) rotate(-45deg);
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap; border: 0;
+    }
+    #sidebar-overlay {
+      position: fixed; inset: 0;
+      background: rgba(6,10,16,0.12);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.22s ease;
+      z-index: 1001;
+    }
+    #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+    #sidebar-drawer {
+      position: fixed; top: 0; left: 0;
+      width: min(340px, 86vw); height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0) 18%), #0f141b;
+      border-right: 1px solid var(--border);
+      box-shadow: 24px 0 50px rgba(0,0,0,0.35);
+      padding: 22px 18px 24px;
+      transform: translateX(-102%);
+      transition: transform 0.24s ease;
+      z-index: 1002;
+      overflow-y: auto;
+    }
+    #sidebar-drawer.open { transform: translateX(0); }
+    .drawer-top {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+      margin-bottom: 18px;
+    }
+    .drawer-title { display: flex; flex-direction: column; gap: 3px; }
+    .drawer-kicker {
+      color: var(--accent);
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .drawer-heading { color: var(--text); font-size: 16px; font-weight: 700; }
+    .drawer-close {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 999px;
+      width: 34px; height: 34px;
+      cursor: pointer;
+      font-size: 18px; line-height: 1;
+    }
+    .drawer-close:hover { color: var(--text); border-color: var(--accent); }
+    .drawer-index-link {
+      display: block;
+      text-decoration: none;
+      color: var(--accent);
+      background: var(--accent-dim);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+    }
+    .drawer-index-link strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .drawer-index-link span { color: var(--text-muted); font-size: 12px; }
+    .drawer-nav { display: flex; flex-direction: column; gap: 16px; }
+    .drawer-group {
+      border: 1px solid rgba(48,54,61,0.9);
+      border-radius: 14px;
+      background: rgba(22,27,34,0.75);
+      overflow: hidden;
+    }
+    .drawer-group.current {
+      border-color: rgba(255,255,255,0.24);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .drawer-group-header {
+      display: flex; align-items: stretch; gap: 10px;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid rgba(48,54,61,0.8);
+      background: rgba(255,255,255,0.02);
+    }
+    .drawer-group-title { flex: 1; min-width: 0; }
+    .drawer-group-header .eyebrow {
+      display: block; color: var(--text-muted);
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-group-header .name { color: var(--text); font-size: 14px; font-weight: 600; }
+    .drawer-group-header .name a { color: inherit; text-decoration: none; }
+    .drawer-group-header .name a:hover { color: var(--accent); }
+    .drawer-group-toggle {
+      flex: 0 0 auto; align-self: center;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text-muted); cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+    .drawer-group-toggle:hover {
+      background: rgba(255,255,255,0.08); color: var(--text);
+      transform: translateY(-1px);
+    }
+    .drawer-group-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .drawer-chevron {
+      width: 10px; height: 10px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-chevron { transform: rotate(-45deg) translate(-1px,1px); }
+    .drawer-subnav {
+      list-style: none; padding: 8px;
+      max-height: 640px; opacity: 1;
+      overflow: hidden;
+      transition: max-height 0.22s ease, opacity 0.18s ease, padding 0.18s ease;
+    }
+    .drawer-group.collapsed .drawer-subnav {
+      max-height: 0; opacity: 0;
+      padding-top: 0; padding-bottom: 0;
+    }
+    .drawer-subnav li + li { margin-top: 4px; }
+    .drawer-subnav a {
+      display: flex; align-items: baseline; gap: 10px;
+      padding: 10px 10px; border-radius: 10px;
+      color: var(--text-muted); text-decoration: none;
+      transition: background 0.18s, color 0.18s;
+    }
+    .drawer-subnav a:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .drawer-subnav .sub-num {
+      color: var(--accent); font-size: 11px;
+      min-width: 42px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .drawer-subnav .sub-label { font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<button id="sidebar-toggle" type="button" aria-controls="sidebar-drawer" aria-expanded="false" aria-label="Toggle navigation menu">
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="hamburger-line"></span>
+  <span class="sr-only">Toggle navigation menu</span>
+</button>
+<div id="sidebar-overlay"></div>
+<aside id="sidebar-drawer" aria-hidden="true">
+  <div class="drawer-top">
+    <div class="drawer-title">
+      <span class="drawer-kicker">Navigation</span>
+      <span class="drawer-heading">01 Building Blocks</span>
+    </div>
+    <button class="drawer-close" id="sidebar-close" type="button" aria-label="Close menu">×</button>
+  </div>
+  <a class="drawer-index-link" href="00_index.html">
+    <strong>DDD Index</strong>
+    <span>Return to the domain-driven design constellation map</span>
+  </a>
+  <nav class="drawer-nav" aria-label="DDD outline">
+    <div class="drawer-group current">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="01_building_blocks.html">01 Building Blocks</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="true" aria-label="Collapse chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="#s-11"><span class="sub-num">1.1</span><span class="sub-label">Messy Systems</span></a></li>
+        <li><a href="#s-12"><span class="sub-num">1.2</span><span class="sub-label">Entities</span></a></li>
+        <li><a href="#s-13"><span class="sub-num">1.3</span><span class="sub-label">Value Objects</span></a></li>
+        <li><a href="#s-14"><span class="sub-num">1.4</span><span class="sub-label">Entity vs Value Object</span></a></li>
+        <li><a href="#s-15"><span class="sub-num">1.5</span><span class="sub-label">Aggregates</span></a></li>
+        <li><a href="#s-16"><span class="sub-num">1.6</span><span class="sub-label">Aggregate Rules</span></a></li>
+        <li><a href="#s-17"><span class="sub-num">1.7</span><span class="sub-label">Domain Services</span></a></li>
+        <li><a href="#s-18"><span class="sub-num">1.8</span><span class="sub-label">Factories</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="02_bounded_contexts.html">02 Bounded Contexts</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="02_bounded_contexts.html#s-21"><span class="sub-num">2.1</span><span class="sub-label">Context Boundaries</span></a></li>
+        <li><a href="02_bounded_contexts.html#s-22"><span class="sub-num">2.2</span><span class="sub-label">Ubiquitous Language</span></a></li>
+        <li><a href="02_bounded_contexts.html#s-23"><span class="sub-num">2.3</span><span class="sub-label">Context Map</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="03_domain_events.html">03 Domain Events</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="03_domain_events.html#s-31"><span class="sub-num">3.1</span><span class="sub-label">Event Storming</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="04_repositories_and_specs.html">04 Repositories & Specs</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="04_repositories_and_specs.html#s-41"><span class="sub-num">4.1</span><span class="sub-label">Repository Pattern</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="05_strategic_patterns.html">05 Strategic Patterns</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="05_strategic_patterns.html#s-51"><span class="sub-num">5.1</span><span class="sub-label">Anti-Corruption Layer</span></a></li>
+      </ul>
+    </div>
+    <div class="drawer-group collapsed">
+      <div class="drawer-group-header">
+        <div class="drawer-group-title">
+          <span class="eyebrow">Chapter</span>
+          <span class="name"><a href="06_ddd_in_practice.html">06 DDD in Practice</a></span>
+        </div>
+        <button class="drawer-group-toggle" type="button" aria-expanded="false" aria-label="Expand chapter section">
+          <span class="drawer-chevron" aria-hidden="true"></span>
+          <span class="sr-only">Toggle chapter section</span>
+        </button>
+      </div>
+      <ul class="drawer-subnav">
+        <li><a href="06_ddd_in_practice.html#s-61"><span class="sub-num">6.1</span><span class="sub-label">Practical DDD</span></a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<nav id="navbar">
+  <span class="nav-brand">01 — DDD Building Blocks</span>
+  <a class="back-link" href="00_index.html">← DDD Index</a>
+  <div class="chapter-pager" aria-label="Chapter navigation">
+    <span class="chapter-nav-chip disabled" aria-hidden="true">
+      <span class="nav-kicker">Previous</span>
+      <span class="nav-title">Previous<span class="nav-arrow">←</span></span>
+    </span>
+    <span class="chapter-nav-chip current" aria-current="page">
+      <span class="nav-kicker">Current</span>
+      <span class="nav-title">01</span>
+    </span>
+    <a class="chapter-nav-chip" href="02_bounded_contexts.html" aria-label="Next Chapter: Bounded Contexts" title="Next Chapter: Bounded Contexts">
+      <span class="nav-kicker">Next</span>
+      <span class="nav-title">Bounded Contexts<span class="nav-arrow" aria-hidden="true">→</span></span>
+    </a>
+  </div>
+  <a href="#s-11">Messy Systems</a>
+  <a href="#s-12">Entities</a>
+  <a href="#s-13">Value Objects</a>
+  <a href="#s-14">Entity vs VO</a>
+  <a href="#s-15">Aggregates</a>
+  <a href="#s-16">Aggregate Rules</a>
+  <a href="#s-17">Domain Services</a>
+  <a href="#s-18">Factories</a>
+</nav>
+
+<main>
+  <div style="margin-bottom:2rem;">
+    <h1 style="font-size:1.8rem;font-weight:700;color:var(--accent);">DDD Building Blocks</h1>
+    <p style="color:var(--text-muted);margin-top:4px;">Chapter 1 — Entities, Value Objects, Aggregates, Domain Services, and Factories</p>
+  </div>
+
+  <!-- s-11 The Problem: Messy Systems -->
+  <section id="s-11" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.1 —</span>
+          <span class="section-title">The Problem: Messy Systems</span>
+          <span class="section-desc">Ripple effects and tangled dependencies</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s11()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-11" viewBox="0 0 700 260" style="width:100%;height:260px;"></svg>
+      </div>
+      <p class="insight-panel">A change in one place ripples through 10 others. DDD gives us tools to model domains cleanly — separating concerns so each piece has a single, well-defined responsibility.</p>
+    </div>
+  </section>
+
+  <!-- s-12 Entities -->
+  <section id="s-12" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.2 —</span>
+          <span class="section-title">Entities (Reference Objects)</span>
+          <span class="section-desc">Identity is the defining characteristic</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s12()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-12" viewBox="0 0 700 240" style="width:100%;height:240px;"></svg>
+      </div>
+      <p class="insight-panel">Entities are defined by identity, not attributes. Two entities can share all properties yet remain distinct. Changing an entity's address does not change what entity it is.</p>
+    </div>
+  </section>
+
+  <!-- s-13 Value Objects -->
+  <section id="s-13" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.3 —</span>
+          <span class="section-title">Value Objects (Immutable Descriptors)</span>
+          <span class="section-desc">Equality by attributes, never mutate — replace</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s13()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-13" viewBox="0 0 700 240" style="width:100%;height:240px;"></svg>
+      </div>
+      <p class="insight-panel">Value Objects have no identity. They are equal if their attributes match. Never mutate — replace. A Money object of $50 USD equals another $50 USD anywhere in the system.</p>
+    </div>
+  </section>
+
+  <!-- s-14 Entity vs Value Object -->
+  <section id="s-14" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.4 —</span>
+          <span class="section-title">Entity vs Value Object Comparison</span>
+          <span class="section-desc">Which one do you need?</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn info" id="s14-toggle-btn" onclick="window.toggle_s14()">Show Address Value Object</button>
+          <button class="btn" onclick="window.animate_s14()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-14" viewBox="0 0 700 260" style="width:100%;height:260px;"></svg>
+      </div>
+      <p class="insight-panel">If you care about WHICH thing it is, it is an Entity. If you care only about WHAT it is, it is a Value Object. Use identity as your guide.</p>
+    </div>
+  </section>
+
+  <!-- s-15 Aggregates -->
+  <section id="s-15" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.5 —</span>
+          <span class="section-title">Aggregates</span>
+          <span class="section-desc">Clusters with a root enforcing invariants</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s15()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-15" viewBox="0 0 700 280" style="width:100%;height:280px;"></svg>
+      </div>
+      <p class="insight-panel">An Aggregate is a cluster with a root. All external references point only to the root. Invariants are enforced within — no external code can bypass the root to mutate children.</p>
+    </div>
+  </section>
+
+  <!-- s-16 Aggregate Rules -->
+  <section id="s-16" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.6 —</span>
+          <span class="section-title">Aggregate Rules &amp; Boundaries</span>
+          <span class="section-desc">Cross-aggregate communication by ID only</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn info" onclick="window.placeOrder_s16()">Place Order</button>
+          <button class="btn" onclick="window.animate_s16()">Reset</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-16" viewBox="0 0 700 280" style="width:100%;height:280px;"></svg>
+      </div>
+      <p class="insight-panel">Cross-aggregate communication happens by ID, never by object reference. One transaction per aggregate. Eventual consistency ties aggregates together asynchronously.</p>
+    </div>
+  </section>
+
+  <!-- s-17 Domain Services -->
+  <section id="s-17" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.7 —</span>
+          <span class="section-title">Domain Services</span>
+          <span class="section-desc">Logic that belongs to no single entity</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s17()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-17" viewBox="0 0 700 260" style="width:100%;height:260px;"></svg>
+      </div>
+      <p class="insight-panel">Domain Services contain logic that does not naturally belong to any single Entity or Value Object. The service is stateless; the domain objects carry the data.</p>
+    </div>
+  </section>
+
+  <!-- s-18 Factories -->
+  <section id="s-18" class="concept-section">
+    <div class="section-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="section-num">1.8 —</span>
+          <span class="section-title">Factories</span>
+          <span class="section-desc">Encapsulate complex construction</span>
+        </div>
+        <div class="header-controls">
+          <button class="btn" onclick="window.animate_s18()">Replay</button>
+        </div>
+      </div>
+      <div class="diagram-area">
+        <svg id="svg-18" viewBox="0 0 700 260" style="width:100%;height:260px;"></svg>
+      </div>
+      <p class="insight-panel">Factories encapsulate the complexity of creating Aggregates and Value Objects, keeping construction logic out of client code and ensuring aggregates are always valid on creation.</p>
+    </div>
+  </section>
+
+  <div class="chapter-page-nav">
+    <div class="chapter-nav-disabled" aria-hidden="true">
+      <span class="nav-kicker">Previous Chapter</span>
+      <span class="nav-title">— No Previous —</span>
+    </div>
+    <div class="chapter-nav-current">
+      <span class="nav-kicker">Current Chapter</span>
+      <span class="nav-title">01 — Building Blocks</span>
+    </div>
+    <a class="chapter-nav-link next" href="02_bounded_contexts.html" aria-label="Next Chapter: Bounded Contexts">
+      <span class="nav-kicker">Next Chapter</span>
+      <span class="nav-title">Bounded Contexts</span>
+      <span class="nav-arrow" aria-hidden="true">→</span>
+    </a>
+  </div>
+
+</main>
+
+<footer>Domain-Driven Design — Based on Eric Evans' DDD</footer>
+
+<script>
+  // ── Scroll progress bar (scaleX, never style.width) ──────────────────────
+  window.addEventListener('scroll', () => {
+    const total = document.body.scrollHeight - window.innerHeight;
+    if (total <= 0) return;
+    document.getElementById('progress-bar').style.transform = 'scaleX(' + window.scrollY / total + ')';
+  });
+
+  // ── IntersectionObserver ──────────────────────────────────────────────────
+  window.sectionObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        const fnName = 'animate_' + entry.target.id.replace('-', '');
+        const fn = window[fnName];
+        if (typeof fn === 'function') fn();
+        window.sectionObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.25 });
+
+  document.querySelectorAll('.concept-section').forEach(el => window.sectionObserver.observe(el));
+
+  // ── SVG helpers ───────────────────────────────────────────────────────────
+  function clearSVG(svgEl) {
+    svgEl._gen = (svgEl._gen || 0) + 1;
+    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+  }
+
+  function mkEl(tag) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag);
+  }
+
+  function svgRect(svgEl, x, y, w, h, opts) {
+    opts = opts || {};
+    const r = mkEl('rect');
+    r.setAttribute('x', x - w / 2);
+    r.setAttribute('y', y - h / 2);
+    r.setAttribute('width', w);
+    r.setAttribute('height', h);
+    r.setAttribute('rx', opts.rx !== undefined ? opts.rx : 6);
+    r.setAttribute('fill', opts.fill || '#161b22');
+    r.setAttribute('stroke', opts.stroke || '#30363d');
+    r.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.dasharray) r.setAttribute('stroke-dasharray', opts.dasharray);
+    if (opts.id) r.id = opts.id;
+    svgEl.appendChild(r);
+    return r;
+  }
+
+  function svgText(svgEl, x, y, content, opts) {
+    opts = opts || {};
+    const t = mkEl('text');
+    t.setAttribute('x', x);
+    t.setAttribute('y', y);
+    t.setAttribute('text-anchor', opts.anchor || 'middle');
+    t.setAttribute('fill', opts.fill || '#e6edf3');
+    t.setAttribute('font-size', opts.size || 11);
+    if (opts.mono) t.setAttribute('font-family', 'JetBrains Mono, monospace');
+    if (opts.weight) t.setAttribute('font-weight', opts.weight);
+    t.textContent = content;
+    svgEl.appendChild(t);
+    return t;
+  }
+
+  function svgLine(svgEl, x1, y1, x2, y2, opts) {
+    opts = opts || {};
+    const l = mkEl('line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', opts.stroke || '#30363d');
+    l.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.dasharray) l.setAttribute('stroke-dasharray', opts.dasharray);
+    if (opts.id) l.id = opts.id;
+    svgEl.appendChild(l);
+    return l;
+  }
+
+  function addArrowMarker(svgEl, id, color) {
+    const defs = mkEl('defs');
+    const marker = mkEl('marker');
+    marker.setAttribute('id', id);
+    marker.setAttribute('markerWidth', '8');
+    marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('refX', '6');
+    marker.setAttribute('refY', '3');
+    marker.setAttribute('orient', 'auto');
+    const poly = mkEl('polygon');
+    poly.setAttribute('points', '0 0, 8 3, 0 6');
+    poly.setAttribute('fill', color || '#30363d');
+    marker.appendChild(poly);
+    defs.appendChild(marker);
+    svgEl.prepend(defs);
+  }
+
+  function drawBox(svgEl, x, y, w, h, label, sub, opts) {
+    opts = opts || {};
+    const g = mkEl('g');
+    if (opts.opacity !== undefined) g.style.opacity = opts.opacity;
+    const r = mkEl('rect');
+    r.setAttribute('x', x - w / 2);
+    r.setAttribute('y', y - h / 2);
+    r.setAttribute('width', w);
+    r.setAttribute('height', h);
+    r.setAttribute('rx', opts.rx !== undefined ? opts.rx : 6);
+    r.setAttribute('fill', opts.fill || '#161b22');
+    r.setAttribute('stroke', opts.stroke || '#30363d');
+    r.setAttribute('stroke-width', opts.sw || 1.5);
+    if (opts.dasharray) r.setAttribute('stroke-dasharray', opts.dasharray);
+    if (opts.id) r.id = opts.id;
+    g.appendChild(r);
+
+    const t = mkEl('text');
+    t.setAttribute('x', x);
+    t.setAttribute('y', sub ? y - 4 : y + 4);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('fill', opts.labelFill || '#e6edf3');
+    t.setAttribute('font-size', opts.labelSize || 11);
+    t.setAttribute('font-family', 'JetBrains Mono, monospace');
+    t.textContent = label;
+    g.appendChild(t);
+
+    if (sub) {
+      const s = mkEl('text');
+      s.setAttribute('x', x);
+      s.setAttribute('y', y + 11);
+      s.setAttribute('text-anchor', 'middle');
+      s.setAttribute('fill', '#8b949e');
+      s.setAttribute('font-size', 9);
+      s.textContent = sub;
+      g.appendChild(s);
+    }
+    svgEl.appendChild(g);
+    return { g, r };
+  }
+
+  function animatePacket(svgEl, x1, y1, x2, y2, color, size, duration, onComplete) {
+    if (!svgEl._gen) svgEl._gen = 0;
+    const capturedGen = svgEl._gen;
+    const circle = mkEl('circle');
+    circle.setAttribute('r', size || 6);
+    circle.setAttribute('fill', color);
+    circle.setAttribute('cx', x1);
+    circle.setAttribute('cy', y1);
+    svgEl.appendChild(circle);
+    anime({
+      targets: circle,
+      cx: x2, cy: y2,
+      duration: duration || 700,
+      easing: 'easeInOutSine',
+      complete: () => {
+        if (svgEl.contains(circle)) svgEl.removeChild(circle);
+        if (svgEl._gen === capturedGen && onComplete) onComplete();
+      }
+    });
+  }
+
+  function pulseEl(el, color) {
+    if (!el) return;
+    const orig = el.getAttribute('stroke') || '#30363d';
+    anime({ targets: el, stroke: [color || '#4ade80', orig], duration: 700, easing: 'easeOutQuad' });
+  }
+
+  // ── s-11: The Problem — Messy Systems ─────────────────────────────────────
+  window.animate_s11 = function() {
+    const svg = document.getElementById('svg-11');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    // Phase 1: chaotic boxes with crossing red arrows
+    const chaosBoxes = [
+      { id: 'c0', x: 80,  y: 60  }, { id: 'c1', x: 220, y: 50  },
+      { id: 'c2', x: 360, y: 80  }, { id: 'c3', x: 500, y: 55  },
+      { id: 'c4', x: 620, y: 75  }, { id: 'c5', x: 90,  y: 170 },
+      { id: 'c6', x: 230, y: 190 }, { id: 'c7', x: 370, y: 175 },
+      { id: 'c8', x: 510, y: 185 }, { id: 'c9', x: 620, y: 165 },
+      { id: 'c10',x: 150, y: 125 }, { id: 'c11',x: 450, y: 130 },
+    ];
+
+    const chaosConnections = [
+      [0,4],[1,7],[2,9],[3,5],[4,6],[5,8],[6,3],[7,0],[8,1],[9,10],[10,4],[11,5],[0,8],[2,6]
+    ];
+
+    const chaosGs = [];
+    chaosBoxes.forEach((b, i) => {
+      const { g } = drawBox(svg, b.x, b.y, 72, 32, 'Module ' + (i+1), '', { opacity: 0, stroke: '#f87171' });
+      chaosGs.push(g);
+      anime({ targets: g, opacity: [0, 1], delay: i * 60, duration: 300, easing: 'easeOutQuad' });
+    });
+
+    // Draw crossing red lines
+    const lineGs = [];
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      chaosConnections.forEach(([a, b]) => {
+        const ba = chaosBoxes[a], bb = chaosBoxes[b];
+        const l = svgLine(svg, ba.x, ba.y, bb.x, bb.y, { stroke: '#f87171', sw: 1, dasharray: '4 3' });
+        l.style.opacity = '0';
+        lineGs.push(l);
+        anime({ targets: l, opacity: [0, 0.7], duration: 400, easing: 'easeOutQuad' });
+      });
+    }, chaosBoxes.length * 60 + 350);
+
+    // Phase 2: animate red pulse along connections
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      animatePacket(svg, chaosBoxes[0].x, chaosBoxes[0].y, chaosBoxes[4].x, chaosBoxes[4].y, '#f87171', 5, 500, () => {
+        if (svg._gen !== gen) return;
+        animatePacket(svg, chaosBoxes[4].x, chaosBoxes[4].y, chaosBoxes[6].x, chaosBoxes[6].y, '#f87171', 5, 500, () => {
+          if (svg._gen !== gen) return;
+          animatePacket(svg, chaosBoxes[6].x, chaosBoxes[6].y, chaosBoxes[3].x, chaosBoxes[3].y, '#f87171', 5, 500, () => {
+            if (svg._gen !== gen) return;
+            animatePacket(svg, chaosBoxes[3].x, chaosBoxes[3].y, chaosBoxes[5].x, chaosBoxes[5].y, '#f87171', 5, 500);
+          });
+        });
+      });
+    }, chaosBoxes.length * 60 + 900);
+
+    // Phase 3: fade out chaos, show organized layout
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      // Fade out chaos
+      chaosGs.forEach(g => anime({ targets: g, opacity: [1, 0], duration: 400, easing: 'easeInQuad' }));
+      lineGs.forEach(l => anime({ targets: l, opacity: [0.7, 0], duration: 400, easing: 'easeInQuad' }));
+
+      setTimeout(() => {
+        if (svg._gen !== gen) return;
+        // Organized: 3 domain boxes with clean separation
+        const domains = [
+          { label: 'Order Domain',    x: 120, y: 130, color: '#4ade80' },
+          { label: 'Customer Domain', x: 350, y: 130, color: '#60a5fa' },
+          { label: 'Payment Domain',  x: 580, y: 130, color: '#fb923c' },
+        ];
+        domains.forEach((d, i) => {
+          const { g, r } = drawBox(svg, d.x, d.y, 160, 100, d.label, 'clean boundary', { opacity: 0, stroke: d.color, rx: 10 });
+          anime({ targets: g, opacity: [0, 1], delay: i * 250, duration: 500, easing: 'easeOutBack' });
+          // sub-items inside each
+          setTimeout(() => {
+            if (svg._gen !== gen) return;
+            const subLabels = [
+              ['Order', 'LineItem', 'Price'],
+              ['Customer', 'Address', 'Contact'],
+              ['Payment', 'Invoice', 'Ledger'],
+            ];
+            subLabels[i].forEach((lbl, j) => {
+              const sy = d.y - 20 + j * 22;
+              const { g: sg } = drawBox(svg, d.x, sy, 100, 17, lbl, '', { opacity: 0, stroke: '#30363d', rx: 3, labelSize: 9 });
+              anime({ targets: sg, opacity: [0, 1], delay: j * 120, duration: 300, easing: 'easeOutQuad' });
+            });
+          }, i * 250 + 600);
+        });
+        // Clean arrows between domains
+        setTimeout(() => {
+          if (svg._gen !== gen) return;
+          addArrowMarker(svg, 's11-arrow', '#4ade80');
+          [[200, 130, 270, 130], [430, 130, 500, 130]].forEach(([x1, y1, x2, y2]) => {
+            const l = svgLine(svg, x1, y1, x2, y2, { stroke: '#4ade80', sw: 1.5 });
+            l.setAttribute('marker-end', 'url(#s11-arrow)');
+            l.style.opacity = '0';
+            anime({ targets: l, opacity: [0, 1], duration: 500, delay: 500 });
+          });
+        }, 1200);
+      }, 500);
+    }, chaosBoxes.length * 60 + 2800);
+  };
+
+  // ── s-12: Entities ────────────────────────────────────────────────────────
+  window.animate_s12 = function() {
+    const svg = document.getElementById('svg-12');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    svgText(svg, 350, 22, 'Two Customers — same name, different identity', { fill: '#8b949e', size: 11 });
+
+    // Customer C-001
+    const c1g = mkEl('g');
+    c1g.style.opacity = '0';
+    svg.appendChild(c1g);
+
+    const c1bg = mkEl('rect');
+    c1bg.setAttribute('x', 80); c1bg.setAttribute('y', 40);
+    c1bg.setAttribute('width', 210); c1bg.setAttribute('height', 150);
+    c1bg.setAttribute('rx', 8); c1bg.setAttribute('fill', '#161b22');
+    c1bg.setAttribute('stroke', '#30363d'); c1bg.setAttribute('stroke-width', '1.5');
+    c1g.appendChild(c1bg);
+
+    const c1Title = mkEl('text');
+    c1Title.setAttribute('x', 185); c1Title.setAttribute('y', 62);
+    c1Title.setAttribute('text-anchor', 'middle');
+    c1Title.setAttribute('fill', '#e6edf3'); c1Title.setAttribute('font-size', '12');
+    c1Title.setAttribute('font-weight', '600');
+    c1Title.textContent = 'Customer';
+    c1g.appendChild(c1Title);
+
+    const idLabel1 = mkEl('text');
+    idLabel1.setAttribute('x', 185); idLabel1.setAttribute('y', 84);
+    idLabel1.setAttribute('text-anchor', 'middle');
+    idLabel1.setAttribute('fill', '#4ade80'); idLabel1.setAttribute('font-size', '11');
+    idLabel1.setAttribute('font-family', 'JetBrains Mono, monospace');
+    idLabel1.setAttribute('id', 's12-id1');
+    idLabel1.textContent = 'id: C-001';
+    c1g.appendChild(idLabel1);
+
+    [['name:', 'Alice', 100], ['email:', 'alice@co.com', 122], ['address:', '123 Main St', 144], ['plan:', 'premium', 166]].forEach(([k, v, ty]) => {
+      const row = mkEl('text');
+      row.setAttribute('x', 110); row.setAttribute('y', ty);
+      row.setAttribute('fill', '#8b949e'); row.setAttribute('font-size', '10');
+      row.setAttribute('font-family', 'JetBrains Mono, monospace');
+      row.textContent = k;
+      c1g.appendChild(row);
+      const val = mkEl('text');
+      val.setAttribute('x', 155); val.setAttribute('y', ty);
+      val.setAttribute('fill', '#e6edf3'); val.setAttribute('font-size', '10');
+      val.setAttribute('font-family', 'JetBrains Mono, monospace');
+      if (k === 'address:') { val.id = 's12-addr1'; }
+      val.textContent = v;
+      c1g.appendChild(val);
+    });
+
+    anime({ targets: c1g, opacity: [0, 1], duration: 500, easing: 'easeOutQuad' });
+
+    // Customer C-002
+    const c2g = mkEl('g');
+    c2g.style.opacity = '0';
+    svg.appendChild(c2g);
+
+    const c2bg = mkEl('rect');
+    c2bg.setAttribute('x', 410); c2bg.setAttribute('y', 40);
+    c2bg.setAttribute('width', 210); c2bg.setAttribute('height', 150);
+    c2bg.setAttribute('rx', 8); c2bg.setAttribute('fill', '#161b22');
+    c2bg.setAttribute('stroke', '#30363d'); c2bg.setAttribute('stroke-width', '1.5');
+    c2g.appendChild(c2bg);
+
+    const c2Title = mkEl('text');
+    c2Title.setAttribute('x', 515); c2Title.setAttribute('y', 62);
+    c2Title.setAttribute('text-anchor', 'middle');
+    c2Title.setAttribute('fill', '#e6edf3'); c2Title.setAttribute('font-size', '12');
+    c2Title.setAttribute('font-weight', '600');
+    c2Title.textContent = 'Customer';
+    c2g.appendChild(c2Title);
+
+    const idLabel2 = mkEl('text');
+    idLabel2.setAttribute('x', 515); idLabel2.setAttribute('y', 84);
+    idLabel2.setAttribute('text-anchor', 'middle');
+    idLabel2.setAttribute('fill', '#4ade80'); idLabel2.setAttribute('font-size', '11');
+    idLabel2.setAttribute('font-family', 'JetBrains Mono, monospace');
+    idLabel2.textContent = 'id: C-002';
+    c2g.appendChild(idLabel2);
+
+    [['name:', 'Alice', 100], ['email:', 'alice@co.com', 122], ['address:', '456 Oak Ave', 144], ['plan:', 'basic', 166]].forEach(([k, v, ty]) => {
+      const row = mkEl('text');
+      row.setAttribute('x', 440); row.setAttribute('y', ty);
+      row.setAttribute('fill', '#8b949e'); row.setAttribute('font-size', '10');
+      row.setAttribute('font-family', 'JetBrains Mono, monospace');
+      row.textContent = k;
+      c2g.appendChild(row);
+      const val = mkEl('text');
+      val.setAttribute('x', 485); val.setAttribute('y', ty);
+      val.setAttribute('fill', '#e6edf3'); val.setAttribute('font-size', '10');
+      val.setAttribute('font-family', 'JetBrains Mono, monospace');
+      val.textContent = v;
+      c2g.appendChild(val);
+    });
+
+    anime({ targets: c2g, opacity: [0, 1], delay: 300, duration: 500, easing: 'easeOutQuad' });
+
+    // Annotation: identity marker highlight
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      const id1el = document.getElementById('s12-id1');
+      if (id1el) {
+        anime({ targets: id1el, opacity: [1, 0.2, 1, 0.2, 1], duration: 1200, easing: 'linear' });
+      }
+
+      // Show "address changes on C-001 only" animation
+      setTimeout(() => {
+        if (svg._gen !== gen) return;
+        const addrEl = document.getElementById('s12-addr1');
+        if (addrEl) {
+          anime({ targets: addrEl, opacity: [1, 0.1, 1], duration: 600, easing: 'easeInOutSine',
+            complete: () => {
+              if (svg._gen !== gen) return;
+              if (addrEl) addrEl.textContent = '789 New Rd';
+              anime({ targets: addrEl, opacity: [0, 1], duration: 400 });
+              // Pulse C-001 border
+              const c1rect = c1bg;
+              anime({ targets: c1rect, stroke: ['#4ade80', '#30363d'], duration: 800, easing: 'easeOutQuad' });
+
+              // Badge: C-002 unchanged
+              setTimeout(() => {
+                if (svg._gen !== gen) return;
+                const badge = mkEl('text');
+                badge.setAttribute('x', 515); badge.setAttribute('y', 210);
+                badge.setAttribute('text-anchor', 'middle');
+                badge.setAttribute('fill', '#4ade80'); badge.setAttribute('font-size', '10');
+                badge.style.opacity = '0';
+                badge.textContent = 'C-002 unchanged';
+                svg.appendChild(badge);
+                anime({ targets: badge, opacity: [0, 1], duration: 400 });
+              }, 500);
+            }
+          });
+        }
+      }, 1500);
+    }, 1000);
+  };
+
+  // ── s-13: Value Objects ───────────────────────────────────────────────────
+  window.animate_s13 = function() {
+    const svg = document.getElementById('svg-13');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    svgText(svg, 350, 22, 'Money { amount: 50, currency: "USD" }  — equality by value', { fill: '#8b949e', size: 11 });
+
+    function drawMoney(x, y, label, color, id) {
+      const g = mkEl('g');
+      g.style.opacity = '0';
+      if (id) g.id = id;
+      svg.appendChild(g);
+
+      const bg = mkEl('rect');
+      bg.setAttribute('x', x - 90); bg.setAttribute('y', y - 40);
+      bg.setAttribute('width', 180); bg.setAttribute('height', 80);
+      bg.setAttribute('rx', 8); bg.setAttribute('fill', '#161b22');
+      bg.setAttribute('stroke', color || '#30363d'); bg.setAttribute('stroke-width', '1.5');
+      g.appendChild(bg);
+
+      const t = mkEl('text');
+      t.setAttribute('x', x); t.setAttribute('y', y - 18);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('fill', '#e6edf3'); t.setAttribute('font-size', '12');
+      t.setAttribute('font-weight', '600');
+      t.textContent = label;
+      g.appendChild(t);
+
+      [['amount:', '50'], ['currency:', '"USD"']].forEach(([k, v], i) => {
+        const ky = mkEl('text');
+        ky.setAttribute('x', x - 60); ky.setAttribute('y', y + 4 + i * 18);
+        ky.setAttribute('fill', '#8b949e'); ky.setAttribute('font-size', '10');
+        ky.setAttribute('font-family', 'JetBrains Mono, monospace');
+        ky.textContent = k;
+        g.appendChild(ky);
+        const vy = mkEl('text');
+        vy.setAttribute('x', x + 20); vy.setAttribute('y', y + 4 + i * 18);
+        vy.setAttribute('fill', '#e6edf3'); vy.setAttribute('font-size', '10');
+        vy.setAttribute('font-family', 'JetBrains Mono, monospace');
+        vy.textContent = v;
+        g.appendChild(vy);
+      });
+
+      return g;
+    }
+
+    const m1 = drawMoney(175, 100, 'Money A', '#4ade80', 's13-m1');
+    const m2 = drawMoney(525, 100, 'Money B', '#4ade80', 's13-m2');
+
+    anime({ targets: m1, opacity: [0, 1], duration: 500, easing: 'easeOutQuad' });
+    anime({ targets: m2, opacity: [0, 1], delay: 300, duration: 500, easing: 'easeOutQuad' });
+
+    // Equality check mark
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      const eqLabel = svgText(svg, 350, 100, '==', { fill: '#4ade80', size: 24, weight: '700', mono: true });
+      eqLabel.style.opacity = '0';
+      anime({ targets: eqLabel, opacity: [0, 1], duration: 400 });
+
+      const eqSub = svgText(svg, 350, 120, '(equal by value)', { fill: '#4ade80', size: 10 });
+      eqSub.style.opacity = '0';
+      anime({ targets: eqSub, opacity: [0, 1], delay: 200, duration: 400 });
+
+      // Phase 2: show replace vs mutate
+      setTimeout(() => {
+        if (svg._gen !== gen) return;
+
+        // Section divider
+        svgLine(svg, 40, 155, 660, 155, { stroke: '#30363d', sw: 1, dasharray: '4 4' });
+        svgText(svg, 200, 172, 'Correct: Replace (create new)', { fill: '#4ade80', size: 10 });
+        svgText(svg, 520, 172, 'Wrong: Mutate (change in place)', { fill: '#f87171', size: 10 });
+
+        // Replace: old fades out, new fades in
+        const oldM = drawMoney(175, 215, 'Money { 50, USD }', '#30363d', null);
+        anime({ targets: oldM, opacity: [0, 1], duration: 300 });
+        setTimeout(() => {
+          if (svg._gen !== gen) return;
+          anime({ targets: oldM, opacity: [1, 0.1], duration: 500 });
+          const newM = drawMoney(175, 215, 'Money { 75, USD }', '#4ade80', null);
+          anime({ targets: newM, opacity: [0, 1], delay: 400, duration: 500 });
+          const newBadge = svgText(svg, 175, 256, 'new object', { fill: '#4ade80', size: 9 });
+          newBadge.style.opacity = '0';
+          anime({ targets: newBadge, opacity: [0, 1], delay: 800, duration: 300 });
+        }, 600);
+
+        // Mutate: red X
+        const mutM = drawMoney(525, 215, 'Money { 50, USD }', '#f87171', null);
+        anime({ targets: mutM, opacity: [0, 1], duration: 300 });
+        setTimeout(() => {
+          if (svg._gen !== gen) return;
+          const xMark = svgText(svg, 525, 208, '✕', { fill: '#f87171', size: 28, weight: '700' });
+          xMark.style.opacity = '0';
+          anime({ targets: xMark, opacity: [0, 1], duration: 400 });
+          const badLabel = svgText(svg, 525, 256, 'mutated in place', { fill: '#f87171', size: 9 });
+          badLabel.style.opacity = '0';
+          anime({ targets: badLabel, opacity: [0, 1], delay: 300, duration: 300 });
+        }, 600);
+      }, 1800);
+    }, 1000);
+  };
+
+  // ── s-14: Entity vs Value Object Comparison ───────────────────────────────
+  let s14_mode = 'entity'; // 'entity' | 'valueobject'
+
+  window.toggle_s14 = function() {
+    const btn = document.getElementById('s14-toggle-btn');
+    if (s14_mode === 'entity') {
+      s14_mode = 'valueobject';
+      if (btn) btn.textContent = 'Show Customer Entity';
+    } else {
+      s14_mode = 'entity';
+      if (btn) btn.textContent = 'Show Address Value Object';
+    }
+    window.animate_s14();
+  };
+
+  window.animate_s14 = function() {
+    const svg = document.getElementById('svg-14');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    // Side-by-side cards
+    const entityColor = '#4ade80';
+    const voColor = '#60a5fa';
+
+    // Left: Entity card
+    const entG = mkEl('g');
+    entG.style.opacity = '0';
+    svg.appendChild(entG);
+    const entBg = mkEl('rect');
+    entBg.setAttribute('x', 30); entBg.setAttribute('y', 20);
+    entBg.setAttribute('width', 270); entBg.setAttribute('height', 220);
+    entBg.setAttribute('rx', 10); entBg.setAttribute('fill', '#161b22');
+    entBg.setAttribute('stroke', entityColor); entBg.setAttribute('stroke-width', '1.5');
+    entG.appendChild(entBg);
+
+    const entHdr = mkEl('text');
+    entHdr.setAttribute('x', 165); entHdr.setAttribute('y', 44);
+    entHdr.setAttribute('text-anchor', 'middle');
+    entHdr.setAttribute('fill', entityColor); entHdr.setAttribute('font-size', '13');
+    entHdr.setAttribute('font-weight', '700');
+    entHdr.textContent = 'Entity';
+    entG.appendChild(entHdr);
+
+    const entExamples = ['Customer', 'Order', 'Product'];
+    entExamples.forEach((ex, i) => {
+      const t = mkEl('text');
+      t.setAttribute('x', 165); t.setAttribute('y', 68 + i * 20);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('fill', '#e6edf3'); t.setAttribute('font-size', '11');
+      t.setAttribute('font-family', 'JetBrains Mono, monospace');
+      t.textContent = ex;
+      entG.appendChild(t);
+    });
+
+    // Comparison table inside entity card
+    const entRows = [['Identity?', 'YES'], ['Mutable?', 'YES'], ['Tracked?', 'YES'], ['Equality', 'by ID']];
+    entRows.forEach(([k, v], i) => {
+      const ky = mkEl('text');
+      ky.setAttribute('x', 60); ky.setAttribute('y', 140 + i * 22);
+      ky.setAttribute('fill', '#8b949e'); ky.setAttribute('font-size', '10');
+      ky.setAttribute('font-family', 'JetBrains Mono, monospace');
+      ky.textContent = k;
+      entG.appendChild(ky);
+      const vl = mkEl('text');
+      vl.setAttribute('x', 240); vl.setAttribute('y', 140 + i * 22);
+      vl.setAttribute('text-anchor', 'end');
+      vl.setAttribute('fill', entityColor); vl.setAttribute('font-size', '10');
+      vl.setAttribute('font-family', 'JetBrains Mono, monospace');
+      vl.textContent = v;
+      entG.appendChild(vl);
+    });
+
+    anime({ targets: entG, opacity: [0, 1], duration: 500, easing: 'easeOutQuad' });
+
+    // Right: Value Object card
+    const voG = mkEl('g');
+    voG.style.opacity = '0';
+    svg.appendChild(voG);
+    const voBg = mkEl('rect');
+    voBg.setAttribute('x', 400); voBg.setAttribute('y', 20);
+    voBg.setAttribute('width', 270); voBg.setAttribute('height', 220);
+    voBg.setAttribute('rx', 10); voBg.setAttribute('fill', '#161b22');
+    voBg.setAttribute('stroke', voColor); voBg.setAttribute('stroke-width', '1.5');
+    voG.appendChild(voBg);
+
+    const voHdr = mkEl('text');
+    voHdr.setAttribute('x', 535); voHdr.setAttribute('y', 44);
+    voHdr.setAttribute('text-anchor', 'middle');
+    voHdr.setAttribute('fill', voColor); voHdr.setAttribute('font-size', '13');
+    voHdr.setAttribute('font-weight', '700');
+    voHdr.textContent = 'Value Object';
+    voG.appendChild(voHdr);
+
+    const voExamples = ['Money', 'Address', 'Color'];
+    voExamples.forEach((ex, i) => {
+      const t = mkEl('text');
+      t.setAttribute('x', 535); t.setAttribute('y', 68 + i * 20);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('fill', '#e6edf3'); t.setAttribute('font-size', '11');
+      t.setAttribute('font-family', 'JetBrains Mono, monospace');
+      t.textContent = ex;
+      voG.appendChild(t);
+    });
+
+    const voRows = [['Identity?', 'NO'], ['Mutable?', 'NO'], ['Tracked?', 'NO'], ['Equality', 'by value']];
+    voRows.forEach(([k, v], i) => {
+      const ky = mkEl('text');
+      ky.setAttribute('x', 430); ky.setAttribute('y', 140 + i * 22);
+      ky.setAttribute('fill', '#8b949e'); ky.setAttribute('font-size', '10');
+      ky.setAttribute('font-family', 'JetBrains Mono, monospace');
+      ky.textContent = k;
+      voG.appendChild(ky);
+      const vl = mkEl('text');
+      vl.setAttribute('x', 610); vl.setAttribute('y', 140 + i * 22);
+      vl.setAttribute('text-anchor', 'end');
+      vl.setAttribute('fill', voColor); vl.setAttribute('font-size', '10');
+      vl.setAttribute('font-family', 'JetBrains Mono, monospace');
+      vl.textContent = v;
+      voG.appendChild(vl);
+    });
+
+    anime({ targets: voG, opacity: [0, 1], delay: 300, duration: 500, easing: 'easeOutQuad' });
+
+    // Interactive toggle: highlight the selected mode's diagram in the center
+    const centerX = 350;
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      const isEntity = s14_mode === 'entity';
+      const detailG = mkEl('g');
+      detailG.style.opacity = '0';
+      svg.appendChild(detailG);
+
+      const detLabel = mkEl('text');
+      detLabel.setAttribute('x', centerX); detLabel.setAttribute('y', 252);
+      detLabel.setAttribute('text-anchor', 'middle');
+      detLabel.setAttribute('fill', isEntity ? entityColor : voColor); detLabel.setAttribute('font-size', '11');
+      detLabel.setAttribute('font-weight', '600');
+      detLabel.textContent = isEntity
+        ? 'Customer entity: C-001 != C-002 even if all fields match'
+        : 'Address VO: { street:"Main" } == { street:"Main" } always';
+      detailG.appendChild(detLabel);
+
+      svg.appendChild(detailG);
+      anime({ targets: detailG, opacity: [0, 1], duration: 400 });
+
+      // Highlight active card
+      anime({ targets: isEntity ? entBg : voBg, strokeWidth: [1.5, 3, 1.5], duration: 800, easing: 'easeInOutSine' });
+    }, 800);
+  };
+
+  // ── s-15: Aggregates ──────────────────────────────────────────────────────
+  window.animate_s15 = function() {
+    const svg = document.getElementById('svg-15');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    // Outer boundary (dashed red rectangle)
+    const boundary = mkEl('rect');
+    boundary.setAttribute('x', 55); boundary.setAttribute('y', 30);
+    boundary.setAttribute('width', 460); boundary.setAttribute('height', 230);
+    boundary.setAttribute('rx', 12); boundary.setAttribute('fill', 'rgba(248,113,113,0.04)');
+    boundary.setAttribute('stroke', '#f87171'); boundary.setAttribute('stroke-width', '1.5');
+    boundary.setAttribute('stroke-dasharray', '8 4');
+    boundary.style.opacity = '0';
+    svg.appendChild(boundary);
+    anime({ targets: boundary, opacity: [0, 1], duration: 500 });
+
+    const boundLabel = svgText(svg, 285, 24, 'Aggregate Boundary', { fill: '#f87171', size: 10 });
+    boundLabel.style.opacity = '0';
+    anime({ targets: boundLabel, opacity: [0, 1], delay: 200, duration: 400 });
+
+    // Root: Order (accent-colored)
+    const { g: rootG, r: rootR } = drawBox(svg, 285, 90, 140, 50, 'Order (root)', 'id: ORD-007', { opacity: 0, stroke: '#4ade80', sw: 2 });
+    rootR.id = 's15-root';
+    anime({ targets: rootG, opacity: [0, 1], delay: 400, duration: 500, easing: 'easeOutBack' });
+
+    // Total label
+    const totalLabel = mkEl('text');
+    totalLabel.setAttribute('x', 285); totalLabel.setAttribute('y', 120);
+    totalLabel.setAttribute('text-anchor', 'middle');
+    totalLabel.setAttribute('fill', '#8b949e'); totalLabel.setAttribute('font-size', '9');
+    totalLabel.setAttribute('font-family', 'JetBrains Mono, monospace');
+    totalLabel.id = 's15-total';
+    totalLabel.textContent = 'total: $120.00';
+    svg.appendChild(totalLabel);
+
+    // Children: OrderLineItems
+    const children = [
+      { label: 'LineItem #1', sub: 'qty:2 price:$30', x: 130, y: 185, id: 's15-li1', color: '#60a5fa' },
+      { label: 'LineItem #2', sub: 'qty:1 price:$60', x: 290, y: 185, id: 's15-li2', color: '#60a5fa' },
+    ];
+    const vos = [
+      { label: 'Price VO', sub: '$120 USD', x: 440, y: 145, id: 's15-pvo', color: '#4ade80' },
+      { label: 'Address VO', sub: '123 Main St', x: 440, y: 210, id: 's15-avo', color: '#4ade80' },
+    ];
+
+    children.forEach((c, i) => {
+      const { g, r } = drawBox(svg, c.x, c.y, 130, 40, c.label, c.sub, { opacity: 0, stroke: c.color });
+      r.id = c.id;
+      anime({ targets: g, opacity: [0, 1], delay: 700 + i * 200, duration: 500, easing: 'easeOutQuad' });
+      // Line from root to child
+      setTimeout(() => {
+        if (svg._gen !== gen) return;
+        svgLine(svg, 285, 115, c.x, c.y - 20, { stroke: c.color, sw: 1, dasharray: '4 3' });
+      }, 900 + i * 200);
+    });
+
+    vos.forEach((v, i) => {
+      const { g, r } = drawBox(svg, v.x, v.y, 120, 34, v.label, v.sub, { opacity: 0, stroke: v.color });
+      r.id = v.id;
+      anime({ targets: g, opacity: [0, 1], delay: 1100 + i * 200, duration: 500, easing: 'easeOutQuad' });
+      setTimeout(() => {
+        if (svg._gen !== gen) return;
+        svgLine(svg, 355, 90, v.x - 60, v.y, { stroke: v.color, sw: 1, dasharray: '3 3' });
+      }, 1300 + i * 200);
+    });
+
+    // External entity arrow points only to root
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      addArrowMarker(svg, 's15-arrow-ext', '#fb923c');
+      const extLine = svgLine(svg, 590, 90, 525, 90, { stroke: '#fb923c', sw: 1.5 });
+      extLine.setAttribute('marker-end', 'url(#s15-arrow-ext)');
+      extLine.style.opacity = '0';
+      anime({ targets: extLine, opacity: [0, 1], duration: 400 });
+      const extLabel = svgText(svg, 620, 90, 'External', { fill: '#fb923c', size: 10 });
+      extLabel.style.opacity = '0';
+      anime({ targets: extLabel, opacity: [0, 1], delay: 200, duration: 400 });
+      const extLabel2 = svgText(svg, 620, 104, 'Ref', { fill: '#fb923c', size: 10 });
+      extLabel2.style.opacity = '0';
+      anime({ targets: extLabel2, opacity: [0, 1], delay: 300, duration: 400 });
+    }, 1500);
+
+    // Animate: quantity change on LineItem → aggregate root recalculates total
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      const li1el = document.getElementById('s15-li1');
+      const rootEl = document.getElementById('s15-root');
+      const totalEl = document.getElementById('s15-total');
+      if (li1el) pulseEl(li1el, '#fb923c');
+      animatePacket(svg, 130, 165, 285, 115, '#fb923c', 5, 600, () => {
+        if (svg._gen !== gen) return;
+        if (rootEl) pulseEl(rootEl, '#4ade80');
+        if (totalEl) {
+          anime({ targets: totalEl, opacity: [1, 0.2, 1], duration: 500, easing: 'easeInOutSine',
+            complete: () => { if (totalEl) totalEl.textContent = 'total: $150.00'; }
+          });
+        }
+      });
+    }, 2200);
+  };
+
+  // ── s-16: Aggregate Rules & Boundaries ────────────────────────────────────
+  let s16_step = 0;
+
+  window.animate_s16 = function() {
+    const svg = document.getElementById('svg-16');
+    clearSVG(svg);
+    s16_step = 0;
+    const gen = svg._gen;
+
+    // Order aggregate
+    const orderBg = mkEl('rect');
+    orderBg.setAttribute('x', 40); orderBg.setAttribute('y', 20);
+    orderBg.setAttribute('width', 270); orderBg.setAttribute('height', 240);
+    orderBg.setAttribute('rx', 12); orderBg.setAttribute('fill', 'rgba(74,222,128,0.04)');
+    orderBg.setAttribute('stroke', '#4ade80'); orderBg.setAttribute('stroke-width', '1.5');
+    orderBg.setAttribute('stroke-dasharray', '8 4');
+    orderBg.style.opacity = '0';
+    svg.appendChild(orderBg);
+    anime({ targets: orderBg, opacity: [0, 1], duration: 400 });
+
+    svgText(svg, 175, 14, 'Order Aggregate', { fill: '#4ade80', size: 10 }).style.opacity = '0';
+    const ordLabel = svg.lastChild;
+    anime({ targets: ordLabel, opacity: [0, 1], delay: 200, duration: 300 });
+
+    drawBox(svg, 175, 80, 150, 44, 'Order (root)', 'id: ORD-007', { opacity: 0, stroke: '#4ade80', sw: 2 });
+    const ordRootG = svg.lastChild;
+    anime({ targets: ordRootG, opacity: [0, 1], delay: 300, duration: 400 });
+
+    drawBox(svg, 120, 165, 120, 36, 'LineItem #1', 'qty:2 $30', { opacity: 0, stroke: '#60a5fa' });
+    const li1G = svg.lastChild;
+    anime({ targets: li1G, opacity: [0, 1], delay: 500, duration: 400 });
+
+    drawBox(svg, 230, 165, 120, 36, 'LineItem #2', 'qty:1 $60', { opacity: 0, stroke: '#60a5fa' });
+    const li2G = svg.lastChild;
+    anime({ targets: li2G, opacity: [0, 1], delay: 650, duration: 400 });
+
+    // customerId (value, not a reference)
+    const custIdEl = mkEl('text');
+    custIdEl.setAttribute('x', 175); custIdEl.setAttribute('y', 232);
+    custIdEl.setAttribute('text-anchor', 'middle');
+    custIdEl.setAttribute('fill', '#fb923c'); custIdEl.setAttribute('font-size', '10');
+    custIdEl.setAttribute('font-family', 'JetBrains Mono, monospace');
+    custIdEl.textContent = 'customerId: "C-001"  (ID only)';
+    custIdEl.style.opacity = '0';
+    svg.appendChild(custIdEl);
+    anime({ targets: custIdEl, opacity: [0, 1], delay: 800, duration: 400 });
+
+    // Customer aggregate
+    const custBg = mkEl('rect');
+    custBg.setAttribute('x', 390); custBg.setAttribute('y', 20);
+    custBg.setAttribute('width', 270); custBg.setAttribute('height', 240);
+    custBg.setAttribute('rx', 12); custBg.setAttribute('fill', 'rgba(96,165,250,0.04)');
+    custBg.setAttribute('stroke', '#60a5fa'); custBg.setAttribute('stroke-width', '1.5');
+    custBg.setAttribute('stroke-dasharray', '8 4');
+    custBg.style.opacity = '0';
+    svg.appendChild(custBg);
+    anime({ targets: custBg, opacity: [0, 1], delay: 200, duration: 400 });
+
+    svgText(svg, 525, 14, 'Customer Aggregate', { fill: '#60a5fa', size: 10 }).style.opacity = '0';
+    const custLabel = svg.lastChild;
+    anime({ targets: custLabel, opacity: [0, 1], delay: 300, duration: 300 });
+
+    drawBox(svg, 525, 80, 150, 44, 'Customer (root)', 'id: C-001', { opacity: 0, stroke: '#60a5fa', sw: 2 });
+    const custRootG = svg.lastChild;
+    custRootG.id = 's16-cust-root';
+    anime({ targets: custRootG, opacity: [0, 1], delay: 400, duration: 400 });
+
+    drawBox(svg, 475, 175, 120, 36, 'Address VO', '123 Main St', { opacity: 0, stroke: '#4ade80' });
+    const addrG = svg.lastChild;
+    anime({ targets: addrG, opacity: [0, 1], delay: 650, duration: 400 });
+
+    drawBox(svg, 575, 175, 120, 36, 'ContactInfo', 'alice@co.com', { opacity: 0, stroke: '#30363d' });
+    const contactG = svg.lastChild;
+    anime({ targets: contactG, opacity: [0, 1], delay: 800, duration: 400 });
+
+    // Status label
+    const statusEl = mkEl('text');
+    statusEl.setAttribute('x', 350); statusEl.setAttribute('y', 268);
+    statusEl.setAttribute('text-anchor', 'middle');
+    statusEl.setAttribute('fill', '#8b949e'); statusEl.setAttribute('font-size', '10');
+    statusEl.setAttribute('font-family', 'JetBrains Mono, monospace');
+    statusEl.id = 's16-status';
+    statusEl.textContent = 'Click "Place Order" to walk through the steps';
+    svg.appendChild(statusEl);
+  };
+
+  const s16_steps = [
+    { msg: 'Step 1: Validate stock availability...', color: '#fb923c' },
+    { msg: 'Step 2: Validate payment method...', color: '#fb923c' },
+    { msg: 'Step 3: Confirm order — Order.confirm()...', color: '#4ade80' },
+    { msg: 'Step 4: Emit OrderPlaced event (async)', color: '#60a5fa' },
+    { msg: 'Done. Customer aggregate unchanged.', color: '#4ade80' },
+  ];
+
+  window.placeOrder_s16 = function() {
+    const svg = document.getElementById('svg-16');
+    const statusEl = document.getElementById('s16-status');
+    if (!statusEl || s16_step >= s16_steps.length) { s16_step = 0; }
+    if (s16_step >= s16_steps.length) return;
+    const step = s16_steps[s16_step];
+    if (statusEl) {
+      statusEl.textContent = step.msg;
+      statusEl.setAttribute('fill', step.color);
+      anime({ targets: statusEl, opacity: [0.3, 1], duration: 400 });
+    }
+    if (s16_step === 0 || s16_step === 1) {
+      animatePacket(svg, 175, 80, 175, 150, step.color, 5, 500);
+    } else if (s16_step === 2) {
+      animatePacket(svg, 175, 80, 350, 80, '#4ade80', 6, 600, () => {
+        const rootRect = svg.querySelector('[stroke="#4ade80"]');
+        if (rootRect) pulseEl(rootRect, '#4ade80');
+      });
+    } else if (s16_step === 3) {
+      animatePacket(svg, 250, 80, 390, 14, '#60a5fa', 6, 700);
+    } else if (s16_step === 4) {
+      const custRoot = document.getElementById('s16-cust-root');
+      if (custRoot) {
+        const r = custRoot.querySelector('rect') || custRoot;
+        anime({ targets: r, strokeWidth: [1.5, 3, 1.5], duration: 800 });
+      }
+    }
+    s16_step++;
+  };
+
+  // ── s-17: Domain Services ─────────────────────────────────────────────────
+  window.animate_s17 = function() {
+    const svg = document.getElementById('svg-17');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    svgText(svg, 350, 18, 'CurrencyExchangeService — stateless, no aggregate home', { fill: '#8b949e', size: 11 });
+
+    // Input: Money USD
+    drawBox(svg, 100, 120, 140, 50, 'Money', '{ 100, USD }', { opacity: 0, stroke: '#4ade80' });
+    const inG = svg.lastChild;
+    anime({ targets: inG, opacity: [0, 1], duration: 400, easing: 'easeOutQuad' });
+
+    // Service box (center, no aggregate boundary)
+    drawBox(svg, 350, 120, 170, 60, 'CurrencyExchange', 'Service', { opacity: 0, stroke: '#fb923c', sw: 2, rx: 10 });
+    const svcG = svg.lastChild;
+    svcG.id = 's17-svc';
+    const svcRect = svcG.querySelector ? svcG.querySelector('rect') : svcG.firstChild;
+    anime({ targets: svcG, opacity: [0, 1], delay: 300, duration: 400, easing: 'easeOutBack' });
+
+    // Output: Money EUR
+    drawBox(svg, 600, 120, 140, 50, 'Money', '{ 92, EUR }', { opacity: 0, stroke: '#60a5fa' });
+    const outG = svg.lastChild;
+    outG.id = 's17-out';
+    anime({ targets: outG, opacity: [0, 1], delay: 600, duration: 400, easing: 'easeOutQuad' });
+
+    // Animate the conversion flow
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      animatePacket(svg, 170, 120, 265, 120, '#4ade80', 7, 600, () => {
+        if (svg._gen !== gen) return;
+        pulseEl(svcRect, '#fb923c');
+        setTimeout(() => {
+          if (svg._gen !== gen) return;
+          animatePacket(svg, 435, 120, 530, 120, '#60a5fa', 7, 600, () => {
+            if (svg._gen !== gen) return;
+            const outEl = document.getElementById('s17-out');
+            if (outEl && outEl.firstChild) pulseEl(outEl.firstChild, '#60a5fa');
+          });
+        }, 700);
+      });
+    }, 1000);
+
+    // Contrast: anemic vs rich model
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      svgLine(svg, 40, 175, 660, 175, { stroke: '#30363d', sw: 1, dasharray: '4 4' });
+
+      svgText(svg, 175, 195, 'Anemic (anti-pattern)', { fill: '#f87171', size: 10 });
+      svgText(svg, 175, 212, 'Service has all logic', { fill: '#8b949e', size: 9 });
+      svgText(svg, 175, 228, 'Entities are data bags', { fill: '#8b949e', size: 9 });
+
+      svgText(svg, 525, 195, 'Rich (preferred)', { fill: '#4ade80', size: 10 });
+      svgText(svg, 525, 212, 'Entities have behavior', { fill: '#8b949e', size: 9 });
+      svgText(svg, 525, 228, 'Service only for cross-entity logic', { fill: '#8b949e', size: 9 });
+
+      const xMark = svgText(svg, 295, 210, '✕', { fill: '#f87171', size: 22, weight: '700' });
+      xMark.style.opacity = '0';
+      anime({ targets: xMark, opacity: [0, 1], duration: 400 });
+
+      const checkMark = svgText(svg, 640, 210, '✓', { fill: '#4ade80', size: 22, weight: '700' });
+      checkMark.style.opacity = '0';
+      anime({ targets: checkMark, opacity: [0, 1], delay: 200, duration: 400 });
+    }, 2200);
+  };
+
+  // ── s-18: Factories ───────────────────────────────────────────────────────
+  window.animate_s18 = function() {
+    const svg = document.getElementById('svg-18');
+    clearSVG(svg);
+    const gen = svg._gen;
+
+    svgText(svg, 350, 18, 'OrderFactory — builds a valid aggregate, piece by piece', { fill: '#8b949e', size: 11 });
+
+    // Factory box
+    drawBox(svg, 350, 130, 180, 60, 'OrderFactory', '.create()', { opacity: 0, stroke: '#fb923c', sw: 2, rx: 10 });
+    const factG = svg.lastChild;
+    factG.id = 's18-factory';
+    anime({ targets: factG, opacity: [0, 1], duration: 400, easing: 'easeOutBack' });
+
+    // Input arrow: client request
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+      addArrowMarker(svg, 's18-arr-in', '#8b949e');
+      const arrIn = svgLine(svg, 80, 130, 260, 130, { stroke: '#8b949e', sw: 1.5 });
+      arrIn.setAttribute('marker-end', 'url(#s18-arr-in)');
+      arrIn.style.opacity = '0';
+      anime({ targets: arrIn, opacity: [0, 1], duration: 400 });
+      const clientLabel = svgText(svg, 80, 120, 'Client', { fill: '#8b949e', size: 11 });
+      clientLabel.style.opacity = '0';
+      anime({ targets: clientLabel, opacity: [0, 1], delay: 100, duration: 300 });
+      const reqLabel = svgText(svg, 170, 120, 'create(items, address)', { fill: '#8b949e', size: 9, mono: true });
+      reqLabel.style.opacity = '0';
+      anime({ targets: reqLabel, opacity: [0, 1], delay: 200, duration: 300 });
+    }, 500);
+
+    // Inside factory: build Order piece by piece
+    const parts = [
+      { label: 'Order root', sub: 'new ID assigned', dy: 0,  color: '#4ade80' },
+      { label: 'LineItems', sub: 'from request', dy: 50, color: '#60a5fa' },
+      { label: 'Address VO', sub: 'validated', dy: 100,color: '#4ade80' },
+    ];
+
+    parts.forEach((p, i) => {
+      setTimeout(() => {
+        if (svg._gen !== gen) return;
+        drawBox(svg, 350, 60 + p.dy, 130, 32, p.label, p.sub, { opacity: 0, stroke: p.color, rx: 4 });
+        const partG = svg.lastChild;
+        anime({ targets: partG, opacity: [0, 1], translateY: [10, 0], duration: 500, easing: 'easeOutBack' });
+      }, 900 + i * 500);
+    });
+
+    // After all parts built, hand complete aggregate to client
+    setTimeout(() => {
+      if (svg._gen !== gen) return;
+
+      // Complete aggregate box
+      drawBox(svg, 580, 130, 140, 60, 'Order (complete)', 'aggregate ready', { opacity: 0, stroke: '#4ade80', sw: 2, rx: 10 });
+      const aggG = svg.lastChild;
+      anime({ targets: aggG, opacity: [0, 1], duration: 500, easing: 'easeOutBack' });
+
+      addArrowMarker(svg, 's18-arr-out', '#4ade80');
+      const arrOut = svgLine(svg, 440, 130, 510, 130, { stroke: '#4ade80', sw: 1.5 });
+      arrOut.setAttribute('marker-end', 'url(#s18-arr-out)');
+      arrOut.style.opacity = '0';
+      anime({ targets: arrOut, opacity: [0, 1], delay: 300, duration: 400 });
+
+      const handLabel = svgText(svg, 475, 120, 'complete unit', { fill: '#4ade80', size: 9, mono: true });
+      handLabel.style.opacity = '0';
+      anime({ targets: handLabel, opacity: [0, 1], delay: 400, duration: 300 });
+
+      // Animate packet from factory to client
+      animatePacket(svg, 440, 130, 530, 130, '#4ade80', 7, 600);
+    }, 900 + parts.length * 500 + 300);
+  };
+
+  // ── Sidebar toggle ────────────────────────────────────────────────────────
+  (function() {
+    const body = document.body;
+    const toggle = document.getElementById('sidebar-toggle');
+    const overlay = document.getElementById('sidebar-overlay');
+    const drawer = document.getElementById('sidebar-drawer');
+    const closeBtn = document.getElementById('sidebar-close');
+
+    function openSidebar() {
+      body.classList.add('sidebar-open');
+      overlay.classList.add('open');
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+    function closeSidebar() {
+      body.classList.remove('sidebar-open');
+      overlay.classList.remove('open');
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle.addEventListener('click', function() {
+      body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
+    });
+    overlay.addEventListener('click', closeSidebar);
+    if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('.drawer-group-toggle').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const group = btn.closest('.drawer-group');
+        const isCollapsed = group.classList.toggle('collapsed');
+        btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      });
+    });
+
+    drawer.querySelectorAll('a[href^="#"]').forEach(function(a) {
+      a.addEventListener('click', closeSidebar);
+    });
+  })();
+</script>
+
+</body>
+</html>

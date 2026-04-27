@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bounded Contexts - Domain-Driven Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root { --bg:#0d1117; --bg-card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#f59e0b; --accent-dim:rgba(245,158,11,.16); --blue:#60a5fa; --red:#f87171; --violet:#a78bfa; --green:#4ade80; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; scroll-padding-top:72px; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; }
+    #progress { position:fixed; top:0; left:0; right:0; height:3px; background:var(--accent); transform:scaleX(0); transform-origin:left center; z-index:2000; }
+    #navbar { position:fixed; top:3px; left:0; right:0; height:48px; display:flex; gap:10px; align-items:center; overflow-x:auto; padding:0 14px; background:rgba(13,17,23,.92); border-bottom:1px solid var(--border); z-index:1200; }
+    #navbar .brand { color:var(--accent); font-weight:700; font-size:13px; white-space:nowrap; }
+    #navbar a { color:var(--muted); text-decoration:none; font-size:12px; white-space:nowrap; }
+    #navbar a:hover { color:var(--accent); }
+    main { max-width:1100px; margin:0 auto; padding:84px 18px 36px; }
+    .hero h1 { font-size:1.8rem; color:var(--accent); }
+    .hero p { color:var(--muted); font-size:13px; }
+    .concept-section { margin-top:20px; opacity:0; transform:translateY(16px); transition:opacity .45s, transform .45s; }
+    .concept-section.visible { opacity:1; transform:translateY(0); }
+    .section-card { border:1px solid var(--border); background:var(--bg-card); border-radius:10px; overflow:hidden; }
+    .card-header { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+    .header-left { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; }
+    .section-num { color:var(--accent); font:700 12px 'JetBrains Mono',monospace; }
+    .section-desc { color:var(--muted); font-size:12px; }
+    .btn { border:1px solid var(--accent); background:var(--accent-dim); color:var(--accent); border-radius:5px; padding:4px 10px; font:11px 'JetBrains Mono',monospace; cursor:pointer; }
+    .btn.alt { border-color:var(--blue); color:var(--blue); background:rgba(96,165,250,.12); }
+    .btn.warn { border-color:var(--red); color:var(--red); background:rgba(248,113,113,.12); }
+    .diagram-area { padding:14px; min-height:220px; display:flex; justify-content:center; align-items:center; }
+    .diagram-area svg { width:100%; overflow:visible; }
+    .insight-panel { border-top:1px solid var(--border); border-left:3px solid var(--accent); background:var(--accent-dim); padding:10px 14px; color:var(--muted); font-size:12px; }
+    footer { text-align:center; color:var(--muted); border-top:1px solid var(--border); margin-top:24px; padding:14px; font-size:12px; }
+  </style>
+</head>
+<body>
+<div id="progress"></div>
+<nav id="navbar">
+  <span class="brand">02 - Bounded Contexts</span>
+  <a href="00_index.html">DDD Index</a>
+  <a href="01_building_blocks.html">Prev</a>
+  <a href="03_domain_events.html">Next</a>
+  <a href="#s-21">2.1</a><a href="#s-22">2.2</a><a href="#s-23">2.3</a><a href="#s-24">2.4</a><a href="#s-25">2.5</a><a href="#s-26">2.6</a><a href="#s-27">2.7</a><a href="#s-28">2.8</a>
+</nav>
+<main>
+  <div class="hero">
+    <h1>Bounded Contexts and Language</h1>
+    <p>Chapter 2 - Ubiquitous language, context boundaries, context mapping, shared kernel, ACL, and published language.</p>
+  </div>
+
+  <section id="s-21" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.1 -</span><strong>Ubiquitous Language</strong><span class="section-desc">Business and code terms aligned</span></div><button class="btn" onclick="animate_s21()">Replay</button></div><div class="diagram-area"><svg id="svg-21" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Shared language removes translation bugs and aligns team reasoning.</p></div></section>
+  <section id="s-22" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.2 -</span><strong>One Language Everywhere Problem</strong><span class="section-desc">Overloaded terms in a monolith</span></div><button class="btn" onclick="animate_s22()">Replay</button></div><div class="diagram-area"><svg id="svg-22" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">A single model for all teams creates ambiguity and accidental breakage.</p></div></section>
+  <section id="s-23" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.3 -</span><strong>Bounded Contexts Defined</strong><span class="section-desc">Split by meaning and responsibility</span></div><button class="btn" onclick="animate_s23()">Replay</button></div><div class="diagram-area"><svg id="svg-23" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Each context has independent language and model boundaries.</p></div></section>
+  <section id="s-24" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.4 -</span><strong>Sales Context Deep Dive</strong><span class="section-desc">Quote, Order, LineItem, Pricing</span></div><button class="btn" onclick="animate_s24()">Replay</button></div><div class="diagram-area"><svg id="svg-24" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Inside a context, words are precise and behavior stays coherent.</p></div></section>
+  <section id="s-25" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.5 -</span><strong>Context Map</strong><span class="section-desc">Relationship types between contexts</span></div><div><button class="btn alt" onclick="mapMode='all';animate_s25()">All</button><button class="btn" onclick="mapMode='shared';animate_s25()">Shared</button><button class="btn" onclick="mapMode='supplier';animate_s25()">Supplier</button><button class="btn warn" onclick="mapMode='acl';animate_s25()">ACL</button></div></div><div class="diagram-area"><svg id="svg-25" viewBox="0 0 700 260" style="height:260px"></svg></div><p class="insight-panel">Context map patterns clarify integration contracts and responsibilities.</p></div></section>
+  <section id="s-26" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.6 -</span><strong>Shared Kernel</strong><span class="section-desc">Small jointly owned overlap</span></div><button class="btn" onclick="animate_s26()">Replay</button></div><div class="diagram-area"><svg id="svg-26" viewBox="0 0 700 230" style="height:230px"></svg></div><p class="insight-panel">Shared kernel must stay tiny and synchronized by both teams.</p></div></section>
+  <section id="s-27" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.7 -</span><strong>Anti-Corruption Layer</strong><span class="section-desc">Legacy to clean domain translation</span></div><button class="btn" onclick="animate_s27()">Replay</button></div><div class="diagram-area"><svg id="svg-27" viewBox="0 0 700 250" style="height:250px"></svg></div><p class="insight-panel">ACL prevents legacy concepts from polluting your core model.</p></div></section>
+  <section id="s-28" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">2.8 -</span><strong>Open Host Service and Published Language</strong><span class="section-desc">Stable public contract</span></div><button class="btn" onclick="animate_s28()">Replay</button></div><div class="diagram-area"><svg id="svg-28" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Published language lets new consumers connect without core redesign.</p></div></section>
+</main>
+<footer>Domain-Driven Design - Based on Eric Evans</footer>
+<script>
+  window.addEventListener('scroll', () => { const t = document.body.scrollHeight - window.innerHeight; if (t > 0) document.getElementById('progress').style.transform = 'scaleX(' + (window.scrollY / t) + ')'; });
+  const obs = new IntersectionObserver((entries) => { entries.forEach((e) => { if (!e.isIntersecting) return; e.target.classList.add('visible'); const fn = window['animate_' + e.target.id.replace('-', '')]; if (typeof fn === 'function') fn(); obs.unobserve(e.target); }); }, { threshold: 0.25 });
+  document.querySelectorAll('.concept-section').forEach((el) => obs.observe(el));
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (t) => document.createElementNS(NS, t);
+  function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+  function box(svg, x, y, w, h, title, sub, opts) { opts = opts || {}; const g = mk('g'); if (opts.opacity !== undefined) g.style.opacity = String(opts.opacity); const r = mk('rect'); r.setAttribute('x', x - w / 2); r.setAttribute('y', y - h / 2); r.setAttribute('width', w); r.setAttribute('height', h); r.setAttribute('rx', 8); r.setAttribute('fill', '#161b22'); r.setAttribute('stroke', opts.stroke || '#30363d'); r.setAttribute('stroke-width', opts.sw || 1.5); if (opts.dash) r.setAttribute('stroke-dasharray', opts.dash); g.appendChild(r); const t = mk('text'); t.setAttribute('x', x); t.setAttribute('y', sub ? y - 4 : y + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#e6edf3'); t.setAttribute('font-size', '11'); t.setAttribute('font-family', 'JetBrains Mono, monospace'); t.textContent = title; g.appendChild(t); if (sub) { const s = mk('text'); s.setAttribute('x', x); s.setAttribute('y', y + 11); s.setAttribute('text-anchor', 'middle'); s.setAttribute('fill', '#8b949e'); s.setAttribute('font-size', '9'); s.textContent = sub; g.appendChild(s); } svg.appendChild(g); return g; }
+  function line(svg, x1, y1, x2, y2, c, d) { const l = mk('line'); l.setAttribute('x1', x1); l.setAttribute('y1', y1); l.setAttribute('x2', x2); l.setAttribute('y2', y2); l.setAttribute('stroke', c || '#30363d'); l.setAttribute('stroke-width', '2'); if (d) l.setAttribute('stroke-dasharray', d); svg.appendChild(l); return l; }
+  function txt(svg, x, y, v, c) { const t = mk('text'); t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', c || '#8b949e'); t.setAttribute('font-size', '10'); t.textContent = v; svg.appendChild(t); return t; }
+  function packet(svg, x1, y1, x2, y2, color, duration) { const p = mk('circle'); p.setAttribute('r', 5); p.setAttribute('fill', color || '#f59e0b'); p.setAttribute('cx', x1); p.setAttribute('cy', y1); svg.appendChild(p); anime({ targets: p, cx: x2, cy: y2, duration: duration || 700, easing: 'easeInOutSine', complete: () => { if (svg.contains(p)) svg.removeChild(p); } }); }
+
+  function animate_s21() { const s = document.getElementById('svg-21'); clear(s); box(s, 160, 120, 220, 120, 'Business', 'Customer places Order', { stroke: '#f59e0b' }); box(s, 540, 120, 220, 120, 'Code', 'customer.placeOrder()', { stroke: '#60a5fa' }); line(s, 270, 120, 430, 120, '#f59e0b', '6 4'); txt(s, 350, 96, 'Shared Glossary', '#f59e0b'); packet(s, 270, 120, 430, 120, '#f59e0b', 700); }
+  function animate_s22() { const s = document.getElementById('svg-22'); clear(s); box(s, 350, 120, 620, 180, 'Monolith Domain', 'Customer, User, Account, Ticket, Invoice', { stroke: '#f59e0b' }); ['Sales Customer', 'Support Customer', 'Billing Customer', 'UserEntity'].forEach((n, i) => { box(s, 160 + i * 130, 160, 110, 44, n, '', { stroke: '#f87171', opacity: 0 }); anime({ targets: s.lastChild, opacity: [0, 1], delay: i * 120, duration: 260 }); }); txt(s, 350, 210, 'Same word, different meanings', '#f87171'); }
+  function animate_s23() { const s = document.getElementById('svg-23'); clear(s); [['Sales', 120, '#f59e0b'], ['Support', 290, '#a78bfa'], ['Shipping', 460, '#60a5fa'], ['Billing', 620, '#4ade80']].forEach((c, i) => { box(s, c[1], 120, 140, 150, c[0] + ' Context', c[0] + 'Customer', { stroke: c[2], opacity: 0 }); anime({ targets: s.lastChild, opacity: [0, 1], translateY: [12, 0], delay: i * 130, duration: 300 }); }); }
+  function animate_s24() { const s = document.getElementById('svg-24'); clear(s); box(s, 350, 120, 560, 180, 'Sales Context', 'Quote, Order, LineItem, Pricing', { stroke: '#f59e0b', sw: 2 }); [['Quote', 170], ['Order', 290], ['LineItem', 410], ['Pricing', 530]].forEach((p, i) => { box(s, p[1], 125, 92, 50, p[0], '', { stroke: '#60a5fa', opacity: 0 }); anime({ targets: s.lastChild, opacity: [0, 1], delay: 80 + i * 120, duration: 280 }); }); }
+  let mapMode = 'all';
+  function animate_s25() { const s = document.getElementById('svg-25'); clear(s); box(s, 120, 140, 140, 70, 'Sales', '', { stroke: '#f59e0b' }); box(s, 320, 90, 140, 70, 'Billing', '', { stroke: '#60a5fa' }); box(s, 320, 210, 140, 70, 'Shipping', '', { stroke: '#a78bfa' }); box(s, 560, 140, 140, 70, 'Legacy', '', { stroke: '#f87171' }); if (mapMode === 'all' || mapMode === 'shared') { line(s, 190, 120, 250, 102, '#4ade80'); txt(s, 236, 94, 'Shared Kernel', '#4ade80'); } if (mapMode === 'all' || mapMode === 'supplier') { line(s, 190, 160, 250, 190, '#60a5fa', '6 4'); txt(s, 250, 186, 'Customer-Supplier', '#60a5fa'); } if (mapMode === 'all' || mapMode === 'acl') { line(s, 390, 140, 490, 140, '#f87171'); box(s, 440, 182, 90, 34, 'ACL', '', { stroke: '#f87171', dash: '4 3' }); packet(s, 390, 140, 490, 140, '#f87171', 650); } }
+  function animate_s26() { const s = document.getElementById('svg-26'); clear(s); box(s, 250, 118, 250, 130, 'Sales Context', '', { stroke: '#f59e0b' }); box(s, 450, 118, 250, 130, 'Billing Context', '', { stroke: '#60a5fa' }); box(s, 350, 118, 130, 90, 'Shared Kernel', 'Money, TaxCode', { stroke: '#4ade80', sw: 2 }); packet(s, 278, 118, 420, 118, '#4ade80', 750); }
+  function animate_s27() { const s = document.getElementById('svg-27'); clear(s); box(s, 130, 125, 170, 150, 'Legacy', 'codes + tables', { stroke: '#f87171' }); box(s, 350, 125, 130, 72, 'ACL', 'translator', { stroke: '#f59e0b', sw: 2, dash: '5 4' }); box(s, 560, 125, 170, 150, 'Clean Domain', 'entities + value objects', { stroke: '#4ade80' }); line(s, 215, 125, 285, 125, '#f87171'); line(s, 415, 125, 475, 125, '#4ade80'); packet(s, 215, 125, 285, 125, '#f87171', 500); setTimeout(() => packet(s, 415, 125, 475, 125, '#4ade80', 500), 520); }
+  function animate_s28() { const s = document.getElementById('svg-28'); clear(s); box(s, 220, 120, 220, 140, 'Open Host Service', 'Published JSON schema', { stroke: '#f59e0b', sw: 2 }); box(s, 500, 82, 150, 66, 'ERP Adapter', '', { stroke: '#60a5fa' }); box(s, 500, 160, 150, 66, 'Mobile App', '', { stroke: '#a78bfa' }); line(s, 330, 100, 425, 82, '#f59e0b', '5 4'); line(s, 330, 142, 425, 160, '#f59e0b', '5 4'); packet(s, 330, 100, 425, 82, '#f59e0b', 700); setTimeout(() => packet(s, 330, 142, 425, 160, '#f59e0b', 700), 300); }
+</script>
+</body>
+</html>

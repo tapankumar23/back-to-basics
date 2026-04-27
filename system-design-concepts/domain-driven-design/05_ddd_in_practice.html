@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DDD in Practice - Domain-Driven Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root { --bg:#0d1117; --bg-card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#f472b6; --accent-dim:rgba(244,114,182,.16); --blue:#60a5fa; --orange:#fb923c; --green:#4ade80; --gold:#f59e0b; --red:#f87171; }
+    * { box-sizing:border-box; margin:0; padding:0; } html { scroll-behavior:smooth; scroll-padding-top:72px; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; }
+    #progress { position:fixed; top:0; left:0; right:0; height:3px; background:var(--accent); transform:scaleX(0); transform-origin:left center; z-index:2000; }
+    #navbar { position:fixed; top:3px; left:0; right:0; height:48px; display:flex; gap:10px; align-items:center; overflow-x:auto; padding:0 14px; background:rgba(13,17,23,.92); border-bottom:1px solid var(--border); z-index:1200; }
+    #navbar .brand { color:var(--accent); font-weight:700; font-size:13px; white-space:nowrap; } #navbar a { color:var(--muted); text-decoration:none; font-size:12px; white-space:nowrap; } #navbar a:hover { color:var(--accent); }
+    main { max-width:1100px; margin:0 auto; padding:84px 18px 36px; } .hero h1 { font-size:1.8rem; color:var(--accent); } .hero p { color:var(--muted); font-size:13px; }
+    .concept-section { margin-top:20px; opacity:0; transform:translateY(16px); transition:opacity .45s, transform .45s; } .concept-section.visible { opacity:1; transform:translateY(0); }
+    .section-card { border:1px solid var(--border); background:var(--bg-card); border-radius:10px; overflow:hidden; }
+    .card-header { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+    .header-left { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; } .section-num { color:var(--accent); font:700 12px 'JetBrains Mono',monospace; } .section-desc { color:var(--muted); font-size:12px; }
+    .btn { border:1px solid var(--accent); background:var(--accent-dim); color:var(--accent); border-radius:5px; padding:4px 10px; font:11px 'JetBrains Mono',monospace; cursor:pointer; }
+    .btn.alt { border-color:var(--blue); color:var(--blue); background:rgba(96,165,250,.12); }
+    .diagram-area { padding:14px; min-height:220px; display:flex; justify-content:center; align-items:center; } .diagram-area svg { width:100%; overflow:visible; }
+    .insight-panel { border-top:1px solid var(--border); border-left:3px solid var(--accent); background:var(--accent-dim); padding:10px 14px; color:var(--muted); font-size:12px; }
+    footer { text-align:center; color:var(--muted); border-top:1px solid var(--border); margin-top:24px; padding:14px; font-size:12px; }
+  </style>
+</head>
+<body>
+<div id="progress"></div>
+<nav id="navbar">
+  <span class="brand">05 - DDD in Practice</span>
+  <a href="00_index.html">DDD Index</a><a href="04_architectural_patterns.html">Prev</a>
+  <a href="#s-51">5.1</a><a href="#s-52">5.2</a><a href="#s-53">5.3</a><a href="#s-54">5.4</a><a href="#s-55">5.5</a><a href="#s-56">5.6</a><a href="#s-57">5.7</a>
+</nav>
+<main>
+  <div class="hero"><h1>DDD in Practice</h1><p>Chapter 5 - Strategic vs tactical DDD, code structure, pitfalls, framework integration, and real-world flow.</p></div>
+  <section id="s-51" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.1 -</span><strong>Strategic vs Tactical DDD</strong><span class="section-desc">Boundary design vs code patterns</span></div><button class="btn" onclick="animate_s51()">Replay</button></div><div class="diagram-area"><svg id="svg-51" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Strategic decisions define context boundaries; tactical patterns implement them safely.</p></div></section>
+  <section id="s-52" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.2 -</span><strong>Subdomains</strong><span class="section-desc">Core, Supporting, Generic</span></div><button class="btn" onclick="animate_s52()">Replay</button></div><div class="diagram-area"><svg id="svg-52" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Invest most in core domain; avoid over-modeling commodity features.</p></div></section>
+  <section id="s-53" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.3 -</span><strong>DDD in Code Walkthrough</strong><span class="section-desc">Place artifacts in the right folders</span></div><button class="btn" onclick="animate_s53()">Replay</button></div><div class="diagram-area"><svg id="svg-53" viewBox="0 0 700 250" style="height:250px"></svg></div><p class="insight-panel">Clear folder and naming conventions preserve model clarity over time.</p></div></section>
+  <section id="s-54" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.4 -</span><strong>Repository Implementation</strong><span class="section-desc">Domain interface with infra adapter</span></div><button class="btn" onclick="animate_s54()">Replay</button></div><div class="diagram-area"><svg id="svg-54" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Domain depends on abstraction while infrastructure provides concrete persistence behavior.</p></div></section>
+  <section id="s-55" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.5 -</span><strong>Common DDD Pitfalls</strong><span class="section-desc">Anemic model, god object, leaks</span></div><button class="btn" onclick="animate_s55()">Replay</button></div><div class="diagram-area"><svg id="svg-55" viewBox="0 0 700 270" style="height:270px"></svg></div><p class="insight-panel">Most failures happen when boundaries erode and behavior leaves the domain layer.</p></div></section>
+  <section id="s-56" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.6 -</span><strong>Integrating with Modern Frameworks</strong><span class="section-desc">Keep domain clean in real stacks</span></div><button class="btn" onclick="animate_s56()">Replay</button></div><div class="diagram-area"><svg id="svg-56" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Framework details should stay in adapters, never in core domain classes.</p></div></section>
+  <section id="s-57" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">5.7 -</span><strong>Real-World E-Commerce Example</strong><span class="section-desc">Cross-context chain on Place Order</span></div><div><button class="btn alt" onclick="play_s57()">Place Order</button><button class="btn" onclick="animate_s57()">Reset</button></div></div><div class="diagram-area"><svg id="svg-57" viewBox="0 0 700 280" style="height:280px"></svg></div><p class="insight-panel">Business flow spans many contexts through event-driven contracts.</p></div></section>
+</main>
+<footer>Domain-Driven Design - Based on Eric Evans</footer>
+<script>
+  window.addEventListener('scroll', () => { const t = document.body.scrollHeight - window.innerHeight; if (t > 0) document.getElementById('progress').style.transform = 'scaleX(' + (window.scrollY / t) + ')'; });
+  const obs = new IntersectionObserver((entries) => { entries.forEach((e) => { if (!e.isIntersecting) return; e.target.classList.add('visible'); const fn = window['animate_' + e.target.id.replace('-', '')]; if (typeof fn === 'function') fn(); obs.unobserve(e.target); }); }, { threshold: 0.25 });
+  document.querySelectorAll('.concept-section').forEach((el) => obs.observe(el));
+  const NS = 'http://www.w3.org/2000/svg'; const mk = (t) => document.createElementNS(NS, t);
+  function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+  function box(svg, x, y, w, h, title, sub, stroke) { const g = mk('g'); const r = mk('rect'); r.setAttribute('x', x - w / 2); r.setAttribute('y', y - h / 2); r.setAttribute('width', w); r.setAttribute('height', h); r.setAttribute('rx', 8); r.setAttribute('fill', '#161b22'); r.setAttribute('stroke', stroke || '#30363d'); r.setAttribute('stroke-width', '1.5'); g.appendChild(r); const t = mk('text'); t.setAttribute('x', x); t.setAttribute('y', sub ? y - 4 : y + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#e6edf3'); t.setAttribute('font-size', '11'); t.setAttribute('font-family', 'JetBrains Mono, monospace'); t.textContent = title; g.appendChild(t); if (sub) { const s = mk('text'); s.setAttribute('x', x); s.setAttribute('y', y + 11); s.setAttribute('text-anchor', 'middle'); s.setAttribute('fill', '#8b949e'); s.setAttribute('font-size', '9'); s.textContent = sub; g.appendChild(s); } svg.appendChild(g); return g; }
+  function line(svg, x1, y1, x2, y2, c, d) { const l = mk('line'); l.setAttribute('x1', x1); l.setAttribute('y1', y1); l.setAttribute('x2', x2); l.setAttribute('y2', y2); l.setAttribute('stroke', c || '#30363d'); l.setAttribute('stroke-width', '2'); if (d) l.setAttribute('stroke-dasharray', d); svg.appendChild(l); return l; }
+  function txt(svg, x, y, v, c) { const t = mk('text'); t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', c || '#8b949e'); t.setAttribute('font-size', '10'); t.textContent = v; svg.appendChild(t); }
+  function packet(svg, x1, y1, x2, y2, color, duration) { const p = mk('circle'); p.setAttribute('r', 5); p.setAttribute('fill', color || '#f472b6'); p.setAttribute('cx', x1); p.setAttribute('cy', y1); svg.appendChild(p); anime({ targets: p, cx: x2, cy: y2, duration: duration || 700, easing: 'easeInOutSine', complete: () => { if (svg.contains(p)) svg.removeChild(p); } }); }
+
+  function animate_s51() { const s = document.getElementById('svg-51'); clear(s); box(s, 200, 120, 260, 170, 'Strategic DDD', 'Bounded Contexts, Context Map', '#f472b6'); box(s, 500, 120, 260, 170, 'Tactical DDD', 'Entities, VOs, Aggregates, Events', '#60a5fa'); line(s, 330, 120, 370, 120, '#f472b6', '6 4'); packet(s, 330, 120, 370, 120, '#f472b6', 700); }
+  function animate_s52() { const s = document.getElementById('svg-52'); clear(s); box(s, 160, 120, 180, 170, 'Core Domain', 'highest leverage', '#f59e0b'); box(s, 350, 120, 180, 170, 'Supporting', 'needed capabilities', '#60a5fa'); box(s, 540, 120, 180, 170, 'Generic', 'buy vs build', '#8b949e'); txt(s, 160, 202, 'Invest most effort here', '#f59e0b'); }
+  function animate_s53() { const s = document.getElementById('svg-53'); clear(s); box(s, 350, 120, 560, 190, 'domain/', 'entities/ valueObjects/ services/ events/ aggregates/', '#f472b6'); [['Order.java', 170], ['Money.java', 290], ['CurrencyExchangeService.java', 430], ['OrderPlacedEvent.java', 560]].forEach((p) => box(s, p[1], 165, 120, 42, p[0], '', '#60a5fa')); }
+  function animate_s54() { const s = document.getElementById('svg-54'); clear(s); box(s, 190, 120, 250, 160, 'Domain Layer', 'OrderRepository interface', '#f472b6'); box(s, 510, 120, 250, 160, 'Infrastructure', 'JpaOrderRepositoryAdapter', '#60a5fa'); line(s, 315, 120, 385, 120, '#4ade80', '6 4'); txt(s, 350, 104, 'DI wiring', '#4ade80'); }
+  function animate_s55() { const s = document.getElementById('svg-55'); clear(s); [['Anemic Model', '#f87171', 170, 88], ['God Object', '#fb923c', 530, 88], ['Misplaced Service', '#f59e0b', 170, 200], ['Context Leak', '#f472b6', 530, 200]].forEach((p) => box(s, p[2], p[3], 260, 86, p[0], 'show corrected variant', p[1])); }
+  function animate_s56() { const s = document.getElementById('svg-56'); clear(s); box(s, 210, 120, 260, 170, 'Domain Core', 'no persistence annotations', '#f472b6'); box(s, 500, 120, 260, 170, 'Infrastructure', '@Entity, controller, mapper', '#60a5fa'); box(s, 500, 196, 180, 38, 'CQRS wiring', '', '#4ade80'); }
+  function base_s57() { const s = document.getElementById('svg-57'); clear(s); box(s, 120, 140, 160, 80, 'Catalog', '', '#60a5fa'); box(s, 300, 140, 160, 80, 'Order', '', '#f472b6'); box(s, 480, 140, 160, 80, 'Payment', '', '#f59e0b'); box(s, 620, 140, 140, 80, 'Customer', '', '#4ade80'); line(s, 200, 140, 220, 140, '#30363d'); line(s, 380, 140, 400, 140, '#30363d'); line(s, 560, 140, 550, 140, '#30363d'); return s; }
+  function animate_s57() { base_s57(); }
+  function play_s57() { const s = base_s57(); packet(s, 200, 140, 220, 140, '#f472b6', 500); setTimeout(() => packet(s, 380, 140, 400, 140, '#f59e0b', 500), 420); setTimeout(() => packet(s, 560, 140, 550, 140, '#4ade80', 500), 840); txt(s, 350, 225, 'OrderPlaced -> PaymentCaptured -> LoyaltyUpdated', '#8b949e'); }
+</script>
+</body>
+</html>

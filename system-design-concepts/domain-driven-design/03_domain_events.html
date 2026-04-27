@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Domain Events - Domain-Driven Design</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root { --bg:#0d1117; --bg-card:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; --accent:#a78bfa; --accent-dim:rgba(167,139,250,.16); --blue:#60a5fa; --orange:#fb923c; --green:#4ade80; --red:#f87171; }
+    * { box-sizing:border-box; margin:0; padding:0; } html { scroll-behavior:smooth; scroll-padding-top:72px; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; }
+    #progress { position:fixed; top:0; left:0; right:0; height:3px; background:var(--accent); transform:scaleX(0); transform-origin:left center; z-index:2000; }
+    #navbar { position:fixed; top:3px; left:0; right:0; height:48px; display:flex; gap:10px; align-items:center; overflow-x:auto; padding:0 14px; background:rgba(13,17,23,.92); border-bottom:1px solid var(--border); z-index:1200; }
+    #navbar .brand { color:var(--accent); font-weight:700; font-size:13px; white-space:nowrap; } #navbar a { color:var(--muted); text-decoration:none; font-size:12px; white-space:nowrap; } #navbar a:hover { color:var(--accent); }
+    main { max-width:1100px; margin:0 auto; padding:84px 18px 36px; }
+    .hero h1 { font-size:1.8rem; color:var(--accent); } .hero p { color:var(--muted); font-size:13px; }
+    .concept-section { margin-top:20px; opacity:0; transform:translateY(16px); transition:opacity .45s, transform .45s; } .concept-section.visible { opacity:1; transform:translateY(0); }
+    .section-card { border:1px solid var(--border); background:var(--bg-card); border-radius:10px; overflow:hidden; }
+    .card-header { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+    .header-left { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; } .section-num { color:var(--accent); font:700 12px 'JetBrains Mono',monospace; } .section-desc { color:var(--muted); font-size:12px; }
+    .btn { border:1px solid var(--accent); background:var(--accent-dim); color:var(--accent); border-radius:5px; padding:4px 10px; font:11px 'JetBrains Mono',monospace; cursor:pointer; }
+    .btn.alt { border-color:var(--blue); color:var(--blue); background:rgba(96,165,250,.12); }
+    .diagram-area { padding:14px; min-height:220px; display:flex; justify-content:center; align-items:center; } .diagram-area svg { width:100%; overflow:visible; }
+    .insight-panel { border-top:1px solid var(--border); border-left:3px solid var(--accent); background:var(--accent-dim); padding:10px 14px; color:var(--muted); font-size:12px; }
+    footer { text-align:center; color:var(--muted); border-top:1px solid var(--border); margin-top:24px; padding:14px; font-size:12px; }
+  </style>
+</head>
+<body>
+<div id="progress"></div>
+<nav id="navbar">
+  <span class="brand">03 - Domain Events</span>
+  <a href="00_index.html">DDD Index</a><a href="02_bounded_contexts.html">Prev</a><a href="04_architectural_patterns.html">Next</a>
+  <a href="#s-31">3.1</a><a href="#s-32">3.2</a><a href="#s-33">3.3</a><a href="#s-34">3.4</a><a href="#s-35">3.5</a><a href="#s-36">3.6</a>
+</nav>
+<main>
+  <div class="hero"><h1>Domain Events and Event Storming</h1><p>Chapter 3 - Domain events, event flow, storming, pub/sub, and eventual consistency.</p></div>
+  <section id="s-31" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">3.1 -</span><strong>What is a Domain Event?</strong><span class="section-desc">Immutable fact that happened</span></div><button class="btn" onclick="animate_s31()">Replay</button></div><div class="diagram-area"><svg id="svg-31" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Events capture past business truth and should never be mutated.</p></div></section>
+  <section id="s-32" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">3.2 -</span><strong>OrderPlaced Event Flow</strong><span class="section-desc">Fan-out to multiple handlers</span></div><div><button class="btn alt" onclick="fire_s32()">Place Order</button><button class="btn" onclick="animate_s32()">Reset</button></div></div><div class="diagram-area"><svg id="svg-32" viewBox="0 0 700 270" style="height:270px"></svg></div><p class="insight-panel">One event drives independent workflows in billing, shipping, and notification contexts.</p></div></section>
+  <section id="s-33" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">3.3 -</span><strong>Event Storming Introduction</strong><span class="section-desc">Timeline with commands and events</span></div><button class="btn" onclick="animate_s33()">Replay</button></div><div class="diagram-area"><svg id="svg-33" viewBox="0 0 700 250" style="height:250px"></svg></div><p class="insight-panel">Event storming reveals process flow and hidden domain decisions quickly.</p></div></section>
+  <section id="s-34" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">3.4 -</span><strong>Aggregates and Event Generation</strong><span class="section-desc">State transitions emit events</span></div><button class="btn" onclick="animate_s34()">Replay</button></div><div class="diagram-area"><svg id="svg-34" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Aggregate state changes should produce explicit events for history and integration.</p></div></section>
+  <section id="s-35" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">3.5 -</span><strong>Publish/Subscribe Pattern</strong><span class="section-desc">Publisher with independent subscribers</span></div><div><button class="btn alt" onclick="addSub_s35()">Add Subscriber</button><button class="btn" onclick="animate_s35()">Reset</button></div></div><div class="diagram-area"><svg id="svg-35" viewBox="0 0 700 260" style="height:260px"></svg></div><p class="insight-panel">Publish once, react many times. Subscribers stay decoupled from publisher internals.</p></div></section>
+  <section id="s-36" class="concept-section"><div class="section-card"><div class="card-header"><div class="header-left"><span class="section-num">3.6 -</span><strong>Eventual Consistency</strong><span class="section-desc">Consistency window between T1 and T2</span></div><button class="btn" onclick="animate_s36()">Replay</button></div><div class="diagram-area"><svg id="svg-36" viewBox="0 0 700 240" style="height:240px"></svg></div><p class="insight-panel">Distributed contexts may be briefly out of sync until events are consumed.</p></div></section>
+</main>
+<footer>Domain-Driven Design - Based on Eric Evans</footer>
+<script>
+  window.addEventListener('scroll', () => { const t = document.body.scrollHeight - window.innerHeight; if (t > 0) document.getElementById('progress').style.transform = 'scaleX(' + (window.scrollY / t) + ')'; });
+  const obs = new IntersectionObserver((entries) => { entries.forEach((e) => { if (!e.isIntersecting) return; e.target.classList.add('visible'); const fn = window['animate_' + e.target.id.replace('-', '')]; if (typeof fn === 'function') fn(); obs.unobserve(e.target); }); }, { threshold: 0.25 });
+  document.querySelectorAll('.concept-section').forEach((el) => obs.observe(el));
+  const NS = 'http://www.w3.org/2000/svg'; const mk = (t) => document.createElementNS(NS, t);
+  function clear(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+  function box(svg, x, y, w, h, title, sub, stroke) { const g = mk('g'); const r = mk('rect'); r.setAttribute('x', x - w / 2); r.setAttribute('y', y - h / 2); r.setAttribute('width', w); r.setAttribute('height', h); r.setAttribute('rx', 8); r.setAttribute('fill', '#161b22'); r.setAttribute('stroke', stroke || '#30363d'); r.setAttribute('stroke-width', '1.5'); g.appendChild(r); const t = mk('text'); t.setAttribute('x', x); t.setAttribute('y', sub ? y - 4 : y + 4); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', '#e6edf3'); t.setAttribute('font-size', '11'); t.setAttribute('font-family', 'JetBrains Mono, monospace'); t.textContent = title; g.appendChild(t); if (sub) { const s = mk('text'); s.setAttribute('x', x); s.setAttribute('y', y + 11); s.setAttribute('text-anchor', 'middle'); s.setAttribute('fill', '#8b949e'); s.setAttribute('font-size', '9'); s.textContent = sub; g.appendChild(s); } svg.appendChild(g); return g; }
+  function line(svg, x1, y1, x2, y2, c, d) { const l = mk('line'); l.setAttribute('x1', x1); l.setAttribute('y1', y1); l.setAttribute('x2', x2); l.setAttribute('y2', y2); l.setAttribute('stroke', c || '#30363d'); l.setAttribute('stroke-width', '2'); if (d) l.setAttribute('stroke-dasharray', d); svg.appendChild(l); return l; }
+  function txt(svg, x, y, v, c) { const t = mk('text'); t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('text-anchor', 'middle'); t.setAttribute('fill', c || '#8b949e'); t.setAttribute('font-size', '10'); t.textContent = v; svg.appendChild(t); }
+  function packet(svg, x1, y1, x2, y2, color, duration) { const p = mk('circle'); p.setAttribute('r', 5); p.setAttribute('fill', color || '#a78bfa'); p.setAttribute('cx', x1); p.setAttribute('cy', y1); svg.appendChild(p); anime({ targets: p, cx: x2, cy: y2, duration: duration || 700, easing: 'easeInOutSine', complete: () => { if (svg.contains(p)) svg.removeChild(p); } }); }
+
+  function animate_s31() { const s = document.getElementById('svg-31'); clear(s); box(s, 170, 120, 210, 120, 'Order Aggregate', 'raise(OrderPlaced)', '#a78bfa'); box(s, 510, 120, 210, 120, 'Event Bus', 'dispatch immutable facts', '#60a5fa'); line(s, 275, 120, 405, 120, '#a78bfa', '6 4'); txt(s, 350, 96, '{ eventType: OrderPlaced }', '#a78bfa'); packet(s, 275, 120, 405, 120, '#a78bfa', 700); }
+  function draw_s32() { const s = document.getElementById('svg-32'); clear(s); box(s, 120, 135, 170, 90, 'Order', 'validated + placed', '#a78bfa'); box(s, 330, 135, 130, 80, 'EventBus', '', '#60a5fa'); box(s, 520, 75, 170, 64, 'Shipping', '', '#4ade80'); box(s, 520, 135, 170, 64, 'Billing', '', '#f59e0b'); box(s, 520, 195, 170, 64, 'Notification', '', '#fb923c'); line(s, 205, 135, 265, 135, '#a78bfa'); line(s, 395, 120, 435, 85, '#60a5fa'); line(s, 395, 135, 435, 135, '#60a5fa'); line(s, 395, 150, 435, 185, '#60a5fa'); return s; }
+  function animate_s32() { draw_s32(); }
+  function fire_s32() { const s = draw_s32(); packet(s, 205, 135, 265, 135, '#a78bfa', 550); setTimeout(() => packet(s, 395, 120, 435, 85, '#60a5fa', 550), 500); setTimeout(() => packet(s, 395, 135, 435, 135, '#60a5fa', 550), 760); setTimeout(() => packet(s, 395, 150, 435, 185, '#60a5fa', 550), 1020); }
+  function animate_s33() { const s = document.getElementById('svg-33'); clear(s); line(s, 70, 140, 640, 140, '#30363d'); const ev = ['OrderPlaced', 'PaymentReceived', 'OrderShipped', 'OrderDelivered']; ev.forEach((e, i) => { box(s, 130 + i * 150, 100, 120, 44, e, 'event', '#fb923c'); box(s, 130 + i * 150, 184, 120, 36, 'Command', 'causes event', '#60a5fa'); }); }
+  function animate_s34() { const s = document.getElementById('svg-34'); clear(s); const states = ['Draft', 'Submitted', 'Paid', 'Shipped', 'Delivered']; states.forEach((n, i) => { box(s, 90 + i * 130, 120, 100, 56, n, '', '#a78bfa'); if (i > 0) line(s, 40 + i * 130, 120, 55 + i * 130, 120, '#60a5fa'); }); packet(s, 90, 120, 220, 120, '#a78bfa', 500); setTimeout(() => packet(s, 220, 120, 350, 120, '#a78bfa', 500), 500); setTimeout(() => packet(s, 350, 120, 480, 120, '#a78bfa', 500), 1000); }
+  let subCount = 3;
+  function animate_s35() { const s = document.getElementById('svg-35'); clear(s); box(s, 150, 130, 160, 90, 'Publisher', 'Sales Context', '#a78bfa'); for (let i = 0; i < subCount; i += 1) { box(s, 500, 80 + i * 55, 170, 46, 'Subscriber ' + (i + 1), '', '#60a5fa'); line(s, 230, 130, 415, 80 + i * 55, '#60a5fa', '5 4'); packet(s, 230, 130, 415, 80 + i * 55, '#60a5fa', 650 + i * 120); } }
+  function addSub_s35() { subCount = Math.min(5, subCount + 1); animate_s35(); }
+  function animate_s36() { const s = document.getElementById('svg-36'); clear(s); box(s, 170, 120, 190, 120, 'Sales Context', 'T1 emits event', '#a78bfa'); box(s, 530, 120, 190, 120, 'Shipping Context', 'T2 consumes event', '#60a5fa'); line(s, 265, 120, 435, 120, '#f59e0b', '7 5'); txt(s, 350, 100, 'Consistency window', '#f59e0b'); packet(s, 265, 120, 435, 120, '#f59e0b', 1000); }
+</script>
+</body>
+</html>

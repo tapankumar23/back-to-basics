@@ -1,0 +1,16 @@
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/grpc/HelloWorldGrpcClient.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/grpc/HelloWorldGrpcServer.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/grpc/HelloWorldService.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/GrpcBackendUnavailableException.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/GrpcGreeterClient.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/HelloRestController.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/HelloWorldRestApplication.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/RestExceptionHandler.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/dto/HelloRequestPayload.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/src/main/java/com/example/multiagent/rest/dto/HelloResponsePayload.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/target/generated-sources/protobuf/grpc-java/com/example/multiagent/grpc/GreeterGrpc.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/target/generated-sources/protobuf/java/com/example/multiagent/grpc/HelloReply.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/target/generated-sources/protobuf/java/com/example/multiagent/grpc/HelloReplyOrBuilder.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/target/generated-sources/protobuf/java/com/example/multiagent/grpc/HelloRequest.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/target/generated-sources/protobuf/java/com/example/multiagent/grpc/HelloRequestOrBuilder.java
+/Users/tapansabat/dev/interests/back-to-basics/ai/java-ai/target/generated-sources/protobuf/java/com/example/multiagent/grpc/HelloWorldProto.java

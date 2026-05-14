@@ -54,6 +54,116 @@ User Task
 - Maven 3.8+
 - Anthropic API key
 
+## Hello World gRPC sample
+
+This repo now also includes a minimal gRPC sample under:
+
+```text
+src/main/proto/hello_world.proto
+src/main/java/com/example/multiagent/grpc/
+```
+
+### What it exposes
+
+- Service: `Greeter`
+- RPC: `SayHello(HelloRequest) -> HelloReply`
+- Default port: `50051`
+
+### Generate and compile
+
+```bash
+mvn compile
+```
+
+### Run the gRPC server
+
+```bash
+mvn exec:java -Dexec.mainClass=com.example.multiagent.grpc.HelloWorldGrpcServer
+```
+
+### Call the gRPC API from the sample client
+
+In another terminal:
+
+```bash
+mvn exec:java -Dexec.mainClass=com.example.multiagent.grpc.HelloWorldGrpcClient -Dexec.args="Tapan"
+```
+
+Expected response:
+
+```text
+Hello, Tapan!
+```
+
+## Spring Boot REST wrapper for the gRPC server
+
+This repo also includes a simple Spring Boot wrapper that lets frontend apps call
+the gRPC backend through a normal JSON REST API.
+
+### Flow
+
+```text
+Frontend / curl
+    -> Spring Boot REST API (:8080)
+    -> gRPC client stub
+    -> HelloWorldGrpcServer (:50051)
+```
+
+### REST wrapper classes
+
+- `com.example.multiagent.rest.HelloWorldRestApplication`
+- `com.example.multiagent.rest.HelloRestController`
+- `com.example.multiagent.rest.GrpcGreeterClient`
+
+### Start the gRPC server
+
+```bash
+mvn exec:java -Dexec.mainClass=com.example.multiagent.grpc.HelloWorldGrpcServer
+```
+
+### Start the REST wrapper
+
+In another terminal:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.main-class=com.example.multiagent.rest.HelloWorldRestApplication
+```
+
+### Call the REST endpoint with curl
+
+GET:
+
+```bash
+curl "http://localhost:8080/api/hello?name=Tapan"
+```
+
+POST:
+
+```bash
+curl -X POST "http://localhost:8080/api/hello" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Tapan"}'
+```
+
+Expected response:
+
+```json
+{"message":"Hello, Tapan!"}
+```
+
+If the gRPC server is down, the REST wrapper now returns a clearer `503 Service Unavailable`
+response instead of a generic `500`, for example:
+
+```json
+{
+  "timestamp": "2026-05-14T11:15:00+05:30",
+  "status": 503,
+  "error": "Service Unavailable",
+  "message": "gRPC backend is unavailable at localhost:50051",
+  "path": "/api/hello"
+}
+```
+
 ### Run
 
 ```bash

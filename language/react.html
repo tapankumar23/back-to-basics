@@ -1,0 +1,2305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Learning Studio</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-soft: rgba(10, 20, 37, 0.86);
+      --panel: rgba(11, 24, 43, 0.9);
+      --panel-strong: rgba(9, 18, 34, 0.96);
+      --line: rgba(124, 179, 255, 0.18);
+      --text: #eef6ff;
+      --muted: #9eb5d4;
+      --accent: #79e6ff;
+      --accent-2: #ffc86e;
+      --accent-3: #92ffbd;
+      --danger: #ff8e9b;
+      --shadow: 0 26px 70px rgba(0, 0, 0, 0.35);
+      --radius: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(121, 230, 255, 0.18), transparent 30%),
+        radial-gradient(circle at 80% 15%, rgba(255, 200, 110, 0.12), transparent 28%),
+        radial-gradient(circle at 75% 75%, rgba(146, 255, 189, 0.12), transparent 25%),
+        linear-gradient(180deg, #081222 0%, #050c17 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 30px 30px;
+      mask-image: radial-gradient(circle at center, black 35%, transparent 85%);
+      opacity: 0.35;
+    }
+
+    .shell {
+      width: min(1200px, calc(100% - 32px));
+      margin: 32px auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero {
+      position: relative;
+      padding: 32px;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+        rgba(6, 14, 28, 0.82);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      right: -80px;
+      top: -80px;
+      background: radial-gradient(circle, rgba(121, 230, 255, 0.2), transparent 70%);
+      filter: blur(12px);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(121, 230, 255, 0.2);
+      background: rgba(121, 230, 255, 0.08);
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 18px 0 10px;
+      max-width: 760px;
+      font-size: clamp(38px, 5vw, 72px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      font-weight: 700;
+    }
+
+    .hero-copy {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.65;
+    }
+
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .stat {
+      min-width: 160px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(7, 16, 30, 0.72);
+      backdrop-filter: blur(10px);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 28px;
+      color: var(--accent-2);
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .tabs {
+      margin-top: 22px;
+      display: inline-flex;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 18px;
+      background: rgba(7, 16, 30, 0.72);
+      border: 1px solid var(--line);
+    }
+
+    .tab-button {
+      border: 0;
+      cursor: pointer;
+      color: var(--muted);
+      background: transparent;
+      padding: 14px 18px;
+      min-width: 170px;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 15px;
+      transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+    }
+
+    .tab-button:hover,
+    .tab-button:focus-visible {
+      color: var(--text);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .tab-button.active {
+      color: #05111d;
+      background: linear-gradient(135deg, var(--accent), #c6f4ff);
+      box-shadow: 0 14px 35px rgba(121, 230, 255, 0.24);
+    }
+
+    .panel {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .learn-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 20px;
+    }
+
+    .card {
+      position: relative;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        var(--panel);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-content {
+      padding: 24px;
+    }
+
+    .section-tag {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--accent-3);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .card h2,
+    .card h3 {
+      margin: 14px 0 10px;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.05;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .motion-stage {
+      margin-top: 22px;
+      display: grid;
+      place-items: center;
+      min-height: 300px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 20px;
+      border: 1px solid rgba(121, 230, 255, 0.12);
+      background:
+        radial-gradient(circle at center, rgba(121, 230, 255, 0.1), transparent 52%),
+        linear-gradient(180deg, rgba(3, 10, 19, 0.8), rgba(7, 17, 31, 0.95));
+    }
+
+    .react-core {
+      position: relative;
+      width: 134px;
+      height: 134px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), rgba(121, 230, 255, 0.1) 45%, rgba(6, 20, 35, 0.95) 70%);
+      border: 1px solid rgba(121, 230, 255, 0.24);
+      box-shadow: 0 0 40px rgba(121, 230, 255, 0.26);
+      z-index: 2;
+    }
+
+    .react-core strong {
+      display: block;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+    }
+
+    .react-core span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-align: center;
+    }
+
+    .orbit {
+      position: absolute;
+      inset: 32px;
+      border-radius: 50%;
+      border: 1px dashed rgba(121, 230, 255, 0.16);
+      animation: spin 18s linear infinite;
+    }
+
+    .orbit.two {
+      inset: 62px;
+      animation-direction: reverse;
+      animation-duration: 13s;
+      border-color: rgba(255, 200, 110, 0.18);
+    }
+
+    .orbit-chip {
+      position: absolute;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(5, 14, 26, 0.92);
+      border: 1px solid rgba(121, 230, 255, 0.16);
+      color: var(--text);
+      white-space: nowrap;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+      animation: float 4s ease-in-out infinite;
+    }
+
+    .chip-a { top: 18px; left: 50%; transform: translateX(-50%); }
+    .chip-b { right: 34px; top: 50%; transform: translateY(-50%); animation-delay: 0.9s; }
+    .chip-c { left: 44px; bottom: 34px; animation-delay: 1.3s; }
+    .chip-d { left: 28px; top: 34%; animation-delay: 0.5s; }
+    .chip-e { right: 80px; bottom: 48px; animation-delay: 1.7s; border-color: rgba(255, 200, 110, 0.18); }
+
+    .principles {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .principle {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .principle strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .principle p {
+      font-size: 14px;
+    }
+
+    .flow-line {
+      position: relative;
+      margin-top: 18px;
+      padding: 30px 18px 18px;
+    }
+
+    .flow-track {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      top: 53px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(121, 230, 255, 0.3), rgba(255, 200, 110, 0.4), rgba(146, 255, 189, 0.35));
+    }
+
+    .flow-track::after {
+      content: "";
+      position: absolute;
+      top: -4px;
+      left: 0;
+      width: 92px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+      filter: blur(1px);
+      animation: travel 4.8s linear infinite;
+    }
+
+    .flow-steps {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .flow-step {
+      text-align: center;
+      padding-top: 34px;
+    }
+
+    .flow-dot {
+      width: 18px;
+      height: 18px;
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff, var(--accent));
+      box-shadow: 0 0 16px rgba(121, 230, 255, 0.4);
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+
+    .flow-step:nth-child(2) .flow-dot { animation-delay: 0.4s; }
+    .flow-step:nth-child(3) .flow-dot { animation-delay: 0.8s; }
+    .flow-step:nth-child(4) .flow-dot { animation-delay: 1.2s; }
+
+    .flow-step strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .flow-step span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .cheat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .cheat-item {
+      position: relative;
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      overflow: hidden;
+    }
+
+    .cheat-item::before {
+      content: "";
+      position: absolute;
+      inset: auto -30px -30px auto;
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle, rgba(121, 230, 255, 0.18), transparent 65%);
+    }
+
+    .cheat-item strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font-size: 17px;
+    }
+
+    .cheat-item ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .hook-ribbon {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .hook-pill {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      animation: bob 3.8s ease-in-out infinite;
+    }
+
+    .hook-pill:nth-child(2) { animation-delay: 0.4s; }
+    .hook-pill:nth-child(3) { animation-delay: 0.8s; }
+    .hook-pill:nth-child(4) { animation-delay: 1.2s; }
+    .hook-pill:nth-child(5) { animation-delay: 1.6s; }
+    .hook-pill:nth-child(6) { animation-delay: 2s; }
+
+    .quiz-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .dictionary-layout {
+      display: grid;
+      gap: 20px;
+    }
+
+    .dictionary-hero {
+      padding: 24px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(135deg, rgba(121, 230, 255, 0.08), rgba(255, 200, 110, 0.05)),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .dictionary-hero h2 {
+      margin: 12px 0 10px;
+      font-size: clamp(26px, 4vw, 38px);
+      line-height: 1.05;
+    }
+
+    .dictionary-hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 860px;
+    }
+
+    .dictionary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .coverage-card {
+      padding: 24px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        var(--panel-strong);
+      box-shadow: var(--shadow);
+    }
+
+    .coverage-card h3 {
+      margin: 12px 0 10px;
+      font-size: clamp(22px, 3vw, 32px);
+      line-height: 1.1;
+    }
+
+    .coverage-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .bank-grid {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .bank-section {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .bank-section strong {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--accent-2);
+      font-size: 18px;
+    }
+
+    .bank-section ol {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .bank-section li + li {
+      margin-top: 6px;
+    }
+
+    .term-card {
+      padding: 20px;
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        var(--panel-strong);
+      box-shadow: var(--shadow);
+    }
+
+    .term-card strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    .term-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .quiz-summary,
+    .quiz-card {
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+        var(--panel-strong);
+      box-shadow: var(--shadow);
+    }
+
+    .quiz-summary {
+      padding: 24px;
+      position: sticky;
+      top: 18px;
+    }
+
+    .score-ring {
+      width: 180px;
+      height: 180px;
+      margin: 18px auto 14px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, rgba(6, 17, 31, 0.98) 0 52%, transparent 53%),
+        conic-gradient(var(--accent) calc(var(--score, 0) * 1%), rgba(255, 255, 255, 0.08) 0);
+      box-shadow: inset 0 0 40px rgba(121, 230, 255, 0.12), 0 0 26px rgba(121, 230, 255, 0.15);
+    }
+
+    .score-ring strong {
+      font-size: 42px;
+      line-height: 1;
+    }
+
+    .score-ring span {
+      display: block;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .summary-copy {
+      margin: 0;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    .summary-meta {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .meta-row span {
+      color: var(--muted);
+    }
+
+    .meta-row strong {
+      color: var(--accent-3);
+    }
+
+    .summary-actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .action {
+      border: 0;
+      cursor: pointer;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-family: inherit;
+      transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    }
+
+    .action.primary {
+      color: #05111d;
+      background: linear-gradient(135deg, var(--accent), #d1f8ff);
+      box-shadow: 0 16px 30px rgba(121, 230, 255, 0.2);
+    }
+
+    .action.secondary {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .action:hover,
+    .action:focus-visible {
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .quiz-card {
+      padding: 24px;
+    }
+
+    .question-card + .question-card {
+      margin-top: 18px;
+    }
+
+    .question-card {
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .question-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    .question-index {
+      min-width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: rgba(121, 230, 255, 0.08);
+      color: var(--accent);
+      border: 1px solid rgba(121, 230, 255, 0.18);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .question-card h3 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .options {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .option {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .option:hover {
+      transform: translateY(-1px);
+      border-color: rgba(121, 230, 255, 0.22);
+      background: rgba(121, 230, 255, 0.06);
+    }
+
+    .option input {
+      margin-top: 2px;
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .option.correct {
+      border-color: rgba(146, 255, 189, 0.38);
+      background: rgba(146, 255, 189, 0.08);
+    }
+
+    .option.incorrect {
+      border-color: rgba(255, 142, 155, 0.38);
+      background: rgba(255, 142, 155, 0.08);
+    }
+
+    .feedback {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .feedback.show {
+      display: block;
+    }
+
+    .feedback.good {
+      background: rgba(146, 255, 189, 0.08);
+      border: 1px solid rgba(146, 255, 189, 0.24);
+      color: #d6ffe7;
+    }
+
+    .feedback.bad {
+      background: rgba(255, 142, 155, 0.08);
+      border: 1px solid rgba(255, 142, 155, 0.22);
+      color: #ffd6db;
+    }
+
+    .result-banner {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 18px;
+      background:
+        linear-gradient(135deg, rgba(121, 230, 255, 0.1), rgba(255, 200, 110, 0.08)),
+        rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(121, 230, 255, 0.2);
+    }
+
+    .result-banner strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--accent-2);
+      font-size: 18px;
+    }
+
+    .result-banner p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.95); opacity: 0.75; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
+
+    @keyframes travel {
+      from { transform: translateX(-12px); }
+      to { transform: translateX(calc(100vw - 420px)); }
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @media (max-width: 1080px) {
+      .learn-grid,
+      .quiz-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .quiz-summary {
+        position: static;
+      }
+
+      .dictionary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .bank-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 20px, 1200px);
+        margin: 14px auto 28px;
+      }
+
+      .hero,
+      .card-content,
+      .quiz-summary,
+      .quiz-card {
+        padding: 18px;
+      }
+
+      .tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .tab-button {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .principles,
+      .cheat-grid,
+      .flow-steps,
+      .dictionary-grid,
+      .bank-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .flow-track {
+        display: none;
+      }
+
+      .question-head {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">Interactive React Learning Page</span>
+      <h1>Learn React through motion, then test yourself.</h1>
+      <p class="hero-copy">
+        This page turns the React question sheet into a compact learning studio. The first tab uses animated visual blocks
+        to explain React fundamentals, rendering, hooks, and architecture choices. The second tab switches to objective
+        multiple-choice questions, shows instant Q&amp;A feedback, and calculates your final score.
+      </p>
+      <div class="hero-stats">
+        <div class="stat">
+          <strong>3</strong>
+          <span>Study Tabs</span>
+        </div>
+        <div class="stat">
+          <strong>66</strong>
+          <span>Quiz Questions</span>
+        </div>
+        <div class="stat">
+          <strong>29</strong>
+          <span>Dictionary Terms</span>
+        </div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="React learning tabs">
+        <button class="tab-button active" id="learnTab" type="button" role="tab" aria-selected="true" aria-controls="learnPanel" data-tab="learn">
+          Learn With Motion
+        </button>
+        <button class="tab-button" id="quizTab" type="button" role="tab" aria-selected="false" aria-controls="quizPanel" data-tab="quiz">
+          Quiz And Result
+        </button>
+        <button class="tab-button" id="dictionaryTab" type="button" role="tab" aria-selected="false" aria-controls="dictionaryPanel" data-tab="dictionary">
+          React Dictionary
+        </button>
+      </div>
+    </section>
+
+    <section class="panel active" id="learnPanel" role="tabpanel" aria-labelledby="learnTab">
+      <div class="learn-grid">
+        <article class="card">
+          <div class="card-content">
+            <span class="section-tag">Concept Orbit</span>
+            <h2>React is a component system around UI state and predictable re-renders.</h2>
+            <p>
+              Start with the mental model: React composes screens from reusable components. Each component receives props,
+              owns or derives state, and reacts to user input by re-rendering the UI efficiently.
+            </p>
+            <div class="motion-stage" aria-hidden="true">
+              <div class="orbit"></div>
+              <div class="orbit two"></div>
+              <div class="orbit-chip chip-a">Props</div>
+              <div class="orbit-chip chip-b">State</div>
+              <div class="orbit-chip chip-c">Hooks</div>
+              <div class="orbit-chip chip-d">JSX</div>
+              <div class="orbit-chip chip-e">Virtual DOM</div>
+              <div class="react-core">
+                <div>
+                  <strong>React</strong>
+                  <span>Reusable UI Engine</span>
+                </div>
+              </div>
+            </div>
+            <div class="principles">
+              <div class="principle">
+                <strong>Components</strong>
+                <p>Small UI building blocks make larger interfaces easier to reason about and test.</p>
+              </div>
+              <div class="principle">
+                <strong>Props vs State</strong>
+                <p>Props come from outside; state changes inside a component and drives updates.</p>
+              </div>
+              <div class="principle">
+                <strong>JSX</strong>
+                <p>JSX expresses UI structure close to the logic that controls it.</p>
+              </div>
+              <div class="principle">
+                <strong>Virtual DOM</strong>
+                <p>React compares trees and updates only what changed in the real DOM.</p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-content">
+            <span class="section-tag">Hooks Pocket Guide</span>
+            <h2>Hooks let function components manage behavior without class boilerplate.</h2>
+            <p>
+              The most important early question is not just what each Hook does, but why it exists and when it should not
+              be used. Hooks should stay predictable, top-level, and focused.
+            </p>
+            <div class="hook-ribbon">
+              <div class="hook-pill">useState: local state</div>
+              <div class="hook-pill">useEffect: side effects</div>
+              <div class="hook-pill">useRef: mutable holder</div>
+              <div class="hook-pill">useMemo: cached computation</div>
+              <div class="hook-pill">useCallback: stable function</div>
+              <div class="hook-pill">useContext: shared value</div>
+            </div>
+            <div class="cheat-grid">
+              <div class="cheat-item">
+                <strong>When To Use</strong>
+                <ul>
+                  <li><code>useState()</code> for local UI changes</li>
+                  <li><code>useEffect()</code> for subscriptions, fetches, timers</li>
+                  <li><code>useMemo()</code> only for meaningful recalculation cost</li>
+                </ul>
+              </div>
+              <div class="cheat-item">
+                <strong>When To Be Careful</strong>
+                <ul>
+                  <li>Do not call Hooks conditionally</li>
+                  <li>Avoid overusing memoization for tiny computations</li>
+                  <li>Keep custom Hooks single-purpose and reusable</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-content">
+            <span class="section-tag">Render Flow</span>
+            <h2>Every React update follows a learnable path from event to UI change.</h2>
+            <p>
+              A user event triggers state change, React schedules a render, compares the new tree with the previous one,
+              and commits only the needed DOM mutations. This is the basis for efficient updates.
+            </p>
+            <div class="flow-line" aria-hidden="true">
+              <div class="flow-track"></div>
+              <div class="flow-steps">
+                <div class="flow-step">
+                  <div class="flow-dot"></div>
+                  <strong>User Event</strong>
+                  <span>Click, input, network response, or prop change triggers work.</span>
+                </div>
+                <div class="flow-step">
+                  <div class="flow-dot"></div>
+                  <strong>State Update</strong>
+                  <span><code>setState</code> or parent props produce a new render path.</span>
+                </div>
+                <div class="flow-step">
+                  <div class="flow-dot"></div>
+                  <strong>Diffing</strong>
+                  <span>React compares previous and next virtual tree representations.</span>
+                </div>
+                <div class="flow-step">
+                  <div class="flow-dot"></div>
+                  <strong>Commit</strong>
+                  <span>Only the necessary DOM nodes are patched in the browser.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-content">
+            <span class="section-tag">Architecture Notes</span>
+            <h2>Senior-level React thinking is usually about boundaries, not syntax.</h2>
+            <p>
+              Strong React engineers design reusable components, separate UI from business logic, choose the right level of
+              state sharing, and avoid unnecessary optimization until measurement shows a real issue.
+            </p>
+            <div class="cheat-grid">
+              <div class="cheat-item">
+                <strong>Healthy Patterns</strong>
+                <ul>
+                  <li>Prefer clear component boundaries</li>
+                  <li>Use local state until sharing becomes necessary</li>
+                  <li>Test behavior instead of internal implementation</li>
+                </ul>
+              </div>
+              <div class="cheat-item">
+                <strong>Red Flags</strong>
+                <ul>
+                  <li>Huge components with mixed concerns</li>
+                  <li>Context used for every type of state</li>
+                  <li>Memoization added everywhere without profiling</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" id="quizPanel" role="tabpanel" aria-labelledby="quizTab" hidden>
+      <div class="quiz-layout">
+        <aside class="quiz-summary">
+          <span class="section-tag">Objective Result</span>
+          <div class="score-ring" id="scoreRing" style="--score: 0;">
+            <div>
+              <strong id="scoreValue">0%</strong>
+              <span>Current Score</span>
+            </div>
+          </div>
+          <p class="summary-copy" id="scoreSummary">
+            Choose one option for each question, submit, and review the explanations.
+          </p>
+          <div class="summary-meta">
+            <div class="meta-row">
+              <span>Questions</span>
+              <strong id="questionCount">10</strong>
+            </div>
+            <div class="meta-row">
+              <span>Answered</span>
+              <strong id="answeredCount">0</strong>
+            </div>
+            <div class="meta-row">
+              <span>Correct</span>
+              <strong id="correctCount">0</strong>
+            </div>
+          </div>
+          <div class="summary-actions">
+            <button class="action primary" id="submitQuiz" type="button">Submit Answers</button>
+            <button class="action secondary" id="resetQuiz" type="button">Reset Quiz</button>
+          </div>
+        </aside>
+
+        <div class="quiz-card">
+          <span class="section-tag">Multiple Choice Q&amp;A</span>
+          <h2>React Basics Check</h2>
+          <p>These objective questions now cover the full React question set from the source sheet and give immediate concept-level feedback after submission.</p>
+
+          <form id="quizForm">
+            <div id="questionList"></div>
+          </form>
+
+          <div class="result-banner hidden" id="resultBanner">
+            <strong id="resultHeadline">Result</strong>
+            <p id="resultText"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="dictionaryPanel" role="tabpanel" aria-labelledby="dictionaryTab" hidden>
+      <div class="dictionary-layout">
+        <div class="dictionary-hero">
+          <span class="section-tag">React Glossary</span>
+          <h2>Dictionary of terms to understand in React</h2>
+          <p>
+            Use this tab as a quick-reference glossary. These are the core React terms someone should understand before
+            moving into advanced patterns, architecture, and interview-style discussion.
+          </p>
+        </div>
+
+        <div class="dictionary-grid">
+          <article class="term-card">
+            <strong>Library vs Framework</strong>
+            <p>React is generally called a library because it focuses on UI, while frameworks usually prescribe a broader application structure.</p>
+          </article>
+          <article class="term-card">
+            <strong>Component</strong>
+            <p>A reusable building block that returns UI. Components help split large interfaces into smaller logical pieces.</p>
+          </article>
+          <article class="term-card">
+            <strong>Functional Component</strong>
+            <p>A modern React component written as a JavaScript function, often paired with Hooks for state and side effects.</p>
+          </article>
+          <article class="term-card">
+            <strong>Class Component</strong>
+            <p>An older React component style based on JavaScript classes and lifecycle methods such as <code>componentDidMount()</code>.</p>
+          </article>
+          <article class="term-card">
+            <strong>JSX</strong>
+            <p>A syntax extension that lets you describe UI in JavaScript using HTML-like markup.</p>
+          </article>
+          <article class="term-card">
+            <strong>Props</strong>
+            <p>Inputs passed from a parent component to a child component. Props are read-only inside the receiving component.</p>
+          </article>
+          <article class="term-card">
+            <strong>State</strong>
+            <p>Internal component data that can change over time and trigger a re-render when updated.</p>
+          </article>
+          <article class="term-card">
+            <strong>Re-render</strong>
+            <p>The process where React runs a component again to produce an updated UI after props or state change.</p>
+          </article>
+          <article class="term-card">
+            <strong>Virtual DOM</strong>
+            <p>An in-memory representation of the UI that React compares to detect what changed before touching the real DOM.</p>
+          </article>
+          <article class="term-card">
+            <strong>Hook</strong>
+            <p>A special React function such as <code>useState()</code> or <code>useEffect()</code> that adds behavior to function components.</p>
+          </article>
+          <article class="term-card">
+            <strong>useState</strong>
+            <p>A Hook used to store and update local component state.</p>
+          </article>
+          <article class="term-card">
+            <strong>useEffect</strong>
+            <p>A Hook used for side effects such as API calls, timers, subscriptions, or syncing with external systems.</p>
+          </article>
+          <article class="term-card">
+            <strong>useLayoutEffect</strong>
+            <p>A Hook like <code>useEffect()</code> that runs earlier in the render lifecycle, often used when layout measurement must happen before paint.</p>
+          </article>
+          <article class="term-card">
+            <strong>useRef</strong>
+            <p>A Hook that stores a mutable value across renders and is often used to access DOM elements directly.</p>
+          </article>
+          <article class="term-card">
+            <strong>useMemo</strong>
+            <p>A Hook that memoizes the result of an expensive calculation so it is not recomputed unnecessarily.</p>
+          </article>
+          <article class="term-card">
+            <strong>useCallback</strong>
+            <p>A Hook that memoizes a function reference to avoid unnecessary re-creations on each render.</p>
+          </article>
+          <article class="term-card">
+            <strong>useContext</strong>
+            <p>A Hook that reads shared values from React Context without passing props through many layers manually.</p>
+          </article>
+          <article class="term-card">
+            <strong>Context API</strong>
+            <p>A built-in way to share data like theme or auth state across multiple components without heavy prop drilling.</p>
+          </article>
+          <article class="term-card">
+            <strong>Prop Drilling</strong>
+            <p>The repeated passing of props through intermediate components that do not need the data themselves.</p>
+          </article>
+          <article class="term-card">
+            <strong>Controlled Component</strong>
+            <p>A form element whose value is controlled by React state, making the UI the single source of truth.</p>
+          </article>
+          <article class="term-card">
+            <strong>Uncontrolled Component</strong>
+            <p>A form element that manages its own value in the DOM and is often accessed using refs.</p>
+          </article>
+          <article class="term-card">
+            <strong>Event Handling</strong>
+            <p>React handles browser events with props such as <code>onClick</code> and <code>onChange</code>, usually pointing to component functions.</p>
+          </article>
+          <article class="term-card">
+            <strong>Lifting State Up</strong>
+            <p>Moving shared state to a common parent so sibling components can read and update the same source of truth.</p>
+          </article>
+          <article class="term-card">
+            <strong>Parent-Child Communication</strong>
+            <p>Parents pass data down with props, and children communicate up through callback functions provided by the parent.</p>
+          </article>
+          <article class="term-card">
+            <strong>Key</strong>
+            <p>A stable identifier used by React to track items in a list and reconcile them correctly during updates.</p>
+          </article>
+          <article class="term-card">
+            <strong>Conditional Rendering</strong>
+            <p>Showing different UI output depending on state, props, permissions, loading state, or other conditions.</p>
+          </article>
+          <article class="term-card">
+            <strong>Lifecycle</strong>
+            <p>The high-level phases of a component such as mount, update, and unmount, now usually reasoned about through Hooks.</p>
+          </article>
+          <article class="term-card">
+            <strong>Custom Hook</strong>
+            <p>A reusable function that combines React Hooks and shared logic into a clean abstraction.</p>
+          </article>
+          <article class="term-card">
+            <strong>Memoization</strong>
+            <p>A performance technique used to reuse previous values or function references when inputs have not changed.</p>
+          </article>
+          <article class="term-card">
+            <strong>React.memo</strong>
+            <p>A helper that prevents a component from re-rendering when its props have not changed.</p>
+          </article>
+          <article class="term-card">
+            <strong>Performance Bottleneck</strong>
+            <p>An area where rendering, data fetching, or computation slows down the app and usually needs measurement before optimization.</p>
+          </article>
+          <article class="term-card">
+            <strong>Server State</strong>
+            <p>Data that lives on the backend and is fetched, cached, and synchronized separately from local UI state.</p>
+          </article>
+          <article class="term-card">
+            <strong>Redux / Zustand</strong>
+            <p>Examples of state management libraries used when app-wide state or update coordination grows beyond simple local state and Context.</p>
+          </article>
+          <article class="term-card">
+            <strong>Anti-pattern</strong>
+            <p>A code habit that makes a React app harder to maintain, such as giant components, unnecessary prop drilling, or premature memoization.</p>
+          </article>
+          <article class="term-card">
+            <strong>Code Splitting</strong>
+            <p>A technique to load JavaScript in smaller chunks so users do not download the whole app upfront.</p>
+          </article>
+          <article class="term-card">
+            <strong>Lazy Loading</strong>
+            <p>Loading components or modules only when needed, often improving startup performance.</p>
+          </article>
+          <article class="term-card">
+            <strong>Unit Testing</strong>
+            <p>Testing a small isolated piece of behavior, such as a component branch, helper, or hook.</p>
+          </article>
+          <article class="term-card">
+            <strong>Integration Testing</strong>
+            <p>Testing how multiple pieces work together, such as a form, validation flow, and submission result.</p>
+          </article>
+          <article class="term-card">
+            <strong>Reusable Component</strong>
+            <p>A component with a clear API, minimal assumptions, and behavior that can be reused across screens or features.</p>
+          </article>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const quizQuestions = [
+      {
+        section: "Core Concepts",
+        prompt: "What is React, and why is it used for building UI applications?",
+        options: [
+          "A UI library used to build component-based interfaces",
+          "A database engine for storing UI state",
+          "A replacement for HTML and CSS",
+          "A browser extension for testing pages"
+        ],
+        answer: 0,
+        explanation: "React is primarily used to build reusable, component-based user interfaces."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What is the difference between a library and a framework, and where does React fit?",
+        options: [
+          "React is usually considered a UI library because it focuses mainly on the view layer",
+          "React is a backend framework because it handles servers",
+          "React is an operating system because it manages processes",
+          "There is no difference between a library and a framework"
+        ],
+        answer: 0,
+        explanation: "React is commonly described as a library because it focuses on UI rather than prescribing an entire application structure."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What is JSX?",
+        options: [
+          "A syntax extension that lets you write UI-like markup in JavaScript",
+          "A CSS build tool",
+          "A browser-only testing API",
+          "A database query format"
+        ],
+        answer: 0,
+        explanation: "JSX is syntax that looks like HTML but is used inside JavaScript to describe UI."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "How does React update the DOM efficiently?",
+        options: [
+          "By comparing virtual tree changes before updating the real DOM",
+          "By fully reloading the browser on each state change",
+          "By skipping rendering whenever props change",
+          "By storing the DOM in localStorage"
+        ],
+        answer: 0,
+        explanation: "React compares previous and next virtual representations, then updates only the DOM parts that changed."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What is the Virtual DOM?",
+        options: [
+          "An in-memory representation of the UI used for diffing updates",
+          "A cloud-hosted copy of the DOM",
+          "A replacement for CSS",
+          "A browser security sandbox"
+        ],
+        answer: 0,
+        explanation: "The Virtual DOM is an in-memory tree React uses to calculate efficient UI updates."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What are components in React?",
+        options: [
+          "Reusable building blocks that return UI",
+          "Database tables for state",
+          "Compiler plugins",
+          "Browser tabs managed by React"
+        ],
+        answer: 0,
+        explanation: "Components are the reusable units React uses to compose interfaces."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What is the difference between functional components and class components?",
+        options: [
+          "Functional components are plain functions and class components use ES classes and lifecycle methods",
+          "Functional components can render, class components cannot",
+          "Class components are required for props",
+          "There is no difference at all"
+        ],
+        answer: 0,
+        explanation: "Functional components are function-based; class components use classes and older lifecycle APIs."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What are props in React?",
+        options: [
+          "Read-only inputs passed from parent to child components",
+          "Internal mutable variables that always stay local",
+          "CSS styles applied globally",
+          "Browser events created by React automatically"
+        ],
+        answer: 0,
+        explanation: "Props are inputs that a parent passes to a child component."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What is state in React?",
+        options: [
+          "Data inside a component that can change over time and trigger a re-render",
+          "Static HTML shipped with the app",
+          "A stylesheet object stored in the DOM",
+          "The build configuration for JSX"
+        ],
+        answer: 0,
+        explanation: "State is mutable data managed by a component that affects what it renders."
+      },
+      {
+        section: "Core Concepts",
+        prompt: "What is the difference between props and state?",
+        options: [
+          "Props come from outside; state is managed within the component",
+          "Props are mutable and state is read-only",
+          "Props exist only in class components",
+          "State is passed from parent but props are not"
+        ],
+        answer: 0,
+        explanation: "Props are external inputs, while state is data owned and updated by the component."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "What triggers a re-render in React?",
+        options: [
+          "Changes in state or props",
+          "Opening a new browser tab",
+          "Adding comments in the source file only",
+          "Hovering over the page title"
+        ],
+        answer: 0,
+        explanation: "State updates and prop changes are common triggers for re-rendering."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "What is the React component lifecycle at a high level?",
+        options: [
+          "Mount, update, and unmount",
+          "Compile, zip, and deploy",
+          "Import, export, and minify",
+          "Cache, encrypt, and serialize"
+        ],
+        answer: 0,
+        explanation: "At a high level, components mount, update, and unmount."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "What is the use of `useEffect()`?",
+        options: [
+          "To run side effects after rendering",
+          "To define CSS animations",
+          "To prevent every render permanently",
+          "To replace props with state"
+        ],
+        answer: 0,
+        explanation: "`useEffect()` is used for side effects like fetches, timers, and subscriptions."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "What is the difference between `useEffect()` and `useLayoutEffect()`?",
+        options: [
+          "`useLayoutEffect()` runs earlier around layout/paint timing; `useEffect()` runs after paint",
+          "`useEffect()` is only for class components",
+          "`useLayoutEffect()` is for CSS files only",
+          "There is no timing difference"
+        ],
+        answer: 0,
+        explanation: "`useLayoutEffect()` runs earlier and is useful when layout measurement must happen before paint."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "Why can unnecessary re-renders become a performance issue?",
+        options: [
+          "Because they cause extra computation and UI work that may slow the app",
+          "Because they automatically delete component state",
+          "Because React stops diffing after three renders",
+          "Because they disable browser events"
+        ],
+        answer: 0,
+        explanation: "Unnecessary re-renders can waste CPU time and make the interface feel slower."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "What is conditional rendering in React?",
+        options: [
+          "Rendering different UI based on conditions like state or props",
+          "Rendering only on the server",
+          "A method to compile JSX",
+          "A rule that every component must return four elements"
+        ],
+        answer: 0,
+        explanation: "Conditional rendering means showing different output depending on a condition."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "How do you render a list in React?",
+        options: [
+          "By mapping over data and returning elements for each item",
+          "By manually duplicating the same JSX repeatedly",
+          "By using only `if` statements",
+          "By storing the list in CSS"
+        ],
+        answer: 0,
+        explanation: "Lists are typically rendered by mapping over an array and returning JSX for each item."
+      },
+      {
+        section: "Rendering And Lifecycle",
+        prompt: "Why is the `key` prop important when rendering lists?",
+        options: [
+          "It gives React stable identity information for each item during reconciliation",
+          "It encrypts each list item",
+          "It makes arrays mutable",
+          "It disables re-rendering of the list"
+        ],
+        answer: 0,
+        explanation: "Keys help React track which list items changed, moved, or stayed the same."
+      },
+      {
+        section: "Hooks",
+        prompt: "What problem do Hooks solve in React?",
+        options: [
+          "They let function components use state and side-effect logic cleanly",
+          "They replace JavaScript objects",
+          "They eliminate the need for components",
+          "They make CSS unnecessary"
+        ],
+        answer: 0,
+        explanation: "Hooks allow stateful and side-effect logic inside function components."
+      },
+      {
+        section: "Hooks",
+        prompt: "What does `useState()` do?",
+        options: [
+          "Stores and updates local component state",
+          "Creates HTTP requests automatically",
+          "Adds routing to the app",
+          "Measures DOM layout before paint"
+        ],
+        answer: 0,
+        explanation: "`useState()` manages local state in function components."
+      },
+      {
+        section: "Hooks",
+        prompt: "What does `useEffect()` do?",
+        options: [
+          "Runs side effects after rendering",
+          "Renders child components in a loop",
+          "Declares CSS variables for a component",
+          "Replaces the Virtual DOM"
+        ],
+        answer: 0,
+        explanation: "`useEffect()` handles side effects such as fetching data or subscribing to events."
+      },
+      {
+        section: "Hooks",
+        prompt: "What is `useRef()` used for?",
+        options: [
+          "Storing mutable values and accessing DOM elements without causing re-renders",
+          "Triggering a network request every render",
+          "Replacing Context API",
+          "Creating reducers automatically"
+        ],
+        answer: 0,
+        explanation: "`useRef()` is often used for DOM references or mutable values that should persist across renders."
+      },
+      {
+        section: "Hooks",
+        prompt: "What is `useMemo()` used for?",
+        options: [
+          "Memoizing expensive computed values",
+          "Creating server-side routes",
+          "Defining component props",
+          "Making all state global"
+        ],
+        answer: 0,
+        explanation: "`useMemo()` helps avoid recalculating expensive values when dependencies have not changed."
+      },
+      {
+        section: "Hooks",
+        prompt: "What is `useCallback()` used for?",
+        options: [
+          "Memoizing a function reference between renders",
+          "Scheduling DOM painting",
+          "Replacing event handlers with promises",
+          "Creating new state variables inside loops"
+        ],
+        answer: 0,
+        explanation: "`useCallback()` memoizes function references, which can help when passing callbacks to children."
+      },
+      {
+        section: "Hooks",
+        prompt: "What is `useContext()` used for?",
+        options: [
+          "Reading shared values from React Context",
+          "Creating CSS modules",
+          "Fetching server data without any provider",
+          "Preventing re-renders in all descendants"
+        ],
+        answer: 0,
+        explanation: "`useContext()` lets a component consume shared context values."
+      },
+      {
+        section: "Hooks",
+        prompt: "What are the rules of Hooks?",
+        options: [
+          "Call Hooks at the top level of React functions and not conditionally",
+          "Call Hooks only inside loops",
+          "Call Hooks only in class constructors",
+          "Hooks can only be used once per file"
+        ],
+        answer: 0,
+        explanation: "Hooks should be called consistently at the top level of React components or custom Hooks."
+      },
+      {
+        section: "Hooks",
+        prompt: "Why should Hooks not be called conditionally?",
+        options: [
+          "React relies on consistent Hook call order across renders",
+          "Conditional logic is invalid JavaScript",
+          "Hooks only work in production mode",
+          "Hooks always require Redux"
+        ],
+        answer: 0,
+        explanation: "React maps Hook state by call order, so conditional calls break that consistency."
+      },
+      {
+        section: "Forms And Events",
+        prompt: "How are events handled in React?",
+        options: [
+          "By attaching event handler props like `onClick` and `onChange`",
+          "By writing SQL statements in JSX",
+          "By editing the DOM manually after every click",
+          "By disabling browser events and simulating all of them"
+        ],
+        answer: 0,
+        explanation: "React uses event handler props such as `onClick` and `onChange`."
+      },
+      {
+        section: "Forms And Events",
+        prompt: "What is the difference between controlled and uncontrolled components?",
+        options: [
+          "Controlled components use React state; uncontrolled components keep their own DOM state",
+          "Controlled components are only for class components",
+          "Uncontrolled components cannot receive props",
+          "There is no difference in React"
+        ],
+        answer: 0,
+        explanation: "Controlled inputs are driven by React state, while uncontrolled inputs keep their own DOM-managed value."
+      },
+      {
+        section: "Forms And Events",
+        prompt: "How do you handle form input in React?",
+        options: [
+          "Bind input values to state and update them with change handlers",
+          "Edit the browser DOM directly without React state",
+          "Store all form values only in CSS classes",
+          "Use `console.log()` as the only form handler"
+        ],
+        answer: 0,
+        explanation: "A common React approach is to keep input values in state and update them via `onChange` handlers."
+      },
+      {
+        section: "Forms And Events",
+        prompt: "How do you lift state up between components?",
+        options: [
+          "Move shared state to the nearest common parent",
+          "Duplicate the same state in every child",
+          "Convert props into CSS variables",
+          "Use a browser extension to sync components"
+        ],
+        answer: 0,
+        explanation: "Lifting state up means moving shared state to a common ancestor."
+      },
+      {
+        section: "Forms And Events",
+        prompt: "How do parent and child components communicate in React?",
+        options: [
+          "Parents pass props down, and children communicate back via callbacks",
+          "Children edit parent state directly with no function calls",
+          "Communication only happens through browser storage",
+          "Components communicate only through CSS selectors"
+        ],
+        answer: 0,
+        explanation: "Data flows down through props, and events or callbacks allow communication back up."
+      },
+      {
+        section: "State Management",
+        prompt: "When is local component state enough?",
+        options: [
+          "When the data is only needed within one component or a small local area",
+          "When every page must share it globally",
+          "When server data must be cached across the whole app",
+          "When multiple teams need a central analytics layer"
+        ],
+        answer: 0,
+        explanation: "Local state is usually enough when the data does not need broad sharing."
+      },
+      {
+        section: "State Management",
+        prompt: "When would you use Context API?",
+        options: [
+          "When multiple components need the same shared value like theme or auth",
+          "When you want to replace every prop in the app",
+          "When you need database indexing",
+          "When you want to avoid all re-renders entirely"
+        ],
+        answer: 0,
+        explanation: "Context is useful for shared values that many components need."
+      },
+      {
+        section: "State Management",
+        prompt: "What are the drawbacks of using Context for everything?",
+        options: [
+          "It can make state management harder to reason about and may trigger broad re-renders",
+          "It completely blocks child rendering",
+          "It only works in tests",
+          "It removes access to Hooks"
+        ],
+        answer: 0,
+        explanation: "Using Context for all state can lead to harder maintenance and broader update impact."
+      },
+      {
+        section: "State Management",
+        prompt: "When might you choose Redux, Zustand, or another state management library?",
+        options: [
+          "When app-wide state and update coordination become more complex",
+          "When you want to avoid JavaScript",
+          "When there are fewer than two components",
+          "Only when React state is deprecated"
+        ],
+        answer: 0,
+        explanation: "Dedicated state libraries help when application state grows beyond simple local or context-based patterns."
+      },
+      {
+        section: "State Management",
+        prompt: "What is prop drilling?",
+        options: [
+          "Passing props through intermediate components that do not need them directly",
+          "Updating state inside a loop",
+          "Rendering nested arrays in JSX",
+          "Using refs to access DOM nodes"
+        ],
+        answer: 0,
+        explanation: "Prop drilling happens when values must be passed through many layers unnecessarily."
+      },
+      {
+        section: "State Management",
+        prompt: "How can prop drilling be reduced?",
+        options: [
+          "By lifting state thoughtfully, using composition, or using Context where appropriate",
+          "By converting all state into global variables",
+          "By removing props from child components entirely",
+          "By avoiding parent-child component relationships"
+        ],
+        answer: 0,
+        explanation: "Prop drilling can be reduced with better state placement, composition, or context when justified."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "What is memoization in React?",
+        options: [
+          "Reusing previous values or function references when inputs have not changed",
+          "A way to compile JSX to CSS",
+          "A process for deleting unused components",
+          "A browser cache controlled by HTML attributes"
+        ],
+        answer: 0,
+        explanation: "Memoization helps avoid unnecessary recalculation or function recreation."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "What does `React.memo()` do?",
+        options: [
+          "Prevents unnecessary re-renders when props have not changed",
+          "Stores state in localStorage",
+          "Creates Context providers automatically",
+          "Runs effects before paint"
+        ],
+        answer: 0,
+        explanation: "`React.memo()` memoizes a component based on its props."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "When should `useMemo()` and `useCallback()` be avoided?",
+        options: [
+          "When they add complexity without meaningful performance benefit",
+          "When using JSX",
+          "When rendering lists",
+          "When using function components"
+        ],
+        answer: 0,
+        explanation: "Memoization should be used selectively, not by default."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "How would you identify performance bottlenecks in a React app?",
+        options: [
+          "Profile and measure renders before optimizing",
+          "Guess and add memoization everywhere",
+          "Delete all effects immediately",
+          "Move all state into one component"
+        ],
+        answer: 0,
+        explanation: "Performance work should be driven by measurement and profiling."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "What are common causes of unnecessary renders?",
+        options: [
+          "Changing object or function references unnecessarily and lifting state too high",
+          "Using JSX inside components",
+          "Having more than one input field",
+          "Using semantic HTML elements"
+        ],
+        answer: 0,
+        explanation: "Unstable references and poor state placement are common reasons for avoidable re-renders."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "What is code splitting in React?",
+        options: [
+          "Loading JavaScript in smaller chunks instead of one large bundle",
+          "Breaking CSS into comments",
+          "Turning one component into four props",
+          "Separating HTML from the browser window"
+        ],
+        answer: 0,
+        explanation: "Code splitting improves load performance by reducing the initial bundle size."
+      },
+      {
+        section: "Performance And Optimization",
+        prompt: "What is lazy loading in React?",
+        options: [
+          "Loading components or modules only when they are needed",
+          "Skipping render logic forever",
+          "Postponing state updates until deployment",
+          "Rendering only on Internet Explorer"
+        ],
+        answer: 0,
+        explanation: "Lazy loading delays loading code until it is actually required."
+      },
+      {
+        section: "Architecture And Best Practices",
+        prompt: "How do you structure a medium-sized React application?",
+        options: [
+          "Organize by features or domains with clear boundaries and shared utilities where needed",
+          "Put everything in one very large component",
+          "Keep all logic inside CSS files",
+          "Store every function in `index.html`"
+        ],
+        answer: 0,
+        explanation: "A medium-sized app benefits from clear feature boundaries and maintainable organization."
+      },
+      {
+        section: "Architecture And Best Practices",
+        prompt: "How do you separate presentation and business logic in React?",
+        options: [
+          "Keep UI-focused components thin and move reusable logic into hooks or services",
+          "Mix all state, data fetching, and DOM code into one file",
+          "Put business logic only in CSS",
+          "Avoid function components"
+        ],
+        answer: 0,
+        explanation: "Separating concerns makes components easier to test and maintain."
+      },
+      {
+        section: "Architecture And Best Practices",
+        prompt: "What makes a React component reusable?",
+        options: [
+          "A clear API, focused responsibility, and low assumptions about where it is used",
+          "Hardcoded screen-specific values and network calls",
+          "Direct DOM mutation in every render",
+          "Avoiding props entirely"
+        ],
+        answer: 0,
+        explanation: "Reusable components have a clear contract and minimal coupling to one screen."
+      },
+      {
+        section: "Architecture And Best Practices",
+        prompt: "What are common anti-patterns in React?",
+        options: [
+          "Huge components, overusing Context, and premature optimization",
+          "Using semantic markup",
+          "Passing props to children",
+          "Creating custom hooks"
+        ],
+        answer: 0,
+        explanation: "Large mixed-responsibility components and unnecessary complexity are common anti-patterns."
+      },
+      {
+        section: "Architecture And Best Practices",
+        prompt: "How do you manage shared UI state versus server state?",
+        options: [
+          "Treat them differently: UI state stays local when possible, server state needs fetching and synchronization patterns",
+          "Store both only in CSS classes",
+          "Never cache server state",
+          "Put all state in a single ref"
+        ],
+        answer: 0,
+        explanation: "UI state and server state have different lifecycle patterns and should usually be handled differently."
+      },
+      {
+        section: "Architecture And Best Practices",
+        prompt: "What are custom hooks, and when should you create one?",
+        options: [
+          "Reusable functions that package shared Hook-based logic when the same behavior appears in multiple places",
+          "Hooks that replace JSX syntax",
+          "Server-only React APIs",
+          "A debugging feature used only in tests"
+        ],
+        answer: 0,
+        explanation: "Custom hooks help extract repeated logic into reusable abstractions."
+      },
+      {
+        section: "Testing",
+        prompt: "How do you test a React component?",
+        options: [
+          "By rendering it and verifying user-observable behavior",
+          "By only checking file names",
+          "By testing CSS variables alone",
+          "By avoiding interaction tests entirely"
+        ],
+        answer: 0,
+        explanation: "React components are best tested through behavior and rendered output."
+      },
+      {
+        section: "Testing",
+        prompt: "What is the difference between unit testing and integration testing in React apps?",
+        options: [
+          "Unit tests focus on small isolated pieces; integration tests verify multiple parts working together",
+          "Unit tests run in browsers and integration tests do not",
+          "Integration tests can only test CSS",
+          "There is no difference"
+        ],
+        answer: 0,
+        explanation: "Unit tests isolate behavior, while integration tests verify cooperation across multiple pieces."
+      },
+      {
+        section: "Testing",
+        prompt: "What tools are commonly used for testing React applications?",
+        options: [
+          "Jest or Vitest with React Testing Library are common choices",
+          "Only SQL clients",
+          "Only image editors",
+          "No tools are typically used"
+        ],
+        answer: 0,
+        explanation: "Common React testing setups often use a test runner plus React Testing Library."
+      },
+      {
+        section: "Testing",
+        prompt: "What should be tested in a form-heavy React component?",
+        options: [
+          "Validation, user interactions, loading, success, and error behavior",
+          "Only background colors",
+          "Only import order",
+          "Nothing beyond whether the file exists"
+        ],
+        answer: 0,
+        explanation: "Form-heavy components should be tested around user flows and business outcomes."
+      },
+      {
+        section: "Testing",
+        prompt: "Why is testing behavior usually preferred over testing implementation details?",
+        options: [
+          "Behavior-focused tests are more resilient and closer to real user experience",
+          "Implementation details never change",
+          "Behavior tests require no rendering",
+          "Implementation detail tests are mandatory in React"
+        ],
+        answer: 0,
+        explanation: "Behavior-based tests survive refactors better and reflect how users interact with the app."
+      },
+      {
+        section: "Scenario-Based Questions",
+        prompt: "How would you design a reusable table component in React?",
+        options: [
+          "Create a configurable component with props for columns, rows, and rendering behavior",
+          "Hardcode all columns and API calls for a single page",
+          "Store every cell in global CSS",
+          "Avoid props to keep it generic"
+        ],
+        answer: 0,
+        explanation: "Reusable tables typically expose configurable columns, data, and render hooks."
+      },
+      {
+        section: "Scenario-Based Questions",
+        prompt: "How would you avoid unnecessary renders in a dashboard with many widgets?",
+        options: [
+          "Keep state scoped properly, memoize selectively, and profile before optimizing",
+          "Put all widget state in one parent and force render everything",
+          "Disable all event handlers",
+          "Convert the dashboard into one giant component"
+        ],
+        answer: 0,
+        explanation: "Scoped state, selective memoization, and profiling are typical ways to keep dashboards performant."
+      },
+      {
+        section: "Scenario-Based Questions",
+        prompt: "How would you share authentication state across the application?",
+        options: [
+          "Use a shared auth provider or state layer consumed across the app",
+          "Pass auth only through CSS classes",
+          "Store it only in one button component",
+          "Duplicate it manually inside every screen"
+        ],
+        answer: 0,
+        explanation: "Auth state is usually shared through context or a dedicated state mechanism."
+      },
+      {
+        section: "Scenario-Based Questions",
+        prompt: "How would you handle API loading, success, and error states in a clean way?",
+        options: [
+          "Model those states explicitly and render UI for each case",
+          "Hide all loading and error states from the user",
+          "Use one boolean for everything and guess the rest",
+          "Refresh the whole page on every request"
+        ],
+        answer: 0,
+        explanation: "Clear loading, success, and error states make data flows understandable and testable."
+      },
+      {
+        section: "Scenario-Based Questions",
+        prompt: "How would you refactor a very large React component that has too many responsibilities?",
+        options: [
+          "Split UI and logic into smaller components and custom hooks with focused roles",
+          "Add more conditionals into the same component",
+          "Move all code into inline event handlers",
+          "Replace props with global variables"
+        ],
+        answer: 0,
+        explanation: "Large components are typically improved by splitting responsibilities and extracting reusable logic."
+      },
+      {
+        section: "Good Follow-Up Questions For Senior Candidates",
+        prompt: "How do you decide component boundaries in a React codebase?",
+        options: [
+          "Based on responsibility, reuse potential, and how state naturally groups together",
+          "Only by file length",
+          "By using exactly one component per screen",
+          "By matching CSS class names only"
+        ],
+        answer: 0,
+        explanation: "Component boundaries are usually shaped by responsibility, cohesion, and state ownership."
+      },
+      {
+        section: "Good Follow-Up Questions For Senior Candidates",
+        prompt: "How do you balance readability versus optimization in React?",
+        options: [
+          "Optimize only when measurement justifies it while keeping code understandable",
+          "Always optimize first and readability later",
+          "Avoid abstraction completely",
+          "Use memoization on every line"
+        ],
+        answer: 0,
+        explanation: "Strong React engineering balances clarity with measured optimization."
+      },
+      {
+        section: "Good Follow-Up Questions For Senior Candidates",
+        prompt: "How do you introduce standards for hooks, state, and folder structure across teams?",
+        options: [
+          "Define conventions, document them, and reinforce them through reviews and examples",
+          "Let every file use a different pattern forever",
+          "Ban custom hooks completely",
+          "Avoid shared standards to maximize flexibility"
+        ],
+        answer: 0,
+        explanation: "Team standards usually succeed through documented conventions, examples, and code review reinforcement."
+      },
+      {
+        section: "Good Follow-Up Questions For Senior Candidates",
+        prompt: "What React mistakes do you see engineers make most often?",
+        options: [
+          "Overgrown components, poor state placement, and premature optimization",
+          "Using JSX at all",
+          "Passing props between components",
+          "Writing tests"
+        ],
+        answer: 0,
+        explanation: "Many maintainability problems come from poor boundaries and premature complexity."
+      },
+      {
+        section: "Good Follow-Up Questions For Senior Candidates",
+        prompt: "How do you review React code for maintainability?",
+        options: [
+          "Check clarity, component boundaries, state ownership, testability, and unnecessary complexity",
+          "Review only indentation and ignore behavior",
+          "Approve code based only on color choices",
+          "Reject all custom hooks automatically"
+        ],
+        answer: 0,
+        explanation: "Maintainable React code is readable, well-bounded, testable, and avoids needless complexity."
+      }
+    ];
+
+    const dom = {
+      tabs: document.querySelectorAll(".tab-button"),
+      panels: document.querySelectorAll(".panel"),
+      questionList: document.getElementById("questionList"),
+      submitQuiz: document.getElementById("submitQuiz"),
+      resetQuiz: document.getElementById("resetQuiz"),
+      scoreValue: document.getElementById("scoreValue"),
+      scoreRing: document.getElementById("scoreRing"),
+      questionCount: document.getElementById("questionCount"),
+      answeredCount: document.getElementById("answeredCount"),
+      correctCount: document.getElementById("correctCount"),
+      scoreSummary: document.getElementById("scoreSummary"),
+      resultBanner: document.getElementById("resultBanner"),
+      resultHeadline: document.getElementById("resultHeadline"),
+      resultText: document.getElementById("resultText")
+    };
+
+    function renderQuestions() {
+      dom.questionCount.textContent = String(quizQuestions.length);
+      let previousSection = "";
+
+      dom.questionList.innerHTML = quizQuestions
+        .map((question, questionIndex) => {
+          const sectionHeader = question.section !== previousSection
+            ? `<div class="section-tag" style="margin: 10px 0 14px; display: inline-block;">${question.section}</div>`
+            : "";
+          previousSection = question.section;
+
+          const options = question.options
+            .map((option, optionIndex) => `
+              <label class="option" data-question="${questionIndex}" data-option="${optionIndex}">
+                <input type="checkbox" name="question-${questionIndex}" value="${optionIndex}">
+                <span>${option}</span>
+              </label>
+            `)
+            .join("");
+
+          return `
+            ${sectionHeader}
+            <section class="question-card" data-question-card="${questionIndex}">
+              <div class="question-head">
+                <div class="question-index">Q${questionIndex + 1}</div>
+                <div>
+                  <h3>${question.prompt}</h3>
+                </div>
+              </div>
+              <div class="options">${options}</div>
+              <div class="feedback" id="feedback-${questionIndex}"></div>
+            </section>
+          `;
+        })
+        .join("");
+    }
+
+    function setActiveTab(targetTab) {
+      dom.tabs.forEach((tab) => {
+        const isActive = tab.dataset.tab === targetTab;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
+      });
+
+      dom.panels.forEach((panel) => {
+        const isActive = panel.id === `${targetTab}Panel`;
+        panel.classList.toggle("active", isActive);
+        panel.hidden = !isActive;
+      });
+    }
+
+    function updateAnsweredCount() {
+      const answered = quizQuestions.filter((_, index) => {
+        return document.querySelector(`input[name="question-${index}"]:checked`);
+      }).length;
+
+      dom.answeredCount.textContent = String(answered);
+    }
+
+    function evaluateQuiz() {
+      let correctAnswers = 0;
+      let answered = 0;
+
+      quizQuestions.forEach((question, questionIndex) => {
+        const selected = document.querySelector(`input[name="question-${questionIndex}"]:checked`);
+        const optionLabels = document.querySelectorAll(`[data-question="${questionIndex}"]`);
+        const feedback = document.getElementById(`feedback-${questionIndex}`);
+
+        optionLabels.forEach((label, optionIndex) => {
+          label.classList.remove("correct", "incorrect");
+          if (optionIndex === question.answer) {
+            label.classList.add("correct");
+          }
+        });
+
+        if (selected) {
+          answered += 1;
+          const selectedValue = Number(selected.value);
+
+          if (selectedValue === question.answer) {
+            correctAnswers += 1;
+            feedback.className = "feedback show good";
+            feedback.textContent = `Correct. ${question.explanation}`;
+          } else {
+            optionLabels[selectedValue].classList.add("incorrect");
+            feedback.className = "feedback show bad";
+            feedback.textContent = `Not quite. ${question.explanation}`;
+          }
+        } else {
+          feedback.className = "feedback show bad";
+          feedback.textContent = `No answer selected. ${question.explanation}`;
+        }
+      });
+
+      const score = Math.round((correctAnswers / quizQuestions.length) * 100);
+      dom.scoreValue.textContent = `${score}%`;
+      dom.scoreRing.style.setProperty("--score", score);
+      dom.correctCount.textContent = String(correctAnswers);
+      dom.answeredCount.textContent = String(answered);
+      dom.resultBanner.classList.remove("hidden");
+
+      if (score >= 80) {
+        dom.scoreSummary.textContent = "Strong baseline. You understand the core React mental model well.";
+        dom.resultHeadline.textContent = "Excellent foundation";
+        dom.resultText.textContent = `You scored ${correctAnswers} out of ${quizQuestions.length}. Move next into architecture, performance profiling, and scenario-based discussion.`;
+      } else if (score >= 60) {
+        dom.scoreSummary.textContent = "Good progress. Review Hooks rules, render behavior, and state-sharing decisions.";
+        dom.resultHeadline.textContent = "Good working knowledge";
+        dom.resultText.textContent = `You scored ${correctAnswers} out of ${quizQuestions.length}. Revisit the animated learn tab once and then retry the quiz.`;
+      } else {
+        dom.scoreSummary.textContent = "Early-stage understanding. Focus on React basics before moving into advanced patterns.";
+        dom.resultHeadline.textContent = "Needs one more pass";
+        dom.resultText.textContent = `You scored ${correctAnswers} out of ${quizQuestions.length}. Start again with components, props, state, and the render flow.`;
+      }
+    }
+
+    function resetQuiz() {
+      document.getElementById("quizForm").reset();
+      document.querySelectorAll(".option").forEach((option) => {
+        option.classList.remove("correct", "incorrect");
+      });
+      document.querySelectorAll(".feedback").forEach((feedback) => {
+        feedback.className = "feedback";
+        feedback.textContent = "";
+      });
+
+      dom.scoreValue.textContent = "0%";
+      dom.scoreRing.style.setProperty("--score", 0);
+      dom.answeredCount.textContent = "0";
+      dom.correctCount.textContent = "0";
+      dom.scoreSummary.textContent = "Choose one option for each question, submit, and review the explanations.";
+      dom.resultBanner.classList.add("hidden");
+      dom.resultHeadline.textContent = "Result";
+      dom.resultText.textContent = "";
+    }
+
+    function wireEvents() {
+      dom.tabs.forEach((tab) => {
+        tab.addEventListener("click", () => setActiveTab(tab.dataset.tab));
+      });
+
+      dom.questionList.addEventListener("change", (event) => {
+        const changedInput = event.target;
+
+        if (changedInput instanceof HTMLInputElement && changedInput.type === "checkbox" && changedInput.checked) {
+          document
+            .querySelectorAll(`input[name="${changedInput.name}"]`)
+            .forEach((input) => {
+              if (input !== changedInput) {
+                input.checked = false;
+              }
+            });
+        }
+
+        updateAnsweredCount();
+      });
+      dom.submitQuiz.addEventListener("click", evaluateQuiz);
+      dom.resetQuiz.addEventListener("click", resetQuiz);
+    }
+
+    renderQuestions();
+    wireEvents();
+  </script>
+</body>
+</html>

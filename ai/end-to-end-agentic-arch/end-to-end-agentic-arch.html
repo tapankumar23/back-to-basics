@@ -1,0 +1,3253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Logistics Control Tower</title>
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+  <style>
+    :root {
+      --bg: #06111f;
+      --panel: rgba(8, 20, 38, 0.82);
+      --panel-strong: rgba(11, 25, 48, 0.96);
+      --border: rgba(110, 186, 255, 0.18);
+      --text: #ecf7ff;
+      --muted: #8da5c5;
+      --blue: #35b7ff;
+      --cyan: #75f3ff;
+      --yellow: #f5cf5a;
+      --green: #46e0a1;
+      --red: #ff6177;
+      --violet: #8e7dff;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      --radius: 22px;
+      --dot: rgba(53, 183, 255, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(53, 183, 255, 0.10), transparent 25%),
+        radial-gradient(circle at 80% 14%, rgba(142, 125, 255, 0.10), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(70, 224, 161, 0.08), transparent 30%),
+        linear-gradient(180deg, #020811 0%, #06111f 45%, #020914 100%);
+      color: var(--text);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      mask-image: radial-gradient(circle at center, black 35%, transparent 100%);
+    }
+
+    .shell {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      position: relative;
+      padding: 26px 28px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(13, 29, 52, 0.96), rgba(6, 16, 31, 0.88)),
+        rgba(8, 20, 38, 0.8);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at top left, rgba(117, 243, 255, 0.08), transparent 24%),
+        radial-gradient(circle at right center, rgba(245, 207, 90, 0.08), transparent 18%);
+      pointer-events: none;
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      position: relative;
+      z-index: 1;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.28em;
+      font-size: 11px;
+      font-family: "Courier New", monospace;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 60px);
+      line-height: 0.95;
+      font-weight: 600;
+      max-width: 760px;
+    }
+
+    .subcopy {
+      margin: 12px 0 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+      font-family: "Courier New", monospace;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      align-items: center;
+      max-width: 420px;
+    }
+
+    .toolbar button,
+    .toolbar select,
+    .toolbar label {
+      background: rgba(10, 24, 46, 0.86);
+      border: 1px solid rgba(117, 243, 255, 0.18);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-family: "Courier New", monospace;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .toolbar button:hover,
+    .toolbar select:hover,
+    .toolbar label:hover {
+      transform: translateY(-1px);
+      border-color: rgba(117, 243, 255, 0.4);
+      box-shadow: 0 0 0 1px rgba(117, 243, 255, 0.14) inset;
+    }
+
+    .toolbar input {
+      accent-color: var(--yellow);
+      margin-right: 8px;
+    }
+
+    .scenario-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pill {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 186, 255, 0.16);
+      background: rgba(8, 19, 36, 0.68);
+      min-height: 74px;
+    }
+
+    .pill-label {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-family: "Courier New", monospace;
+      margin-bottom: 6px;
+    }
+
+    .pill strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 600;
+    }
+
+    .explain-panel {
+      margin-top: 16px;
+      padding: 18px 20px;
+      border-radius: 22px;
+      border: 1px solid rgba(110, 186, 255, 0.16);
+      background:
+        linear-gradient(180deg, rgba(9, 23, 42, 0.9), rgba(6, 15, 29, 0.92)),
+        rgba(8, 19, 36, 0.8);
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+    }
+
+    .explain-grid {
+      display: grid;
+      grid-template-columns: 1.5fr repeat(3, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .explain-card {
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 186, 255, 0.14);
+      background: rgba(8, 20, 38, 0.72);
+    }
+
+    .explain-card strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--white);
+    }
+
+    .explain-card p,
+    .explain-card ul {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .explain-card ul {
+      padding-left: 18px;
+    }
+
+    .explain-card li + li {
+      margin-top: 4px;
+    }
+
+    .signal-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(245, 207, 90, 0.08);
+      border: 1px dashed rgba(245, 207, 90, 0.22);
+      color: rgba(255, 241, 198, 0.88);
+      font-size: 12px;
+      line-height: 1.6;
+      font-family: "Courier New", monospace;
+    }
+
+    .doc-tabs-panel {
+      margin-top: 18px;
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(110, 186, 255, 0.16);
+      background:
+        linear-gradient(180deg, rgba(9, 23, 42, 0.92), rgba(6, 15, 29, 0.94)),
+        rgba(8, 19, 36, 0.82);
+      position: relative;
+      z-index: 1;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+    }
+
+    .doc-tab-list {
+      display: inline-flex;
+      gap: 10px;
+      padding: 6px;
+      margin-top: 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(117, 243, 255, 0.14);
+      background: rgba(6, 17, 31, 0.7);
+    }
+
+    .doc-tab-button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: "Courier New", monospace;
+      cursor: pointer;
+      transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .doc-tab-button:hover {
+      color: var(--text);
+      transform: translateY(-1px);
+    }
+
+    .doc-tab-button.active {
+      color: var(--bg);
+      background: linear-gradient(90deg, var(--cyan), rgba(117, 243, 255, 0.78));
+      box-shadow: 0 10px 24px rgba(117, 243, 255, 0.18);
+    }
+
+    .doc-tab-panels {
+      margin-top: 18px;
+    }
+
+    .doc-panel {
+      display: none;
+    }
+
+    .doc-panel.active {
+      display: block;
+    }
+
+    .doc-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .doc-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 186, 255, 0.14);
+      background: rgba(8, 20, 38, 0.72);
+    }
+
+    .doc-card.span-3 { grid-column: span 3; }
+    .doc-card.span-4 { grid-column: span 4; }
+    .doc-card.span-5 { grid-column: span 5; }
+    .doc-card.span-6 { grid-column: span 6; }
+    .doc-card.span-7 { grid-column: span 7; }
+    .doc-card.span-8 { grid-column: span 8; }
+    .doc-card.span-12 { grid-column: span 12; }
+
+    .doc-card strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .doc-card p,
+    .doc-card li {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    .doc-card ul,
+    .doc-card ol {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .doc-card li + li {
+      margin-top: 6px;
+    }
+
+    .doc-pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .doc-pill {
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(117, 243, 255, 0.14);
+      background: rgba(6, 17, 31, 0.72);
+      color: #d6efff;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-family: "Courier New", monospace;
+    }
+
+    .layer-stack,
+    .sequence-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .layer-row,
+    .sequence-step {
+      display: grid;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      background: rgba(6, 17, 31, 0.68);
+    }
+
+    .layer-row span,
+    .sequence-step span,
+    .doc-note span {
+      color: var(--cyan);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-family: "Courier New", monospace;
+    }
+
+    .doc-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px dashed rgba(245, 207, 90, 0.24);
+      background: rgba(245, 207, 90, 0.07);
+    }
+
+    .doc-diagram {
+      margin: 0;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(117, 243, 255, 0.14);
+      background: rgba(6, 17, 31, 0.76);
+      color: #d9efff;
+      font-size: 12px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      font-family: "Courier New", monospace;
+    }
+
+    .data-model-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field-row {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      background: rgba(6, 17, 31, 0.68);
+    }
+
+    .field-row code {
+      display: inline-block;
+      margin-bottom: 6px;
+      color: var(--cyan);
+      font-size: 12px;
+    }
+
+    .hld-diagram-shell {
+      padding: 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(110, 186, 255, 0.14);
+      background:
+        linear-gradient(180deg, rgba(9, 23, 42, 0.9), rgba(6, 15, 29, 0.94)),
+        rgba(8, 19, 36, 0.82);
+    }
+
+    .hld-diagram-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .hld-diagram-head strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .hld-diagram-head p {
+      margin: 0;
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .hld-diagram-meta {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(117, 243, 255, 0.18);
+      background: rgba(117, 243, 255, 0.07);
+      color: var(--cyan);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: "Courier New", monospace;
+      white-space: nowrap;
+    }
+
+    .hld-diagram {
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .hld-diagram::-webkit-scrollbar {
+      height: 10px;
+    }
+
+    .hld-diagram::-webkit-scrollbar-thumb {
+      background: rgba(110, 186, 255, 0.18);
+      border-radius: 999px;
+    }
+
+    .hld-canvas {
+      position: relative;
+      width: 100%;
+      min-width: 1180px;
+      height: 860px;
+      border-radius: 28px;
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      background:
+        linear-gradient(180deg, rgba(6, 17, 31, 0.94), rgba(4, 10, 20, 0.98)),
+        rgba(6, 17, 31, 0.92);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      overflow: hidden;
+    }
+
+    .hld-canvas::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: 0.16;
+      pointer-events: none;
+    }
+
+    .hld-lane {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      display: grid;
+      grid-template-columns: 126px 1fr;
+      align-items: stretch;
+      border-radius: 26px;
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      background: rgba(8, 20, 38, 0.34);
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .hld-lane-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      text-align: center;
+      border-right: 1px solid rgba(110, 186, 255, 0.12);
+      background: rgba(9, 24, 43, 0.68);
+      color: rgba(216, 240, 255, 0.72);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-family: "Courier New", monospace;
+    }
+
+    .hld-lane-surface {
+      position: relative;
+    }
+
+    .hld-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .hld-svg path {
+      fill: none;
+      stroke: rgba(117, 243, 255, 0.48);
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 8px rgba(117, 243, 255, 0.18));
+    }
+
+    .hld-svg path.connector-warm {
+      stroke: rgba(245, 207, 90, 0.44);
+    }
+
+    .hld-svg path.connector-success {
+      stroke: rgba(70, 224, 161, 0.42);
+    }
+
+    .hld-svg path.connector-dashed {
+      stroke-dasharray: 7 7;
+    }
+
+    .hld-box {
+      position: absolute;
+      z-index: 2;
+      padding: 14px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(117, 243, 255, 0.14);
+      background:
+        linear-gradient(180deg, rgba(14, 31, 54, 0.94), rgba(7, 17, 31, 0.9));
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+    }
+
+    .hld-box-label {
+      display: inline-flex;
+      margin-bottom: 8px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: "Courier New", monospace;
+    }
+
+    .hld-box strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+      line-height: 1.35;
+      color: var(--text);
+    }
+
+    .hld-box p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.58;
+    }
+
+    .hld-box.accent-cyan {
+      border-color: rgba(117, 243, 255, 0.22);
+      box-shadow: 0 0 0 1px rgba(117, 243, 255, 0.08) inset, 0 14px 32px rgba(53, 183, 255, 0.12);
+    }
+
+    .hld-box.accent-yellow {
+      border-color: rgba(245, 207, 90, 0.24);
+      box-shadow: 0 0 0 1px rgba(245, 207, 90, 0.08) inset, 0 14px 32px rgba(245, 207, 90, 0.1);
+    }
+
+    .hld-box.accent-green {
+      border-color: rgba(70, 224, 161, 0.22);
+      box-shadow: 0 0 0 1px rgba(70, 224, 161, 0.08) inset, 0 14px 32px rgba(70, 224, 161, 0.1);
+    }
+
+    .hld-box.accent-purple {
+      border-color: rgba(142, 125, 255, 0.22);
+      box-shadow: 0 0 0 1px rgba(142, 125, 255, 0.08) inset, 0 14px 32px rgba(142, 125, 255, 0.12);
+    }
+
+    .hld-box.pos-oms { top: 76px; left: 164px; width: 204px; min-height: 112px; }
+    .hld-box.pos-sensors { top: 76px; left: 390px; width: 204px; min-height: 112px; }
+    .hld-box.pos-external { top: 76px; left: 616px; width: 204px; min-height: 112px; }
+    .hld-box.pos-human { top: 76px; left: 842px; width: 204px; min-height: 112px; }
+    .hld-box.pos-ingest { top: 260px; left: 220px; width: 188px; min-height: 108px; }
+    .hld-box.pos-bus { top: 260px; left: 440px; width: 170px; min-height: 108px; }
+    .hld-box.pos-context { top: 260px; left: 642px; width: 192px; min-height: 108px; }
+    .hld-box.pos-agents { top: 432px; left: 164px; width: 224px; min-height: 132px; }
+    .hld-box.pos-policy { top: 432px; left: 414px; width: 200px; min-height: 112px; }
+    .hld-box.pos-actions { top: 432px; left: 640px; width: 200px; min-height: 112px; }
+    .hld-box.pos-ledger { top: 432px; left: 866px; width: 204px; min-height: 112px; }
+    .hld-box.pos-tms { top: 644px; left: 164px; width: 204px; min-height: 102px; }
+    .hld-box.pos-notify { top: 644px; left: 390px; width: 204px; min-height: 102px; }
+    .hld-box.pos-work { top: 644px; left: 616px; width: 204px; min-height: 102px; }
+    .hld-box.pos-audit { top: 644px; left: 842px; width: 204px; min-height: 102px; }
+
+    .stage {
+      position: relative;
+      margin-top: 22px;
+      min-height: 1100px;
+      border-radius: 30px;
+      border: 1px solid var(--border);
+      background:
+        linear-gradient(180deg, rgba(8, 20, 38, 0.98), rgba(3, 10, 18, 0.95)),
+        rgba(8, 20, 38, 0.9);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(53, 183, 255, 0.1), transparent 18%),
+        radial-gradient(circle at 76% 30%, rgba(142, 125, 255, 0.08), transparent 20%),
+        radial-gradient(circle at 85% 78%, rgba(245, 207, 90, 0.08), transparent 16%);
+      pointer-events: none;
+    }
+
+    .diagram {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+      padding: 22px;
+      z-index: 1;
+    }
+
+    .card {
+      position: relative;
+      border-radius: var(--radius);
+      border: 1px solid rgba(110, 186, 255, 0.14);
+      background:
+        linear-gradient(180deg, rgba(15, 31, 57, 0.88), rgba(7, 16, 31, 0.86));
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(140deg, rgba(117, 243, 255, 0.06), transparent 40%, rgba(255, 255, 255, 0.02));
+      pointer-events: none;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid rgba(110, 186, 255, 0.1);
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-family: "Courier New", monospace;
+    }
+
+    .status-chip {
+      color: var(--yellow);
+      font-size: 11px;
+      border: 1px solid rgba(245, 207, 90, 0.28);
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(245, 207, 90, 0.08);
+      font-family: "Courier New", monospace;
+    }
+
+    .sources-card { grid-column: span 3; min-height: 290px; }
+    .bus-card { grid-column: span 9; min-height: 290px; }
+    .orchestration-card { grid-column: span 6; min-height: 410px; }
+    .knowledge-card { grid-column: span 3; min-height: 410px; }
+    .decision-card { grid-column: span 3; min-height: 410px; }
+    .human-card { grid-column: span 3; min-height: 296px; }
+    .execution-card { grid-column: span 3; min-height: 296px; }
+    .monitor-card { grid-column: span 3; min-height: 296px; }
+    .failure-card { grid-column: span 3; min-height: 296px; }
+    .governance-card { grid-column: span 12; min-height: 260px; }
+
+    .content {
+      padding: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sources-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-node {
+      position: relative;
+      padding: 12px 14px 12px 46px;
+      border-radius: 16px;
+      border: 1px solid rgba(117, 243, 255, 0.12);
+      background: rgba(7, 19, 34, 0.7);
+      color: #d6efff;
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    .source-node::before,
+    .source-node::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 16px;
+    }
+
+    .source-node::before {
+      width: 12px;
+      height: 12px;
+      background: var(--cyan);
+      box-shadow: 0 0 12px rgba(117, 243, 255, 0.9);
+    }
+
+    .source-node::after {
+      width: 28px;
+      height: 28px;
+      left: 8px;
+      border: 1px solid rgba(117, 243, 255, 0.34);
+    }
+
+    .source-meta {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(8, 20, 38, 0.88);
+      border: 1px dashed rgba(110, 186, 255, 0.2);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      font-family: "Courier New", monospace;
+    }
+
+    .bus-track {
+      position: relative;
+      margin-top: 18px;
+      height: 70px;
+      border-radius: 20px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.02) 0,
+          rgba(255, 255, 255, 0.02) 18px,
+          transparent 18px,
+          transparent 36px
+        ),
+        linear-gradient(90deg, rgba(15, 35, 64, 0.98), rgba(9, 24, 46, 0.9));
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .bus-track::before,
+    .bus-track::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .bus-track::before {
+      background: linear-gradient(90deg, transparent, rgba(53, 183, 255, 0.18), transparent);
+      transform: translateX(-100%);
+      animation: stream-glow 4s linear infinite;
+    }
+
+    .bus-particle {
+      position: absolute;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin-top: -6px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 14px rgba(53, 183, 255, 0.9);
+      opacity: 0.9;
+    }
+
+    .topic-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .topic-pill {
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(117, 243, 255, 0.14);
+      background: rgba(8, 18, 36, 0.82);
+      color: #d6efff;
+      font-size: 12px;
+      font-family: "Courier New", monospace;
+    }
+
+    .mini-feed {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini-event {
+      border-radius: 16px;
+      background: rgba(6, 17, 33, 0.7);
+      border: 1px solid rgba(110, 186, 255, 0.1);
+      padding: 12px;
+      min-height: 78px;
+    }
+
+    .mini-event strong,
+    .decision-stat strong,
+    .metric strong,
+    .action-row strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .mini-event span,
+    .decision-stat span,
+    .metric span,
+    .action-row span {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: "Courier New", monospace;
+    }
+
+    .agent-field {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-areas:
+        "audit detect diagnose"
+        ". core ."
+        "risk . decide";
+      align-items: center;
+      gap: 18px 20px;
+      min-height: 0;
+      margin-top: 8px;
+      padding: 8px 0 4px;
+    }
+
+    .agent-core {
+      position: relative;
+      grid-area: core;
+      z-index: 1;
+      width: 132px;
+      height: 132px;
+      margin: 0 auto;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(117, 243, 255, 0.18), transparent 50%),
+        linear-gradient(180deg, rgba(16, 39, 72, 0.96), rgba(9, 22, 42, 0.96));
+      border: 1px solid rgba(117, 243, 255, 0.2);
+      box-shadow: 0 0 40px rgba(53, 183, 255, 0.18), inset 0 0 30px rgba(117, 243, 255, 0.08);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .agent-core strong {
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .agent-core span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-top: 6px;
+      font-family: "Courier New", monospace;
+    }
+
+    .agent-node {
+      position: relative;
+      z-index: 1;
+      width: min(100%, 160px);
+      min-height: 96px;
+      padding: 12px;
+      margin: 0 auto;
+      border-radius: 18px;
+      background: rgba(8, 20, 38, 0.92);
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    }
+
+    .agent-node strong {
+      display: block;
+      font-size: 15px;
+      margin-bottom: 4px;
+      line-height: 1.25;
+    }
+
+    .agent-node span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      font-family: "Courier New", monospace;
+    }
+
+    .agent-node.active,
+    .card.active {
+      border-color: rgba(245, 207, 90, 0.5);
+      box-shadow: 0 0 0 1px rgba(245, 207, 90, 0.18) inset, 0 0 28px rgba(245, 207, 90, 0.18);
+      background: linear-gradient(180deg, rgba(34, 35, 14, 0.98), rgba(15, 22, 31, 0.92));
+      transform: scale(1.02);
+    }
+
+    .agent-node.success {
+      border-color: rgba(70, 224, 161, 0.52);
+      box-shadow: 0 0 22px rgba(70, 224, 161, 0.16);
+    }
+
+    .agent-node.failure,
+    .card.failure {
+      border-color: rgba(255, 97, 119, 0.52);
+      box-shadow: 0 0 22px rgba(255, 97, 119, 0.2);
+      background: linear-gradient(180deg, rgba(52, 14, 24, 0.98), rgba(18, 11, 20, 0.92));
+    }
+
+    .agent-node[data-agent="detect"] { grid-area: detect; }
+    .agent-node[data-agent="diagnose"] { grid-area: diagnose; }
+    .agent-node[data-agent="decide"] { grid-area: decide; }
+    .agent-node[data-agent="risk"] { grid-area: risk; }
+    .agent-node[data-agent="audit"] { grid-area: audit; }
+
+    .agent-ring svg,
+    .flow-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .agent-ring path,
+    .flow-svg path {
+      fill: none;
+      stroke: rgba(110, 186, 255, 0.2);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-dasharray: 10 10;
+    }
+
+    .knowledge-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .knowledge-store {
+      position: relative;
+      margin: 14px auto 6px;
+      width: 154px;
+      height: 186px;
+      border-radius: 40px / 22px;
+      background:
+        linear-gradient(180deg, rgba(13, 34, 61, 0.96), rgba(7, 17, 31, 0.96));
+      border: 1px solid rgba(117, 243, 255, 0.18);
+      box-shadow: inset 0 0 20px rgba(117, 243, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .knowledge-store::before,
+    .knowledge-store::after {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(117, 243, 255, 0.18);
+    }
+
+    .knowledge-store::before {
+      top: 10px;
+      background: rgba(117, 243, 255, 0.06);
+    }
+
+    .knowledge-store::after {
+      bottom: 10px;
+      background: rgba(53, 183, 255, 0.04);
+    }
+
+    .knowledge-wave {
+      position: absolute;
+      left: 10px;
+      right: 10px;
+      bottom: 24px;
+      height: 84px;
+      border-radius: 28px;
+      background: linear-gradient(180deg, rgba(117, 243, 255, 0.18), rgba(53, 183, 255, 0.06));
+      filter: blur(1px);
+    }
+
+    .knowledge-item {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(6, 17, 31, 0.72);
+      border: 1px solid rgba(110, 186, 255, 0.1);
+      color: #dcecff;
+      font-size: 13px;
+      font-family: "Courier New", monospace;
+    }
+
+    .decision-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .confidence-shell {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(6, 17, 31, 0.78);
+      border: 1px solid rgba(110, 186, 255, 0.12);
+    }
+
+    .confidence-bar {
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      margin-top: 12px;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--red), var(--yellow), var(--green));
+      box-shadow: 0 0 20px rgba(245, 207, 90, 0.24);
+    }
+
+    .branch-lanes {
+      position: relative;
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .branch {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      background: rgba(6, 17, 31, 0.72);
+    }
+
+    .branch.active {
+      border-color: rgba(117, 243, 255, 0.34);
+      box-shadow: 0 0 18px rgba(53, 183, 255, 0.14);
+    }
+
+    .branch-label strong,
+    .approval-status strong,
+    .metric strong,
+    .failure-status strong {
+      font-size: 15px;
+    }
+
+    .branch-label span,
+    .approval-status span,
+    .failure-status span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      font-family: "Courier New", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .branch-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .branch.active .branch-indicator {
+      background: var(--blue);
+      box-shadow: 0 0 14px rgba(53, 183, 255, 0.9);
+    }
+
+    .decision-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .decision-stat,
+    .metric,
+    .approval-status,
+    .action-row,
+    .failure-status {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 186, 255, 0.1);
+      background: rgba(6, 17, 31, 0.72);
+    }
+
+    .approval-panel {
+      display: grid;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .avatar {
+      width: 80px;
+      height: 80px;
+      margin: 8px auto 0;
+      border-radius: 50%;
+      position: relative;
+      border: 1px solid rgba(117, 243, 255, 0.18);
+      background: radial-gradient(circle at 50% 35%, rgba(117, 243, 255, 0.18), rgba(8, 20, 38, 0.98));
+    }
+
+    .avatar::before,
+    .avatar::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: rgba(236, 247, 255, 0.88);
+    }
+
+    .avatar::before {
+      top: 16px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .avatar::after {
+      bottom: 12px;
+      width: 42px;
+      height: 28px;
+      border-radius: 42px 42px 16px 16px;
+    }
+
+    .approve-button {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(70, 224, 161, 0.24);
+      background: rgba(70, 224, 161, 0.08);
+      color: var(--green);
+      text-align: center;
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .action-stack,
+    .metric-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .action-badge {
+      min-width: 72px;
+      text-align: center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+    }
+
+    .action-row.done .action-badge {
+      color: var(--green);
+      border-color: rgba(70, 224, 161, 0.28);
+      background: rgba(70, 224, 161, 0.08);
+    }
+
+    .metric-stack {
+      margin-top: 4px;
+    }
+
+    .metric strong {
+      font-size: 24px;
+      margin-top: 6px;
+    }
+
+    .sparkline {
+      margin-top: 12px;
+      height: 48px;
+      width: 100%;
+    }
+
+    .sparkline polyline {
+      fill: none;
+      stroke: var(--cyan);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 8px rgba(117, 243, 255, 0.45));
+    }
+
+    .log-shell {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 18px;
+      height: calc(100% - 66px);
+    }
+
+    .ledger-meta {
+      border-radius: 20px;
+      border: 1px solid rgba(110, 186, 255, 0.1);
+      background: rgba(6, 17, 31, 0.76);
+      padding: 18px;
+    }
+
+    .ledger-meta p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 13px;
+      font-family: "Courier New", monospace;
+    }
+
+    .ledger-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .ledger-tag {
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #d8f0ff;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-family: "Courier New", monospace;
+    }
+
+    .log-feed {
+      position: relative;
+      border-radius: 20px;
+      border: 1px solid rgba(110, 186, 255, 0.1);
+      background: rgba(6, 17, 31, 0.76);
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    .log-list {
+      height: 100%;
+      overflow: auto;
+      display: grid;
+      gap: 10px;
+      padding-right: 8px;
+    }
+
+    .log-list::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    .log-list::-webkit-scrollbar-thumb {
+      background: rgba(110, 186, 255, 0.18);
+      border-radius: 999px;
+    }
+
+    .log-entry {
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(110, 186, 255, 0.1);
+      background: rgba(9, 22, 42, 0.82);
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 14px;
+      align-items: start;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .log-time {
+      color: var(--cyan);
+    }
+
+    .log-entry strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #ecf7ff;
+      font-size: 13px;
+    }
+
+    .failure-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .retry-loop {
+      position: relative;
+      height: 110px;
+      border-radius: 18px;
+      border: 1px dashed rgba(255, 97, 119, 0.22);
+      background: rgba(31, 8, 16, 0.46);
+      overflow: hidden;
+    }
+
+    .retry-loop svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .retry-loop path {
+      fill: none;
+      stroke: rgba(255, 97, 119, 0.32);
+      stroke-width: 2.2;
+      stroke-dasharray: 8 7;
+    }
+
+    .dead-letter {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(31, 8, 16, 0.56);
+      border: 1px solid rgba(255, 97, 119, 0.24);
+      font-family: "Courier New", monospace;
+      color: #ffd7de;
+    }
+
+    .dlq-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 97, 119, 0.24);
+      background: rgba(255, 97, 119, 0.08);
+    }
+
+    .flow-svg {
+      z-index: 0;
+    }
+
+    .flow-dot {
+      fill: var(--blue);
+      filter: drop-shadow(0 0 6px rgba(53, 183, 255, 0.9));
+      opacity: 0;
+    }
+
+    .flow-dot.warn {
+      fill: var(--yellow);
+      filter: drop-shadow(0 0 6px rgba(245, 207, 90, 0.9));
+    }
+
+    .flow-dot.fail {
+      fill: var(--red);
+      filter: drop-shadow(0 0 6px rgba(255, 97, 119, 0.9));
+    }
+
+    .card[data-tooltip],
+    .agent-node[data-tooltip],
+    .source-node[data-tooltip],
+    .topic-pill[data-tooltip],
+    .action-row[data-tooltip] {
+      cursor: default;
+    }
+
+    .tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      transform: translate(14px, 14px);
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(117, 243, 255, 0.24);
+      background: rgba(8, 18, 36, 0.96);
+      color: #e8f6ff;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      max-width: 260px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .minimap {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      width: 180px;
+      height: 150px;
+      border-radius: 18px;
+      border: 1px solid rgba(110, 186, 255, 0.12);
+      background: rgba(4, 12, 22, 0.82);
+      padding: 12px;
+      z-index: 2;
+      backdrop-filter: blur(8px);
+    }
+
+    .mini-box {
+      fill: rgba(255, 255, 255, 0.08);
+      stroke: rgba(110, 186, 255, 0.2);
+      stroke-width: 1;
+      rx: 5;
+    }
+
+    .mini-box.active {
+      fill: rgba(245, 207, 90, 0.22);
+      stroke: rgba(245, 207, 90, 0.65);
+    }
+
+    .screen-noise {
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 10% 20%, white 0 0.8px, transparent 0.8px),
+        radial-gradient(circle at 50% 80%, white 0 0.8px, transparent 0.8px),
+        radial-gradient(circle at 80% 32%, white 0 0.8px, transparent 0.8px);
+      background-size: 170px 170px, 210px 210px, 260px 260px;
+      mix-blend-mode: screen;
+    }
+
+    @keyframes stream-glow {
+      from { transform: translateX(-100%); }
+      to { transform: translateX(100%); }
+    }
+
+    @media (max-width: 1180px) {
+      .sources-card,
+      .bus-card,
+      .orchestration-card,
+      .knowledge-card,
+      .decision-card,
+      .human-card,
+      .execution-card,
+      .monitor-card,
+      .failure-card {
+        grid-column: span 12;
+      }
+
+      .governance-card {
+        grid-column: span 12;
+      }
+
+      .log-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .stage {
+        min-height: 1800px;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .shell {
+        padding: 14px;
+      }
+
+      .hero,
+      .stage {
+        border-radius: 22px;
+      }
+
+      .diagram {
+        padding: 14px;
+      }
+
+      .explain-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .doc-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .data-model-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hld-diagram-shell {
+        padding: 16px;
+      }
+
+      .hld-diagram-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .doc-card.span-3,
+      .doc-card.span-4,
+      .doc-card.span-5,
+      .doc-card.span-6,
+      .doc-card.span-7,
+      .doc-card.span-8,
+      .doc-card.span-12 {
+        grid-column: span 1;
+      }
+
+      .mini-feed,
+      .decision-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        justify-content: flex-start;
+      }
+
+      .minimap {
+        display: none;
+      }
+
+      .agent-field {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-areas:
+          "detect detect"
+          "audit diagnose"
+          "core core"
+          "risk decide";
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <p class="kicker">Animated Architecture / Logistics Intelligence</p>
+          <h1>AI Logistics Control Tower</h1>
+          <p class="subcopy">
+            A scenario-driven, event-first operating model showing how streaming data, multi-agent AI, governance,
+            and execution systems collaborate to resolve supply chain exceptions in real time.
+          </p>
+        </div>
+        <div class="toolbar">
+          <button id="playPauseBtn" type="button">Pause Story</button>
+          <label><input id="failureToggle" type="checkbox" checked />Failure Simulation</label>
+          <select id="speedSelect" aria-label="Animation speed">
+            <option value="1">1x speed</option>
+            <option value="2">2x speed</option>
+            <option value="3">3x speed</option>
+          </select>
+          <button id="restartBtn" type="button">Restart Flow</button>
+        </div>
+      </div>
+
+      <div class="scenario-strip">
+        <div class="pill">
+          <span class="pill-label">Scenario</span>
+          <strong id="scenarioName"></strong>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Trigger</span>
+          <strong id="scenarioTrigger"></strong>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Entities</span>
+          <strong id="scenarioEntities"></strong>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Actions</span>
+          <strong id="scenarioActions"></strong>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Risk Profile</span>
+          <strong id="scenarioRisk"></strong>
+        </div>
+      </div>
+
+      <div class="explain-panel">
+        <div class="section-head" style="margin: 0;">
+          <div>
+            <div class="section-sub">Trigger Mechanics</div>
+            <h2 class="section-title">How The System Knows A Shipment Is Inactive</h2>
+          </div>
+          <span class="status-chip">Inference + Sensing</span>
+        </div>
+        <div class="explain-grid">
+          <div class="explain-card">
+            <strong>Core Principle</strong>
+            <p>
+              The control tower infers inactivity from missing expected events. If a shipment was last scanned at Hub A
+              and no follow-up scan, sort, load, or transfer event arrives within the SLA window, a timer or stream rule
+              marks the shipment as stale in the digital twin and emits an exception.
+            </p>
+            <div class="signal-note">
+              Rule example: if status = AT_HUB and now - last_scan_time &gt; 12h and no downstream milestone exists, emit
+              <strong style="display:inline;font-size:12px;">shipment.no_activity.detected</strong>.
+            </div>
+          </div>
+          <div class="explain-card">
+            <strong>State The Platform Tracks</strong>
+            <ul>
+              <li><code>last_scan_time</code> and <code>last_scan_location</code></li>
+              <li><code>current_status</code> such as inbound, staged, or loaded</li>
+              <li><code>expected_next_event_by</code> derived from hub SLA</li>
+              <li><code>last_physical_signal_time</code> when sensors are available</li>
+            </ul>
+          </div>
+          <div class="explain-card">
+            <strong>How Physical Inactivity Is Verified</strong>
+            <ul>
+              <li>Mandatory operator scans at each hub handoff</li>
+              <li>RFID readers detecting zone entry and exit</li>
+              <li>BLE or UWB dwell-time tracking inside the hub</li>
+              <li>WMS bin, shelf, or staging-lane movement updates</li>
+            </ul>
+          </div>
+          <div class="explain-card">
+            <strong>Confidence Caveat</strong>
+            <ul>
+              <li>No new scan means no recorded activity, not guaranteed no movement</li>
+              <li>Sensor corroboration increases confidence that the shipment is physically lying in the hub</li>
+              <li>Unresolved stale cases should escalate to hub operations for manual validation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-tabs-panel">
+        <div class="section-head" style="margin: 0; padding: 0 0 12px; border-bottom: 0;">
+          <div>
+            <div class="section-sub">Architecture Documentation</div>
+            <h2 class="section-title">Multi-Tab Architecture Views</h2>
+          </div>
+          <span class="status-chip">Four Tabs</span>
+        </div>
+        <p class="subcopy" style="margin-top: 0; max-width: none;">
+          Each tab now covers a distinct concern: `HLD` for capability architecture, `LLD` for runtime design,
+          `Sequence` for interaction order, and `Data Model` for entities and relationships.
+        </p>
+
+        <div class="doc-tab-list" role="tablist" aria-label="Architecture design views">
+          <button class="doc-tab-button active" id="hldTab" type="button" role="tab" aria-selected="true" aria-controls="hldPanel" data-doc-tab="hld">
+            HLD
+          </button>
+          <button class="doc-tab-button" id="lldTab" type="button" role="tab" aria-selected="false" aria-controls="lldPanel" data-doc-tab="lld">
+            LLD
+          </button>
+          <button class="doc-tab-button" id="sequenceTab" type="button" role="tab" aria-selected="false" aria-controls="sequencePanel" data-doc-tab="sequence">
+            Sequence
+          </button>
+          <button class="doc-tab-button" id="dataModelTab" type="button" role="tab" aria-selected="false" aria-controls="dataModelPanel" data-doc-tab="dataModel">
+            Data Model
+          </button>
+        </div>
+
+        <div class="doc-tab-panels">
+          <section class="doc-panel active" id="hldPanel" role="tabpanel" aria-labelledby="hldTab">
+            <div class="hld-diagram-shell">
+              <div class="hld-diagram-head">
+                <div>
+                  <strong>AI Logistics Control Tower</strong>
+                  <p>
+                    Swimlane-style HLD showing how upstream operational and physical signals move through ingestion,
+                    reasoning, governed decisioning, and finally into execution systems with a full audit trail.
+                  </p>
+                </div>
+                <span class="hld-diagram-meta">High-Level System Design</span>
+              </div>
+
+              <div class="hld-diagram">
+                <div class="hld-canvas">
+                  <div class="hld-lane" style="top: 54px; height: 156px;">
+                    <div class="hld-lane-label">Source Systems</div>
+                    <div class="hld-lane-surface"></div>
+                  </div>
+                  <div class="hld-lane" style="top: 238px; height: 152px;">
+                    <div class="hld-lane-label">Ingestion And Context</div>
+                    <div class="hld-lane-surface"></div>
+                  </div>
+                  <div class="hld-lane" style="top: 410px; height: 162px;">
+                    <div class="hld-lane-label">Decisioning And Control</div>
+                    <div class="hld-lane-surface"></div>
+                  </div>
+                  <div class="hld-lane" style="top: 622px; height: 146px;">
+                    <div class="hld-lane-label">Execution Targets</div>
+                    <div class="hld-lane-surface"></div>
+                  </div>
+
+                  <svg class="hld-svg" viewBox="0 0 1180 860" aria-hidden="true">
+                    <defs>
+                      <marker id="hldArrowCyan" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                        <path d="M 0 0 L 12 6 L 0 12 z" fill="rgba(117, 243, 255, 0.78)"></path>
+                      </marker>
+                      <marker id="hldArrowWarm" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                        <path d="M 0 0 L 12 6 L 0 12 z" fill="rgba(245, 207, 90, 0.76)"></path>
+                      </marker>
+                      <marker id="hldArrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                        <path d="M 0 0 L 12 6 L 0 12 z" fill="rgba(70, 224, 161, 0.74)"></path>
+                      </marker>
+                    </defs>
+
+                    <path d="M 266 188 C 266 216, 286 228, 314 260" marker-end="url(#hldArrowCyan)"></path>
+                    <path d="M 492 188 C 492 218, 386 228, 314 260" marker-end="url(#hldArrowCyan)"></path>
+                    <path d="M 718 188 C 718 216, 720 228, 738 260" class="connector-warm" marker-end="url(#hldArrowWarm)"></path>
+                    <path d="M 944 188 C 944 258, 542 356, 514 428" class="connector-warm" marker-end="url(#hldArrowWarm)"></path>
+
+                    <path d="M 408 314 L 440 314" marker-end="url(#hldArrowCyan)"></path>
+                    <path d="M 610 314 L 642 314" marker-end="url(#hldArrowCyan)"></path>
+                    <path d="M 738 368 C 738 398, 306 404, 276 428" class="connector-warm" marker-end="url(#hldArrowWarm)"></path>
+                    <path d="M 738 368 C 738 398, 544 404, 514 428" class="connector-dashed" marker-end="url(#hldArrowCyan)"></path>
+                    <path d="M 388 488 L 414 488" class="connector-warm" marker-end="url(#hldArrowWarm)"></path>
+                    <path d="M 614 488 L 640 488" class="connector-success" marker-end="url(#hldArrowGreen)"></path>
+                    <path d="M 840 488 L 866 488" class="connector-success" marker-end="url(#hldArrowGreen)"></path>
+
+                    <path d="M 740 544 L 266 644" class="connector-success" marker-end="url(#hldArrowGreen)"></path>
+                    <path d="M 740 544 L 492 644" class="connector-success" marker-end="url(#hldArrowGreen)"></path>
+                    <path d="M 740 544 L 718 644" class="connector-success" marker-end="url(#hldArrowGreen)"></path>
+                    <path d="M 740 544 L 944 644" class="connector-success" marker-end="url(#hldArrowGreen)"></path>
+                    <path d="M 968 544 L 944 644" class="connector-dashed" marker-end="url(#hldArrowGreen)"></path>
+                  </svg>
+
+                  <div class="hld-box pos-oms">
+                    <div class="hld-box-label">Operations</div>
+                    <strong>OMS / WMS / TMS</strong>
+                    <p>Shipment lifecycle, dock, handoff, and routing events enter the control plane as operational truth.</p>
+                  </div>
+
+                  <div class="hld-box pos-sensors">
+                    <div class="hld-box-label">Physical World</div>
+                    <strong>Scanners / RFID / BLE / UWB</strong>
+                    <p>Presence and movement signals verify whether a parcel is physically moving or truly inactive in a hub.</p>
+                  </div>
+
+                  <div class="hld-box pos-external accent-purple">
+                    <div class="hld-box-label">External Context</div>
+                    <strong>Carrier / Weather / Partner APIs</strong>
+                    <p>Disruption context, ETA variance, and partner exceptions enrich diagnosis and reroute decisions.</p>
+                  </div>
+
+                  <div class="hld-box pos-human accent-purple">
+                    <div class="hld-box-label">Human Signals</div>
+                    <strong>Hub Ops And Supervisors</strong>
+                    <p>Manual validation and approvals feed risk-controlled overrides back into the same decision loop.</p>
+                  </div>
+
+                  <div class="hld-box pos-ingest accent-cyan">
+                    <div class="hld-box-label">Ingress</div>
+                    <strong>Ingestion Gateway</strong>
+                    <p>Normalizes events, timestamps, and correlation IDs into a shared entry contract.</p>
+                  </div>
+
+                  <div class="hld-box pos-bus accent-cyan">
+                    <div class="hld-box-label">Transport</div>
+                    <strong>Event Bus</strong>
+                    <p>Durable topics carry shipment updates, tracking deltas, and exception triggers across services.</p>
+                  </div>
+
+                  <div class="hld-box pos-context accent-cyan">
+                    <div class="hld-box-label">Context Layer</div>
+                    <strong>Shipment Twin + Knowledge</strong>
+                    <p>Combines shipment history, hub state, SLA rules, and corroboration signals into one case context.</p>
+                  </div>
+
+                  <div class="hld-box pos-agents accent-yellow">
+                    <div class="hld-box-label">Reasoning</div>
+                    <strong>Agentic Resolution<br>Mesh</strong>
+                    <p>Detection, diagnosis, decision, and risk agents collaborate to explain the issue and propose action.</p>
+                  </div>
+
+                  <div class="hld-box pos-policy accent-yellow">
+                    <div class="hld-box-label">Decisioning</div>
+                    <strong>Approval And Route Engine</strong>
+                    <p>Chooses auto-execution, escalation, or human review based on confidence, impact, and policy.</p>
+                  </div>
+
+                  <div class="hld-box pos-actions accent-green">
+                    <div class="hld-box-label">Execution</div>
+                    <strong>Action Orchestrator</strong>
+                    <p>Dispatches reroute, hold, notify, and recovery actions while tracking retry and completion state.</p>
+                  </div>
+
+                  <div class="hld-box pos-ledger accent-green">
+                    <div class="hld-box-label">Governance</div>
+                    <strong>Ledger And Observability</strong>
+                    <p>Captures rationale, approvals, metrics, failures, and replay-safe audit history for every case.</p>
+                  </div>
+
+                  <div class="hld-box pos-tms">
+                    <div class="hld-box-label">Enterprise</div>
+                    <strong>TMS / WMS Updates</strong>
+                    <p>Applies reroute, hold, release, escalation, and queue changes back into operational systems.</p>
+                  </div>
+
+                  <div class="hld-box pos-notify">
+                    <div class="hld-box-label">Communication</div>
+                    <strong>Customer Notifications</strong>
+                    <p>Sends ETA changes, issue alerts, or reassurance messaging under policy control.</p>
+                  </div>
+
+                  <div class="hld-box pos-work">
+                    <div class="hld-box-label">Operations</div>
+                    <strong>Hub Work Queues</strong>
+                    <p>Creates tasks for physical validation, manual movement, or local supervisor escalation.</p>
+                  </div>
+
+                  <div class="hld-box pos-audit">
+                    <div class="hld-box-label">Assurance</div>
+                    <strong>Audit / KPI Consumers</strong>
+                    <p>Feeds dashboards, compliance review, incident analysis, and operational learning loops.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="doc-panel" id="lldPanel" role="tabpanel" aria-labelledby="lldTab" hidden>
+            <div class="doc-grid">
+              <div class="doc-card span-12">
+                <strong>Runtime Component Breakdown</strong>
+                <div class="layer-stack">
+                  <div class="layer-row">
+                    <span>Detector Service</span>
+                    <p>Maintains `last_scan_time`, `last_scan_location`, `expected_next_event_by`, and stale-timer rules for each shipment twin.</p>
+                  </div>
+                  <div class="layer-row">
+                    <span>Event Router</span>
+                    <p>Publishes normalized envelopes to topics, attaches priority, correlation IDs, and replay-safe metadata.</p>
+                  </div>
+                  <div class="layer-row">
+                    <span>Agent Mesh</span>
+                    <p>Runs Detection, Diagnosis, Decision, Risk, and Audit agents over a shared case context and tool layer.</p>
+                  </div>
+                  <div class="layer-row">
+                    <span>Context Services</span>
+                    <p>Fetch shipment history, hub capacity, sensor corroboration, SLA policies, and execution constraints.</p>
+                  </div>
+                  <div class="layer-row">
+                    <span>Execution Adapters</span>
+                    <p>Send actions to TMS, WMS, notification channels, and operations queues, then report outcome status.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-12">
+                <strong>Core Runtime Contracts</strong>
+                <div class="data-model-grid">
+                  <div class="field-row">
+                    <code>Input Contract</code>
+                    <p>The detector consumes normalized shipment, hub, and sensor events with timestamps, locations, and correlation metadata.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>Working Context</code>
+                    <p>The agent mesh operates on a shared case object containing evidence, policy inputs, confidence state, and recommended actions.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>Decision Contract</code>
+                    <p>The decision engine emits route selection, approval requirement, action bundle, and supporting rationale for downstream consumers.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>Audit Contract</code>
+                    <p>The ledger stores immutable references to the case, agent contributions, execution state, retries, and operator approvals.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-7">
+                <strong>Low-Level Decision Sequence</strong>
+                <div class="sequence-list">
+                  <div class="sequence-step">
+                    <span>1. Detect</span>
+                    <p>Rule engine or stream processor checks `now - last_scan_time` against the allowed inactivity window.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>2. Corroborate</span>
+                    <p>Sensor and WMS signals confirm whether the shipment is still physically dwelling in Hub A or simply missing scans.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>3. Diagnose</span>
+                    <p>Agents evaluate congestion, handling backlog, route issues, carrier capacity, and customer impact.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>4. Decide</span>
+                    <p>Decision logic computes confidence and checks whether policy mandates manual approval.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>5. Execute</span>
+                    <p>Approved action bundles are dispatched and completion states feed back into metrics and the ledger.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-5">
+                <strong>Failure And Recovery Mechanics</strong>
+                <ul>
+                  <li>Agent timeout triggers retry workflow and dead-letter retention.</li>
+                  <li>Conflicting signals reduce confidence and force human review.</li>
+                  <li>Execution adapters report success, rejection, or partial completion.</li>
+                  <li>Every retry path appends new rationale to the audit record.</li>
+                  <li>Replay is safe because event envelopes are durable and traceable.</li>
+                </ul>
+                <div class="doc-note">
+                  <span>Implementation Detail</span>
+                  <p>Physical inactivity is an inference until corroborated by sensors, WMS movement logs, or manual validation.</p>
+                </div>
+              </div>
+
+              <div class="doc-card span-4">
+                <strong>Agent Responsibilities</strong>
+                <ul>
+                  <li>Detection Agent: stale-scan and anomaly identification</li>
+                  <li>Diagnosis Agent: root-cause hypotheses and supporting evidence</li>
+                  <li>Decision Agent: action plan and confidence computation</li>
+                  <li>Risk Agent: policy, compliance, and approval routing</li>
+                  <li>Audit Agent: rationale and lineage persistence</li>
+                </ul>
+              </div>
+
+              <div class="doc-card span-4">
+                <strong>Integration Interfaces</strong>
+                <ul>
+                  <li>Inbound event APIs and stream consumers</li>
+                  <li>Knowledge and policy retrieval endpoints</li>
+                  <li>Enterprise action adapters for TMS and WMS</li>
+                  <li>Notification services for customers and hub ops</li>
+                  <li>Observability pipeline for KPIs and alerting</li>
+                </ul>
+              </div>
+
+              <div class="doc-card span-4">
+                <strong>Non-Functional Concerns</strong>
+                <ul>
+                  <li>Low-latency stream processing for exception detection</li>
+                  <li>Traceability across every agent and action step</li>
+                  <li>Replayability for audits and incident analysis</li>
+                  <li>Graceful fallback when sensor data is incomplete</li>
+                  <li>Human override for ambiguous or high-risk cases</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section class="doc-panel" id="sequencePanel" role="tabpanel" aria-labelledby="sequenceTab" hidden>
+            <div class="doc-grid">
+              <div class="doc-card span-12">
+                <strong>End-To-End Interaction Sequence</strong>
+                <pre class="doc-diagram">OMS / WMS / Sensors
+        |
+        v
+Event Ingestion Layer
+        |
+        v
+Exception Bus ----> Detector Service ----> Shipment Digital Twin
+        |                      |                    |
+        |                      v                    |
+        |              No activity > SLA            |
+        |                      |                    |
+        |                      v                    |
+        +--------------> Agentic Resolution Mesh <---+
+                               |
+               +---------------+---------------+
+               |               |               |
+               v               v               v
+        Context Services   Policy Engine   Audit Service
+               |               |               |
+               +---------------+---------------+
+                               |
+                               v
+                        Decision Engine
+                               |
+                     +---------+---------+
+                     |                   |
+                     v                   v
+              Auto Execution       Human Approval
+                     |                   |
+                     +---------+---------+
+                               |
+                               v
+                        Enterprise Systems
+                               |
+                               v
+                      Metrics / Ledger / Retry</pre>
+              </div>
+
+              <div class="doc-card span-7">
+                <strong>Sequence Narrative</strong>
+                <div class="sequence-list">
+                  <div class="sequence-step">
+                    <span>Stage 1</span>
+                    <p>Source systems and physical sensors emit shipment handling, location, and dwell-time events.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>Stage 2</span>
+                    <p>The ingestion layer normalizes payloads and routes them onto the exception bus with correlation metadata.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>Stage 3</span>
+                    <p>The detector service updates the shipment digital twin and opens a case when the inactivity threshold is breached.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>Stage 4</span>
+                    <p>The agent mesh pulls operational context, validates policy, computes decision confidence, and records rationale.</p>
+                  </div>
+                  <div class="sequence-step">
+                    <span>Stage 5</span>
+                    <p>The control tower routes the decision to auto-execution or human approval, then publishes outcomes into metrics and governance.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-5">
+                <strong>Decision Branches</strong>
+                <ul>
+                  <li>High confidence plus policy-safe action goes directly to execution adapters.</li>
+                  <li>Low confidence, conflicting signals, or risky customer impact forces human approval.</li>
+                  <li>Execution failure triggers retries, dead-letter retention, and additional ledger entries.</li>
+                  <li>Resolved outcomes close the feedback loop by updating telemetry, KPIs, and the shipment twin.</li>
+                </ul>
+                <div class="doc-note">
+                  <span>Sequence Focus</span>
+                  <p>This tab emphasizes interaction ordering rather than component ownership or schema details.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="doc-panel" id="dataModelPanel" role="tabpanel" aria-labelledby="dataModelTab" hidden>
+            <div class="doc-grid">
+              <div class="doc-card span-12">
+                <strong>Core Data Domains</strong>
+                <div class="doc-pill-row">
+                  <div class="doc-pill">Shipment Twin</div>
+                  <div class="doc-pill">Exception Case</div>
+                  <div class="doc-pill">Action Plan</div>
+                  <div class="doc-pill">Audit Record</div>
+                  <div class="doc-pill">Operational Metrics</div>
+                </div>
+              </div>
+
+              <div class="doc-card span-6">
+                <strong>Shipment Twin</strong>
+                <div class="field-list">
+                  <div class="field-row">
+                    <code>shipment_id</code>
+                    <p>Stable identifier used to correlate OMS, WMS, TMS, sensor, and control tower records.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>status / location</code>
+                    <p>Latest business state and hub or transit position for the shipment.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>last_scan_time / last_physical_signal_time</code>
+                    <p>Used to distinguish missing digital events from verified physical inactivity.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>expected_next_event_by</code>
+                    <p>Time boundary derived from SLA, route milestone, and hub handling rules.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-6">
+                <strong>Exception Case</strong>
+                <div class="field-list">
+                  <div class="field-row">
+                    <code>case_id / event_name</code>
+                    <p>Unique exception instance and canonical event such as `shipment.no_activity.detected`.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>reason_code / severity</code>
+                    <p>Explains whether the case was caused by missing scans, hub dwell, sensor silence, or ambiguity.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>evidence</code>
+                    <p>Contains timestamps, hub context, sensor observations, and downstream milestone gaps.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>confidence_score</code>
+                    <p>Quantifies how safely the platform can decide or auto-execute.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-6">
+                <strong>Action Plan</strong>
+                <div class="field-list">
+                  <div class="field-row">
+                    <code>recommended_actions</code>
+                    <p>Structured list of reroute, escalate, notify, and manual-validation steps.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>approval_required</code>
+                    <p>Boolean gate determined by policy and confidence thresholds.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>execution_status</code>
+                    <p>Tracks queued, approved, dispatched, failed, and completed transitions.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-6">
+                <strong>Audit And Metrics</strong>
+                <div class="field-list">
+                  <div class="field-row">
+                    <code>audit_ref / rationale</code>
+                    <p>Stores decision lineage, contributing agents, policy checks, and action justification.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>retry_count / dlq_status</code>
+                    <p>Supports resilience reporting and replay-safe recovery.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>latency / throughput / failure_rate</code>
+                    <p>Operational KPIs used to monitor health of the control tower workflow.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="doc-card span-12">
+                <strong>Entity Relationships</strong>
+                <div class="data-model-grid">
+                  <div class="field-row">
+                    <code>Shipment Twin 1 - N Exception Case</code>
+                    <p>One shipment can create many exception cases over its lifecycle as conditions change.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>Exception Case 1 - 1 Active Action Plan</code>
+                    <p>Each open exception owns the currently recommended remediation plan.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>Exception Case 1 - N Audit Record</code>
+                    <p>Every diagnostic pass, approval event, retry, and execution update appends to the ledger.</p>
+                  </div>
+                  <div class="field-row">
+                    <code>Action Plan N - N Enterprise Systems</code>
+                    <p>A single plan can fan out into TMS, WMS, notification, and hub-ops integrations.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div class="screen-noise"></div>
+      <svg class="flow-svg" viewBox="0 0 1500 1080" preserveAspectRatio="none" aria-hidden="true">
+        <path id="path-ingest" d="M 240 145 C 340 145, 380 140, 470 145" />
+        <path id="path-bus-to-detect" d="M 820 220 C 820 310, 710 330, 650 390" />
+        <path id="path-detect-to-diagnose" d="M 650 390 C 760 340, 870 360, 925 458" />
+        <path id="path-diagnose-to-decide" d="M 925 458 C 960 570, 900 650, 845 710" />
+        <path id="path-decide-to-risk" d="M 845 710 C 745 775, 590 780, 500 716" />
+        <path id="path-risk-to-audit" d="M 500 716 C 410 626, 410 520, 465 456" />
+        <path id="path-audit-to-knowledge" d="M 465 456 C 850 390, 970 300, 1110 340" />
+        <path id="path-knowledge-to-decision" d="M 1110 340 C 1210 360, 1230 470, 1220 540" />
+        <path id="path-decision-to-human" d="M 1220 540 C 1220 640, 1110 690, 1080 760" />
+        <path id="path-decision-to-execution" d="M 1220 540 C 1285 610, 1310 680, 1290 760" />
+        <path id="path-execution-to-governance" d="M 1290 760 C 1290 870, 1080 930, 890 965" />
+        <path id="path-human-to-governance" d="M 1080 760 C 1050 850, 970 905, 820 965" />
+        <path id="path-monitor-to-governance" d="M 755 760 C 780 850, 785 900, 780 965" />
+        <path id="path-failure-loop" d="M 430 760 C 490 690, 550 690, 605 760 C 550 830, 490 830, 430 760" />
+        <circle class="flow-dot" id="dot-ingest" r="6"></circle>
+        <circle class="flow-dot" id="dot-bus" r="6"></circle>
+        <circle class="flow-dot" id="dot-detect" r="6"></circle>
+        <circle class="flow-dot" id="dot-diagnose" r="6"></circle>
+        <circle class="flow-dot warn" id="dot-decide" r="6"></circle>
+        <circle class="flow-dot warn" id="dot-risk" r="6"></circle>
+        <circle class="flow-dot" id="dot-knowledge" r="6"></circle>
+        <circle class="flow-dot" id="dot-human" r="6"></circle>
+        <circle class="flow-dot" id="dot-execute" r="6"></circle>
+        <circle class="flow-dot fail" id="dot-failure" r="6"></circle>
+      </svg>
+
+      <div class="diagram">
+        <article class="card sources-card" data-minimap="sources" data-tooltip="Operational systems and sensors emit exception events into the control tower.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">1. Event Sources</div>
+              <h2 class="section-title">Signal Producers</h2>
+            </div>
+            <span class="status-chip">Live Emitters</span>
+          </div>
+          <div class="content">
+            <div class="sources-list" id="sourcesList"></div>
+            <div class="source-meta">
+              Trigger watch: <span id="watchTrigger"></span><br />
+              Active entities: <span id="watchEntities"></span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card bus-card" data-minimap="bus" data-tooltip="Kafka or PubSub style stream normalizes operational events into durable, replayable topics.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">2. Event Streaming</div>
+              <h2 class="section-title">Exception Bus</h2>
+            </div>
+            <span class="status-chip">Kafka / PubSub</span>
+          </div>
+          <div class="content">
+            <div class="mini-feed">
+              <div class="mini-event">
+                <span>Envelope</span>
+                <strong id="eventEnvelope">shipment.delay.detected</strong>
+              </div>
+              <div class="mini-event">
+                <span>Priority</span>
+                <strong id="eventPriority">P2 / Medium</strong>
+              </div>
+              <div class="mini-event">
+                <span>Routing</span>
+                <strong id="eventRoute">Control Tower Topic Fanout</strong>
+              </div>
+            </div>
+            <div class="bus-track" id="busTrack">
+              <div class="bus-particle" style="left: 8%;"></div>
+              <div class="bus-particle" style="left: 28%;"></div>
+              <div class="bus-particle" style="left: 52%;"></div>
+              <div class="bus-particle" style="left: 74%;"></div>
+            </div>
+            <div class="topic-row">
+              <div class="topic-pill" data-tooltip="High-cardinality shipment state changes.">shipment_events</div>
+              <div class="topic-pill" data-tooltip="Position, scan, and ETA refreshes.">tracking_updates</div>
+              <div class="topic-pill" data-tooltip="Alerts requiring orchestration.">exceptions</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card orchestration-card" data-minimap="agents" data-tooltip="A coordinated multi-agent loop transforms detection into diagnosis, decisioning, compliance checks, and audit logging.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">3. AI Orchestration</div>
+              <h2 class="section-title">Agentic Resolution Mesh</h2>
+            </div>
+            <span class="status-chip" id="agentStatus">Standby</span>
+          </div>
+          <div class="content">
+            <div class="agent-field">
+              <div class="agent-ring">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M 50 16 C 74 16, 88 32, 88 50 C 88 68, 74 84, 50 84 C 26 84, 12 68, 12 50 C 12 32, 26 16, 50 16" />
+                </svg>
+              </div>
+              <div class="agent-core" data-tooltip="Shared memory, tool access, and policy context that coordinate the agents.">
+                <div>
+                  <strong>Control Core</strong>
+                  <span>Shared state</span>
+                </div>
+              </div>
+              <div class="agent-node" data-agent="detect" data-tooltip="Identifies stale tracking patterns and flags exception onset.">
+                <strong>Detection Agent</strong>
+                <span>Identifies anomaly from missing scan and ETA drift.</span>
+              </div>
+              <div class="agent-node" data-agent="diagnose" data-tooltip="Interprets telemetry and system context to isolate root cause.">
+                <strong>Diagnosis Agent</strong>
+                <span>Tests hub congestion, route, and vehicle-side failure hypotheses.</span>
+              </div>
+              <div class="agent-node" data-agent="decide" data-tooltip="Chooses operational actions using policies, SLAs, and outcome cost.">
+                <strong>Decision Agent</strong>
+                <span>Builds an action plan with confidence scoring.</span>
+              </div>
+              <div class="agent-node" data-agent="risk" data-tooltip="Validates policy, approval needs, and compliance boundaries.">
+                <strong>Risk &amp; Compliance</strong>
+                <span>Assesses risk and decides whether human approval is mandatory.</span>
+              </div>
+              <div class="agent-node" data-agent="audit" data-tooltip="Captures chain-of-thought summaries, tool calls, and rationale.">
+                <strong>Audit Agent</strong>
+                <span>Creates a durable, reviewable decision record.</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card knowledge-card" data-minimap="knowledge" data-tooltip="Historical and operational context grounds every inference made by the agent mesh.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">4. Knowledge Layer</div>
+              <h2 class="section-title">Context Reservoir</h2>
+            </div>
+            <span class="status-chip" id="knowledgeStatus">Cold Cache</span>
+          </div>
+          <div class="content knowledge-body">
+            <div class="knowledge-store">
+              <div class="knowledge-wave"></div>
+            </div>
+            <div class="knowledge-item">Historical shipment behavior and route deviations</div>
+            <div class="knowledge-item">SLA rules, customer tiering, and policy constraints</div>
+            <div class="knowledge-item">Hub capacity snapshots and available vehicles</div>
+            <div class="knowledge-item">Driver performance and exception recurrence history</div>
+          </div>
+        </article>
+
+        <article class="card decision-card" data-minimap="decision" data-tooltip="Decisioning blends confidence, approval policy, and operational urgency to select the next path.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">5. Decision Engine</div>
+              <h2 class="section-title">Outcome Gate</h2>
+            </div>
+            <span class="status-chip" id="decisionStatus">Scoring</span>
+          </div>
+          <div class="content decision-grid">
+            <div class="confidence-shell">
+              <span class="section-sub">Confidence Score</span>
+              <strong id="confidenceLabel" style="display:block;font-size:32px;margin-top:6px;">0.00</strong>
+              <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceFill"></div>
+              </div>
+            </div>
+            <div class="branch-lanes">
+              <div class="branch" id="autoBranch">
+                <div class="branch-label">
+                  <strong>Auto Execute</strong>
+                  <span>Confidence above threshold and no mandatory approval</span>
+                </div>
+                <div class="branch-indicator"></div>
+              </div>
+              <div class="branch" id="humanBranch">
+                <div class="branch-label">
+                  <strong>Human Approval</strong>
+                  <span>Escalates if confidence is low or approvals are required</span>
+                </div>
+                <div class="branch-indicator"></div>
+              </div>
+            </div>
+            <div class="decision-stats">
+              <div class="decision-stat">
+                <span>Threshold</span>
+                <strong id="thresholdLabel">0.75</strong>
+              </div>
+              <div class="decision-stat">
+                <span>Route</span>
+                <strong id="routeLabel">Pending</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card human-card" data-minimap="human" data-tooltip="Operations managers can pause, review, and approve recommendations before execution.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">6. Human In Loop</div>
+              <h2 class="section-title">Approval Desk</h2>
+            </div>
+            <span class="status-chip" id="humanStatus">Idle</span>
+          </div>
+          <div class="content approval-panel">
+            <div class="avatar"></div>
+            <div class="approval-status">
+              <span>Review Queue</span>
+              <strong id="approvalHeadline">Awaiting decision</strong>
+            </div>
+            <div class="approve-button" id="approveButton">Approve Action Bundle</div>
+          </div>
+        </article>
+
+        <article class="card execution-card" data-minimap="execution" data-tooltip="Approved actions fan out to core enterprise systems and customer channels.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">7. Execution</div>
+              <h2 class="section-title">Enterprise Actions</h2>
+            </div>
+            <span class="status-chip" id="executionStatus">Queued</span>
+          </div>
+          <div class="content">
+            <div class="action-stack" id="actionStack"></div>
+          </div>
+        </article>
+
+        <article class="card monitor-card" data-minimap="monitor" data-tooltip="Operational KPIs update continuously to show health, latency, and throughput.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">8. Observability</div>
+              <h2 class="section-title">Live Metrics</h2>
+            </div>
+            <span class="status-chip">Streaming</span>
+          </div>
+          <div class="content metric-stack">
+            <div class="metric">
+              <span>Event Throughput</span>
+              <strong id="throughputMetric">0</strong>
+              <svg class="sparkline" viewBox="0 0 120 48" preserveAspectRatio="none">
+                <polyline id="throughputLine" points="0,40 18,36 36,30 54,34 72,22 90,18 108,12 120,16"></polyline>
+              </svg>
+            </div>
+            <div class="metric">
+              <span>Decision Latency</span>
+              <strong id="latencyMetric">0 ms</strong>
+            </div>
+            <div class="metric">
+              <span>Failure Rate</span>
+              <strong id="failureMetric">0.0%</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="card failure-card" data-minimap="failure" data-tooltip="Retries, timeout detection, and dead-letter routing absorb failures without losing auditability.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">10. Failure Handling</div>
+              <h2 class="section-title">Resilience Loop</h2>
+            </div>
+            <span class="status-chip" id="failureChip">Ready</span>
+          </div>
+          <div class="content failure-grid">
+            <div class="failure-status">
+              <span>Active Simulation</span>
+              <strong id="failureHeadline">Agent timeout disabled</strong>
+            </div>
+            <div class="retry-loop">
+              <svg viewBox="0 0 220 110" preserveAspectRatio="none">
+                <path d="M 30 55 C 58 20, 100 18, 128 55 C 100 92, 58 90, 30 55 M 128 55 C 153 24, 184 24, 208 55 C 184 86, 153 86, 128 55" />
+              </svg>
+            </div>
+            <div class="dead-letter">
+              Dead-letter queue<br />
+              <span class="dlq-count" id="dlqCount">0 retained exceptions</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card governance-card" data-minimap="governance" data-tooltip="Every action, rationale, and exception path is appended to an immutable operational ledger.">
+          <div class="section-head">
+            <div>
+              <div class="section-sub">9. Governance &amp; Audit</div>
+              <h2 class="section-title">Decision Ledger</h2>
+            </div>
+            <span class="status-chip">Append Only</span>
+          </div>
+          <div class="content log-shell">
+            <div class="ledger-meta">
+              <p id="ledgerSummary">
+                The ledger records why the system acted, which agent influenced the recommendation, and whether the
+                workflow was auto-executed, approved, or retried after failure.
+              </p>
+              <div class="ledger-tags" id="ledgerTags"></div>
+            </div>
+            <div class="log-feed">
+              <div class="log-list" id="logList"></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="minimap">
+        <svg viewBox="0 0 180 120" preserveAspectRatio="none" width="100%" height="100%" aria-hidden="true">
+          <rect class="mini-box" id="mini-sources" x="4" y="10" width="34" height="22"></rect>
+          <rect class="mini-box" id="mini-bus" x="44" y="10" width="90" height="22"></rect>
+          <rect class="mini-box" id="mini-agents" x="28" y="42" width="74" height="30"></rect>
+          <rect class="mini-box" id="mini-knowledge" x="108" y="42" width="28" height="30"></rect>
+          <rect class="mini-box" id="mini-decision" x="140" y="42" width="34" height="30"></rect>
+          <rect class="mini-box" id="mini-human" x="108" y="80" width="28" height="18"></rect>
+          <rect class="mini-box" id="mini-execution" x="140" y="80" width="34" height="18"></rect>
+          <rect class="mini-box" id="mini-monitor" x="72" y="80" width="30" height="18"></rect>
+          <rect class="mini-box" id="mini-failure" x="36" y="80" width="30" height="18"></rect>
+          <rect class="mini-box" id="mini-governance" x="28" y="102" width="146" height="12"></rect>
+        </svg>
+      </div>
+    </section>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    const SCENARIO = {
+      name: "Shipment Delay",
+      trigger: "Shipment not scanned for 12 hours",
+      entities: ["Shipment", "Hub", "Vehicle", "Driver"],
+      actions: ["Reassign vehicle", "Notify customer", "Escalate to hub"],
+      riskLevel: "medium",
+      requiresApproval: true,
+      confidenceThreshold: 0.75
+    };
+
+    const dom = {
+      scenarioName: document.getElementById("scenarioName"),
+      scenarioTrigger: document.getElementById("scenarioTrigger"),
+      scenarioEntities: document.getElementById("scenarioEntities"),
+      scenarioActions: document.getElementById("scenarioActions"),
+      scenarioRisk: document.getElementById("scenarioRisk"),
+      watchTrigger: document.getElementById("watchTrigger"),
+      watchEntities: document.getElementById("watchEntities"),
+      sourcesList: document.getElementById("sourcesList"),
+      busTrack: document.getElementById("busTrack"),
+      eventEnvelope: document.getElementById("eventEnvelope"),
+      eventPriority: document.getElementById("eventPriority"),
+      eventRoute: document.getElementById("eventRoute"),
+      actionStack: document.getElementById("actionStack"),
+      thresholdLabel: document.getElementById("thresholdLabel"),
+      routeLabel: document.getElementById("routeLabel"),
+      confidenceLabel: document.getElementById("confidenceLabel"),
+      confidenceFill: document.getElementById("confidenceFill"),
+      autoBranch: document.getElementById("autoBranch"),
+      humanBranch: document.getElementById("humanBranch"),
+      approvalHeadline: document.getElementById("approvalHeadline"),
+      approveButton: document.getElementById("approveButton"),
+      throughputMetric: document.getElementById("throughputMetric"),
+      latencyMetric: document.getElementById("latencyMetric"),
+      failureMetric: document.getElementById("failureMetric"),
+      throughputLine: document.getElementById("throughputLine"),
+      logList: document.getElementById("logList"),
+      ledgerTags: document.getElementById("ledgerTags"),
+      ledgerSummary: document.getElementById("ledgerSummary"),
+      agentStatus: document.getElementById("agentStatus"),
+      knowledgeStatus: document.getElementById("knowledgeStatus"),
+      decisionStatus: document.getElementById("decisionStatus"),
+      humanStatus: document.getElementById("humanStatus"),
+      executionStatus: document.getElementById("executionStatus"),
+      failureChip: document.getElementById("failureChip"),
+      failureHeadline: document.getElementById("failureHeadline"),
+      dlqCount: document.getElementById("dlqCount"),
+      playPauseBtn: document.getElementById("playPauseBtn"),
+      restartBtn: document.getElementById("restartBtn"),
+      speedSelect: document.getElementById("speedSelect"),
+      failureToggle: document.getElementById("failureToggle"),
+      tooltip: document.getElementById("tooltip"),
+      docTabs: document.querySelectorAll(".doc-tab-button"),
+      docPanels: document.querySelectorAll(".doc-panel")
+    };
+
+    const sourceSystems = [
+      "Order Management System",
+      "Warehouse Management System",
+      "Transport Management System",
+      "IoT Devices / GPS / Scanners",
+      "External Carrier & Weather APIs"
+    ];
+
+    const agentOrder = ["detect", "diagnose", "decide", "risk", "audit"];
+    const agentTitles = {
+      detect: "Detection Agent",
+      diagnose: "Diagnosis Agent",
+      decide: "Decision Agent",
+      risk: "Risk & Compliance Agent",
+      audit: "Audit Agent"
+    };
+
+    const minimapKeys = [
+      "sources",
+      "bus",
+      "agents",
+      "knowledge",
+      "decision",
+      "human",
+      "execution",
+      "monitor",
+      "failure",
+      "governance"
+    ];
+
+    const state = {
+      confidence: 0.82,
+      speed: 1,
+      paused: false,
+      failureEnabled: true,
+      metrics: {
+        throughput: 1884,
+        latency: 420,
+        failureRate: 0.3
+      },
+      timeline: null,
+      intervals: [],
+      currentRun: 0,
+      decisionRoute: "pending"
+    };
+
+    function riskTone(level) {
+      if (level === "high") return "High / red path";
+      if (level === "low") return "Low / green path";
+      return "Medium / guided review";
+    }
+
+    function scenarioEnvelope(name) {
+      return name.toLowerCase().replace(/\s+/g, ".") + ".detected";
+    }
+
+    function renderScenario() {
+      dom.scenarioName.textContent = SCENARIO.name;
+      dom.scenarioTrigger.textContent = SCENARIO.trigger;
+      dom.scenarioEntities.textContent = SCENARIO.entities.join(" / ");
+      dom.scenarioActions.textContent = SCENARIO.actions.join(" / ");
+      dom.scenarioRisk.textContent = riskTone(SCENARIO.riskLevel);
+      dom.watchTrigger.textContent = SCENARIO.trigger;
+      dom.watchEntities.textContent = SCENARIO.entities.join(", ");
+      dom.thresholdLabel.textContent = SCENARIO.confidenceThreshold.toFixed(2);
+      dom.eventEnvelope.textContent = scenarioEnvelope(SCENARIO.name);
+      dom.eventPriority.textContent = "P2 / " + SCENARIO.riskLevel[0].toUpperCase() + SCENARIO.riskLevel.slice(1);
+      dom.eventRoute.textContent = SCENARIO.requiresApproval ? "Compliance Review Path Enabled" : "Fast Auto-Resolution Lane";
+
+      dom.sourcesList.innerHTML = "";
+      sourceSystems.forEach((name) => {
+        const item = document.createElement("div");
+        item.className = "source-node";
+        item.dataset.tooltip = name + " publishes operational telemetry and status change events.";
+        item.textContent = name;
+        dom.sourcesList.appendChild(item);
+      });
+
+      dom.actionStack.innerHTML = "";
+      SCENARIO.actions.forEach((action) => {
+        const row = document.createElement("div");
+        row.className = "action-row";
+        row.dataset.tooltip = action + " is dispatched into connected enterprise systems after final approval.";
+        row.innerHTML = "<div><span>Action</span><strong>" + action + "</strong></div><div class='action-badge'>Queued</div>";
+        dom.actionStack.appendChild(row);
+      });
+
+      dom.ledgerTags.innerHTML = "";
+      ["event-driven", "multi-agent", "governed", "retry-aware", SCENARIO.riskLevel + "-risk"].forEach((tag) => {
+        const chip = document.createElement("div");
+        chip.className = "ledger-tag";
+        chip.textContent = tag;
+        dom.ledgerTags.appendChild(chip);
+      });
+    }
+
+    function clearClasses(selector, className) {
+      document.querySelectorAll(selector).forEach((element) => element.classList.remove(className));
+    }
+
+    function setMinimapActive(key) {
+      minimapKeys.forEach((item) => {
+        const node = document.getElementById("mini-" + item);
+        if (node) {
+          node.classList.toggle("active", item === key);
+        }
+      });
+    }
+
+    function setSectionActive(sectionClass) {
+      document.querySelectorAll(".card").forEach((card) => card.classList.remove("active"));
+      const card = document.querySelector("." + sectionClass);
+      if (card) {
+        card.classList.add("active");
+      }
+    }
+
+    function activateAgent(agentKey) {
+      document.querySelectorAll(".agent-node").forEach((node) => {
+        node.classList.remove("active");
+        node.classList.remove("success");
+        node.classList.remove("failure");
+      });
+      const current = document.querySelector(".agent-node[data-agent='" + agentKey + "']");
+      if (current) current.classList.add("active");
+      dom.agentStatus.textContent = agentTitles[agentKey] + " active";
+    }
+
+    function markAgentSuccess(agentKey) {
+      const current = document.querySelector(".agent-node[data-agent='" + agentKey + "']");
+      if (current) {
+        current.classList.remove("active");
+        current.classList.add("success");
+      }
+    }
+
+    function addLog(title, detail) {
+      const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.innerHTML =
+        "<div class='log-time'>" + timestamp + "</div>" +
+        "<div><strong>" + title + "</strong>" + detail + "</div>";
+      dom.logList.prepend(entry);
+      while (dom.logList.children.length > 12) {
+        dom.logList.removeChild(dom.logList.lastChild);
+      }
+    }
+
+    function setDecisionUI(confidence) {
+      dom.confidenceLabel.textContent = confidence.toFixed(2);
+      anime.remove(dom.confidenceFill);
+      anime({
+        targets: dom.confidenceFill,
+        width: (confidence * 100).toFixed(1) + "%",
+        duration: 1000 / state.speed,
+        easing: "easeOutCubic"
+      });
+
+      const shouldEscalate = confidence < SCENARIO.confidenceThreshold || SCENARIO.requiresApproval;
+      state.decisionRoute = shouldEscalate ? "human" : "auto";
+      dom.routeLabel.textContent = shouldEscalate ? "Human approval" : "Auto execute";
+      dom.autoBranch.classList.toggle("active", !shouldEscalate);
+      dom.humanBranch.classList.toggle("active", shouldEscalate);
+      dom.decisionStatus.textContent = shouldEscalate ? "Needs approval" : "Auto-approved";
+      return shouldEscalate;
+    }
+
+    function pulseSources() {
+      anime({
+        targets: ".source-node",
+        translateX: [
+          { value: -2, duration: 200 / state.speed },
+          { value: 0, duration: 400 / state.speed }
+        ],
+        boxShadow: [
+          "0 0 0 rgba(117,243,255,0)",
+          "0 0 30px rgba(117,243,255,0.14)",
+          "0 0 0 rgba(117,243,255,0)"
+        ],
+        delay: anime.stagger(80 / state.speed),
+        easing: "easeOutQuad"
+      });
+    }
+
+    function moveDot(dotId, pathId, duration, delay) {
+      const path = anime.path(pathId);
+      anime.remove(dotId);
+      anime({
+        targets: dotId,
+        translateX: path("x"),
+        translateY: path("y"),
+        opacity: [
+          { value: 1, duration: 80 / state.speed },
+          { value: 1, duration: Math.max(120, duration - 200) / state.speed },
+          { value: 0, duration: 120 / state.speed }
+        ],
+        scale: [
+          { value: 1.2, duration: 100 / state.speed },
+          { value: 0.9, duration: duration / state.speed }
+        ],
+        easing: "linear",
+        delay: delay / state.speed,
+        duration: duration / state.speed
+      });
+    }
+
+    function updateMetrics(forceFailure) {
+      const direction = forceFailure ? 1 : (Math.random() > 0.5 ? 1 : -1);
+      state.metrics.throughput += Math.round((12 + Math.random() * 42) * direction);
+      state.metrics.throughput = Math.max(1200, state.metrics.throughput);
+      state.metrics.latency += Math.round((Math.random() * 40 - 12) + (forceFailure ? 52 : 0));
+      state.metrics.latency = Math.max(180, state.metrics.latency);
+      state.metrics.failureRate += (Math.random() * 0.2 - 0.06) + (forceFailure ? 0.7 : -0.05);
+      state.metrics.failureRate = Math.max(0.1, Math.min(4.9, state.metrics.failureRate));
+
+      dom.throughputMetric.textContent = state.metrics.throughput.toLocaleString() + " evt/min";
+      dom.latencyMetric.textContent = Math.round(state.metrics.latency) + " ms";
+      dom.failureMetric.textContent = state.metrics.failureRate.toFixed(1) + "%";
+
+      const values = Array.from({ length: 8 }, () => 8 + Math.random() * 32 + (forceFailure ? Math.random() * 10 : 0));
+      const step = 120 / (values.length - 1);
+      const points = values.map((value, index) => (index * step).toFixed(1) + "," + (46 - value).toFixed(1)).join(" ");
+      dom.throughputLine.setAttribute("points", points);
+    }
+
+    function startMetricsLoop() {
+      clearIntervals();
+      const metricsInterval = setInterval(() => {
+        if (!state.paused) {
+          updateMetrics(false);
+        }
+      }, 2200 / state.speed);
+      state.intervals.push(metricsInterval);
+    }
+
+    function clearIntervals() {
+      state.intervals.forEach((id) => clearInterval(id));
+      state.intervals = [];
+    }
+
+    function markActionsDone() {
+      document.querySelectorAll(".action-row").forEach((row, index) => {
+        setTimeout(() => {
+          row.classList.add("done");
+          const badge = row.querySelector(".action-badge");
+          if (badge) badge.textContent = "Done";
+        }, (index * 220) / state.speed);
+      });
+    }
+
+    function resetActions() {
+      document.querySelectorAll(".action-row").forEach((row) => {
+        row.classList.remove("done");
+        const badge = row.querySelector(".action-badge");
+        if (badge) badge.textContent = "Queued";
+      });
+    }
+
+    function resetVisualState() {
+      document.querySelectorAll(".card").forEach((card) => {
+        card.classList.remove("active");
+        card.classList.remove("failure");
+      });
+      document.querySelectorAll(".agent-node").forEach((node) => {
+        node.classList.remove("active");
+        node.classList.remove("success");
+        node.classList.remove("failure");
+      });
+      clearClasses(".branch", "active");
+      dom.routeLabel.textContent = "Pending";
+      dom.agentStatus.textContent = "Standby";
+      dom.knowledgeStatus.textContent = "Cold Cache";
+      dom.decisionStatus.textContent = "Scoring";
+      dom.humanStatus.textContent = "Idle";
+      dom.executionStatus.textContent = "Queued";
+      dom.failureChip.textContent = "Ready";
+      dom.failureHeadline.textContent = state.failureEnabled ? "Agent timeout armed" : "Agent timeout disabled";
+      dom.approvalHeadline.textContent = "Awaiting decision";
+      dom.approveButton.style.opacity = "0.5";
+      dom.dlqCount.textContent = "0 retained exceptions";
+      dom.logList.innerHTML = "";
+      resetActions();
+      setDecisionUI(0);
+      setMinimapActive("sources");
+      updateMetrics(false);
+    }
+
+    function animateBusParticles() {
+      anime.remove(".bus-particle");
+      anime({
+        targets: ".bus-particle",
+        translateX: [
+          { value: 24, duration: 900 / state.speed },
+          { value: 0, duration: 900 / state.speed }
+        ],
+        opacity: [
+          { value: 0.3, duration: 0 },
+          { value: 1, duration: 600 / state.speed },
+          { value: 0.4, duration: 600 / state.speed }
+        ],
+        scale: [
+          { value: 1.4, duration: 900 / state.speed },
+          { value: 1, duration: 900 / state.speed }
+        ],
+        loop: true,
+        direction: "alternate",
+        easing: "easeInOutSine",
+        delay: anime.stagger(180 / state.speed)
+      });
+    }
+
+    function failAgent() {
+      const riskNode = document.querySelector(".agent-node[data-agent='risk']");
+      const failureCard = document.querySelector(".failure-card");
+      if (riskNode) riskNode.classList.add("failure");
+      if (failureCard) failureCard.classList.add("failure");
+      dom.failureChip.textContent = "Failure detected";
+      dom.failureHeadline.textContent = "Risk agent timeout, entering retry loop";
+      dom.dlqCount.textContent = "1 retained exception";
+      updateMetrics(true);
+      addLog("Failure branch", "Risk & Compliance agent timed out. Workflow re-queued and mirrored into dead-letter storage for audit-safe replay.");
+      anime({
+        targets: ".retry-loop",
+        boxShadow: [
+          "0 0 0 rgba(255,97,119,0)",
+          "0 0 24px rgba(255,97,119,0.20)",
+          "0 0 0 rgba(255,97,119,0)"
+        ],
+        duration: 1200 / state.speed,
+        easing: "easeInOutSine",
+        loop: 2
+      });
+      moveDot("#dot-failure", "#path-failure-loop", 1800, 0);
+    }
+
+    function buildTimeline() {
+      if (state.timeline) {
+        state.timeline.pause();
+        state.timeline = null;
+      }
+
+      const runId = ++state.currentRun;
+      const confidence = SCENARIO.requiresApproval ? 0.72 : 0.88;
+      state.confidence = confidence;
+      resetVisualState();
+      animateBusParticles();
+      startMetricsLoop();
+      addLog("Scenario loaded", SCENARIO.name + " started from trigger: " + SCENARIO.trigger + ".");
+
+      const timeline = anime.timeline({
+        autoplay: true,
+        easing: "easeInOutQuad",
+        complete: () => {
+          if (runId !== state.currentRun) return;
+          addLog("Story loop complete", "The control tower is ready to replay the incident or switch to a new scenario.");
+        }
+      });
+
+      timeline
+        .add({
+          duration: 10,
+          begin: () => {
+            setSectionActive("sources-card");
+            setMinimapActive("sources");
+            pulseSources();
+            addLog("Event ingress", "OMS, WMS, TMS, IoT, and partner APIs emit a new exception signal.");
+          }
+        })
+        .add({
+          duration: 1400 / state.speed,
+          begin: () => {
+            setSectionActive("bus-card");
+            setMinimapActive("bus");
+            moveDot("#dot-ingest", "#path-ingest", 1200, 0);
+          }
+        })
+        .add({
+          duration: 1200 / state.speed,
+          begin: () => {
+            setSectionActive("orchestration-card");
+            setMinimapActive("agents");
+            activateAgent("detect");
+            moveDot("#dot-bus", "#path-bus-to-detect", 1100, 0);
+            addLog("Detection", "Detection Agent confirms missing scans and rising ETA variance against expected telemetry.");
+          },
+          complete: () => markAgentSuccess("detect")
+        })
+        .add({
+          duration: 1200 / state.speed,
+          begin: () => {
+            activateAgent("diagnose");
+            moveDot("#dot-detect", "#path-detect-to-diagnose", 1100, 0);
+            addLog("Diagnosis", "Diagnosis Agent queries hub capacity, vehicle availability, and driver history to isolate the likely cause.");
+          },
+          complete: () => markAgentSuccess("diagnose")
+        })
+        .add({
+          duration: 1000 / state.speed,
+          begin: () => {
+            setSectionActive("knowledge-card");
+            setMinimapActive("knowledge");
+            dom.knowledgeStatus.textContent = "Hot query";
+            moveDot("#dot-knowledge", "#path-audit-to-knowledge", 1000, 0);
+            anime({
+              targets: ".knowledge-store",
+              boxShadow: [
+                "0 0 0 rgba(117,243,255,0)",
+                "0 0 28px rgba(117,243,255,0.18)",
+                "0 0 0 rgba(117,243,255,0)"
+              ],
+              duration: 1000 / state.speed,
+              easing: "easeInOutSine"
+            });
+            addLog("Context lookup", "Knowledge layer returns historical delay signatures, SLA rules, and current hub utilization.");
+          }
+        })
+        .add({
+          duration: 1200 / state.speed,
+          begin: () => {
+            setSectionActive("decision-card");
+            setMinimapActive("decision");
+            activateAgent("decide");
+            moveDot("#dot-diagnose", "#path-diagnose-to-decide", 1000, 0);
+            dom.decisionStatus.textContent = "Synthesizing";
+            addLog("Decisioning", "Decision Agent builds a remediation plan from available vehicles, customer impact, and SLA commitments.");
+          },
+          complete: () => markAgentSuccess("decide")
+        })
+        .add({
+          duration: 1200 / state.speed,
+          begin: () => {
+            activateAgent("risk");
+            moveDot("#dot-decide", "#path-decide-to-risk", 1000, 0);
+            addLog("Policy review", "Risk & Compliance Agent checks approval policy, confidence thresholds, and customer communications guardrails.");
+          },
+          complete: () => markAgentSuccess("risk")
+        })
+        .add({
+          duration: 900 / state.speed,
+          begin: () => {
+            activateAgent("audit");
+            moveDot("#dot-risk", "#path-risk-to-audit", 900, 0);
+            addLog("Audit trail", "Audit Agent writes the structured rationale, contributing evidence, and selected action bundle to the ledger.");
+          },
+          complete: () => markAgentSuccess("audit")
+        })
+        .add({
+          duration: 1000 / state.speed,
+          begin: () => {
+            setSectionActive("decision-card");
+            setMinimapActive("decision");
+            const escalate = setDecisionUI(confidence);
+            dom.ledgerSummary.textContent =
+              "Decision confidence is " + confidence.toFixed(2) + ". " +
+              (escalate
+                ? "Human review is required before enterprise actions can be dispatched."
+                : "The workflow is within policy and can auto-execute without manual intervention.");
+            addLog("Decision score", "Confidence settled at " + confidence.toFixed(2) + " against threshold " + SCENARIO.confidenceThreshold.toFixed(2) + ".");
+            moveDot("#dot-knowledge", "#path-knowledge-to-decision", 850, 0);
+          }
+        });
+
+      if (SCENARIO.requiresApproval || confidence < SCENARIO.confidenceThreshold) {
+        timeline
+          .add({
+            duration: 1000 / state.speed,
+            begin: () => {
+              setSectionActive("human-card");
+              setMinimapActive("human");
+              dom.humanStatus.textContent = "Pending approval";
+              dom.approvalHeadline.textContent = "Ops manager reviewing recommendation";
+              dom.approveButton.style.opacity = "1";
+              moveDot("#dot-human", "#path-decision-to-human", 900, 0);
+              anime({
+                targets: "#approveButton",
+                scale: [1, 1.05, 1],
+                duration: 1000 / state.speed,
+                easing: "easeInOutSine",
+                loop: 2
+              });
+              addLog("Human checkpoint", "The workflow pauses because policy requires approval for medium-risk customer-facing actions.");
+            }
+          })
+          .add({
+            duration: 850 / state.speed,
+            begin: () => {
+              dom.humanStatus.textContent = "Approved";
+              dom.approvalHeadline.textContent = "Action bundle approved";
+              addLog("Approval granted", "Operations approved the recommended plan and resumed the orchestration flow.");
+            }
+          });
+      }
+
+      timeline
+        .add({
+          duration: 1100 / state.speed,
+          begin: () => {
+            setSectionActive("execution-card");
+            setMinimapActive("execution");
+            dom.executionStatus.textContent = "Dispatching";
+            moveDot("#dot-execute", "#path-decision-to-execution", 1000, 0);
+            markActionsDone();
+            addLog("Execution", "Enterprise actions fan out to TMS, customer notification channels, and hub operations queues.");
+          }
+        })
+        .add({
+          duration: 1100 / state.speed,
+          begin: () => {
+            setSectionActive("monitor-card");
+            setMinimapActive("monitor");
+            updateMetrics(false);
+            addLog("Monitoring", "Metrics refresh with event throughput, decision latency, and failure-rate signals.");
+          }
+        });
+
+      if (state.failureEnabled) {
+        timeline.add({
+          duration: 1400 / state.speed,
+          begin: () => {
+            setSectionActive("failure-card");
+            setMinimapActive("failure");
+            failAgent();
+          }
+        });
+      }
+
+      timeline.add({
+        duration: 1100 / state.speed,
+        begin: () => {
+          setSectionActive("governance-card");
+          setMinimapActive("governance");
+          moveDot("#dot-execute", "#path-execution-to-governance", 1000, 0);
+          addLog("Governance finalized", "The ledger now contains the event lineage, agent contributions, decision path, and execution status.");
+        }
+      });
+
+      state.timeline = timeline;
+      if (state.paused) {
+        state.timeline.pause();
+      }
+    }
+
+    function togglePlayback() {
+      state.paused = !state.paused;
+      dom.playPauseBtn.textContent = state.paused ? "Resume Story" : "Pause Story";
+      if (!state.timeline) return;
+      if (state.paused) {
+        state.timeline.pause();
+      } else {
+        state.timeline.play();
+      }
+    }
+
+    function rebuildAtSpeed(speed) {
+      state.speed = speed;
+      buildTimeline();
+    }
+
+    function wireControls() {
+      dom.docTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const selectedTab = tab.dataset.docTab;
+
+          dom.docTabs.forEach((button) => {
+            const isActive = button === tab;
+            button.classList.toggle("active", isActive);
+            button.setAttribute("aria-selected", String(isActive));
+          });
+
+          dom.docPanels.forEach((panel) => {
+            const isActive = panel.id === selectedTab + "Panel";
+            panel.classList.toggle("active", isActive);
+            panel.hidden = !isActive;
+          });
+        });
+      });
+
+      dom.playPauseBtn.addEventListener("click", togglePlayback);
+      dom.restartBtn.addEventListener("click", () => {
+        state.paused = false;
+        dom.playPauseBtn.textContent = "Pause Story";
+        buildTimeline();
+      });
+      dom.speedSelect.addEventListener("change", (event) => {
+        rebuildAtSpeed(Number(event.target.value));
+      });
+      dom.failureToggle.addEventListener("change", (event) => {
+        state.failureEnabled = event.target.checked;
+        buildTimeline();
+      });
+
+      document.addEventListener("mouseover", (event) => {
+        const target = event.target.closest("[data-tooltip]");
+        if (!target) return;
+        dom.tooltip.textContent = target.dataset.tooltip;
+        dom.tooltip.style.opacity = "1";
+      });
+
+      document.addEventListener("mousemove", (event) => {
+        dom.tooltip.style.left = event.clientX + "px";
+        dom.tooltip.style.top = event.clientY + "px";
+      });
+
+      document.addEventListener("mouseout", (event) => {
+        if (event.target.closest("[data-tooltip]")) {
+          dom.tooltip.style.opacity = "0";
+        }
+      });
+    }
+
+    function boot() {
+      renderScenario();
+      wireControls();
+      setDecisionUI(0);
+      updateMetrics(false);
+      buildTimeline();
+    }
+
+    boot();
+  </script>
+</body>
+</html>

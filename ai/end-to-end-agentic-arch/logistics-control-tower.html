@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Logistics Control Tower</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #020810;
+    --bg2: #050f1e;
+    --panel: rgba(8,20,45,0.85);
+    --border: rgba(0,180,255,0.15);
+    --blue: #00b4ff;
+    --blue-dim: rgba(0,180,255,0.4);
+    --cyan: #00ffe0;
+    --yellow: #ffe600;
+    --red: #ff2244;
+    --green: #00ff88;
+    --purple: #a855f7;
+    --orange: #ff8c00;
+    --text: #c8e6ff;
+    --text-dim: rgba(200,230,255,0.45);
+    --glow-b: 0 0 8px #00b4ff, 0 0 20px rgba(0,180,255,0.4);
+    --glow-g: 0 0 8px #00ff88, 0 0 20px rgba(0,255,136,0.4);
+    --glow-y: 0 0 8px #ffe600, 0 0 20px rgba(255,230,0,0.4);
+    --glow-r: 0 0 8px #ff2244, 0 0 20px rgba(255,34,68,0.4);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(0,180,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  #app {
+    position:relative; z-index:1;
+    width:100vw; height:100vh;
+    display:grid;
+    grid-template-rows: 52px 1fr 36px;
+    grid-template-columns: 1fr;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 0 20px;
+    background: rgba(2,8,16,0.95);
+    border-bottom: 1px solid var(--border);
+    position:relative;
+    overflow:hidden;
+  }
+  #header::after {
+    content:'';
+    position:absolute; bottom:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, var(--blue), var(--cyan), var(--blue), transparent);
+    animation: scanline 3s linear infinite;
+  }
+  @keyframes scanline { 0%{opacity:0.3} 50%{opacity:1} 100%{opacity:0.3} }
+
+  .logo {
+    font-family:'Orbitron', sans-serif;
+    font-size:13px; font-weight:900;
+    letter-spacing:3px; color:var(--blue);
+    text-shadow: var(--glow-b);
+  }
+  .logo span { color:var(--cyan); }
+
+  .scenario-badge {
+    font-family:'Share Tech Mono', monospace;
+    font-size:11px; color:var(--yellow);
+    border:1px solid rgba(255,230,0,0.3);
+    padding:3px 10px; border-radius:2px;
+    text-shadow: var(--glow-y);
+    animation: pulse-badge 2s ease-in-out infinite;
+  }
+  @keyframes pulse-badge { 0%,100%{opacity:0.7} 50%{opacity:1} }
+
+  .controls {
+    display:flex; gap:8px; align-items:center;
+  }
+  .btn {
+    font-family:'Orbitron', sans-serif;
+    font-size:9px; letter-spacing:1px;
+    padding:5px 10px; border-radius:2px; cursor:pointer;
+    border:1px solid; transition:all .2s;
+    background:transparent;
+  }
+  .btn-play { border-color:var(--green); color:var(--green); }
+  .btn-play:hover { background:rgba(0,255,136,0.15); box-shadow:var(--glow-g); }
+  .btn-pause { border-color:var(--yellow); color:var(--yellow); }
+  .btn-pause:hover { background:rgba(255,230,0,0.15); }
+  .btn-fail { border-color:var(--red); color:var(--red); }
+  .btn-fail:hover { background:rgba(255,34,68,0.15); }
+  .speed-ctrl {
+    font-family:'Share Tech Mono', monospace;
+    font-size:10px; color:var(--blue);
+    border:1px solid var(--border);
+    padding:4px 8px; border-radius:2px; cursor:pointer;
+    background:transparent;
+  }
+
+  /* ── MAIN CANVAS ── */
+  #main {
+    display:grid;
+    grid-template-columns: 160px 1fr 160px;
+    grid-template-rows: 1fr;
+    gap:0;
+    overflow:hidden;
+    position:relative;
+  }
+
+  /* Left panel – Sources */
+  #sources-panel {
+    padding:12px 10px;
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column; gap:8px;
+    background:var(--panel);
+    overflow:hidden;
+  }
+
+  /* Center canvas */
+  #center {
+    position:relative;
+    display:grid;
+    grid-template-rows: 80px 1fr 80px;
+    overflow:hidden;
+  }
+
+  /* Right panel – Monitoring */
+  #right-panel {
+    padding:12px 10px;
+    border-left:1px solid var(--border);
+    display:flex; flex-direction:column; gap:8px;
+    background:var(--panel);
+    overflow:hidden;
+  }
+
+  /* ── EVENT STREAM ── */
+  #event-stream {
+    border-bottom:1px solid var(--border);
+    background: rgba(0,180,255,0.04);
+    padding:8px 14px;
+    position:relative; overflow:hidden;
+    display:flex; align-items:center; gap:12px;
+  }
+
+  /* ── AGENTS AREA ── */
+  #agents-area {
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* SVG connector layer */
+  #svg-connectors {
+    position:absolute; inset:0;
+    pointer-events:none;
+  }
+
+  /* ── EXECUTION LAYER ── */
+  #exec-layer {
+    border-top:1px solid var(--border);
+    background: rgba(0,255,136,0.03);
+    padding:8px 14px;
+    display:flex; align-items:center; gap:14px;
+    overflow:hidden;
+  }
+
+  /* ── FOOTER ── */
+  #footer {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px;
+    background: rgba(2,8,16,0.95);
+    border-top:1px solid var(--border);
+    font-family:'Share Tech Mono', monospace;
+    font-size:10px; color:var(--text-dim);
+  }
+
+  /* ── SECTION LABELS ── */
+  .section-label {
+    font-family:'Orbitron', sans-serif;
+    font-size:8px; letter-spacing:2px;
+    color:var(--blue); opacity:0.6;
+    text-transform:uppercase;
+    margin-bottom:4px;
+  }
+
+  /* ── SOURCE NODES ── */
+  .source-node {
+    background: rgba(0,180,255,0.06);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:7px 8px;
+    position:relative; overflow:hidden;
+    cursor:pointer;
+    transition: border-color .3s;
+  }
+  .source-node:hover { border-color:var(--blue-dim); }
+  .source-node.active { border-color:var(--blue); box-shadow:var(--glow-b); }
+  .source-node-name {
+    font-family:'Orbitron', sans-serif;
+    font-size:8px; letter-spacing:1px;
+    color:var(--blue); margin-bottom:2px;
+  }
+  .source-node-desc {
+    font-size:9px; color:var(--text-dim); line-height:1.3;
+  }
+  .source-dot {
+    position:absolute; top:7px; right:7px;
+    width:6px; height:6px; border-radius:50%;
+    background:var(--blue);
+    box-shadow:var(--glow-b);
+    animation: dot-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes dot-pulse { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
+
+  /* ── KAFKA STREAM ── */
+  .stream-label {
+    font-family:'Orbitron', sans-serif;
+    font-size:8px; color:var(--cyan);
+    letter-spacing:2px; white-space:nowrap;
+  }
+  #stream-track {
+    flex:1; height:28px; position:relative;
+    border:1px solid rgba(0,255,224,0.2);
+    border-radius:3px;
+    overflow:hidden;
+    background: rgba(0,255,224,0.03);
+  }
+  .stream-particle {
+    position:absolute;
+    top:50%; transform:translateY(-50%);
+    padding:2px 7px; border-radius:2px;
+    font-family:'Share Tech Mono', monospace;
+    font-size:9px;
+    border:1px solid;
+    white-space:nowrap;
+  }
+  .sp-blue { border-color:var(--blue); color:var(--blue); background:rgba(0,180,255,0.1); }
+  .sp-yellow { border-color:var(--yellow); color:var(--yellow); background:rgba(255,230,0,0.08); }
+  .sp-red { border-color:var(--red); color:var(--red); background:rgba(255,34,68,0.08); }
+
+  /* ── AGENT NODES ── */
+  .agent {
+    position:absolute;
+    width:110px;
+    background: rgba(5,15,35,0.95);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px;
+    transition: border-color .3s, box-shadow .3s;
+    cursor:pointer;
+  }
+  .agent:hover { border-color:rgba(0,180,255,0.4); }
+  .agent.active {
+    border-color:var(--blue);
+    box-shadow:var(--glow-b);
+  }
+  .agent.processing {
+    border-color:var(--yellow);
+    box-shadow:var(--glow-y);
+    animation:agent-pulse 0.6s ease-in-out infinite;
+  }
+  .agent.done {
+    border-color:var(--green);
+    box-shadow:var(--glow-g);
+  }
+  .agent.error {
+    border-color:var(--red);
+    box-shadow:var(--glow-r);
+    animation:agent-shake 0.3s ease-in-out;
+  }
+  @keyframes agent-pulse {
+    0%,100%{box-shadow: 0 0 6px var(--yellow), 0 0 15px rgba(255,230,0,0.3)}
+    50%{box-shadow: 0 0 12px var(--yellow), 0 0 30px rgba(255,230,0,0.5)}
+  }
+  @keyframes agent-shake {
+    0%,100%{transform:translateX(0)} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)}
+  }
+  .agent-icon { font-size:16px; margin-bottom:4px; display:block; }
+  .agent-name {
+    font-family:'Orbitron', sans-serif;
+    font-size:8px; letter-spacing:1px; color:var(--blue);
+    margin-bottom:3px;
+  }
+  .agent-status {
+    font-family:'Share Tech Mono', monospace;
+    font-size:9px; color:var(--text-dim); line-height:1.4;
+  }
+  .agent-badge {
+    display:inline-block;
+    margin-top:4px; padding:1px 5px;
+    border-radius:2px; font-size:8px;
+    font-family:'Share Tech Mono', monospace;
+  }
+  .badge-idle { border:1px solid rgba(200,230,255,0.2); color:var(--text-dim); }
+  .badge-run { border:1px solid var(--yellow); color:var(--yellow); }
+  .badge-ok { border:1px solid var(--green); color:var(--green); }
+  .badge-err { border:1px solid var(--red); color:var(--red); }
+
+  /* Knowledge node */
+  #knowledge-node {
+    position:absolute;
+    right:14px; top:50%;
+    transform:translateY(-50%);
+    width:95px;
+    background:rgba(168,85,247,0.08);
+    border:1px solid rgba(168,85,247,0.25);
+    border-radius:6px;
+    padding:10px 8px;
+    text-align:center;
+    cursor:pointer;
+  }
+  #knowledge-node.queried {
+    border-color:var(--purple);
+    box-shadow:0 0 10px rgba(168,85,247,0.5);
+    animation:knowledge-glow 0.8s ease-in-out;
+  }
+  @keyframes knowledge-glow {
+    0%{box-shadow:none} 50%{box-shadow:0 0 20px rgba(168,85,247,0.7)} 100%{box-shadow:0 0 10px rgba(168,85,247,0.5)}
+  }
+  .kn-icon { font-size:20px; margin-bottom:4px; display:block; }
+  .kn-name { font-family:'Orbitron', sans-serif; font-size:8px; color:var(--purple); letter-spacing:1px; }
+  .kn-items { margin-top:5px; }
+  .kn-item { font-size:9px; color:rgba(168,85,247,0.7); line-height:1.6; }
+
+  /* Decision engine */
+  #decision-engine {
+    position:absolute;
+    left:50%; bottom:100px;
+    transform:translateX(-50%);
+    width:140px;
+    background:rgba(0,255,136,0.05);
+    border:1px solid rgba(0,255,136,0.2);
+    border-radius:6px;
+    padding:10px;
+    text-align:center;
+  }
+  #decision-engine.active {
+    border-color:var(--green);
+    box-shadow:var(--glow-g);
+  }
+  .de-name { font-family:'Orbitron', sans-serif; font-size:8px; letter-spacing:1px; color:var(--green); margin-bottom:6px; }
+  .confidence-bar-wrap {
+    background:rgba(0,255,136,0.1); border-radius:2px; height:8px;
+    position:relative; overflow:hidden; margin:4px 0;
+  }
+  #confidence-fill {
+    height:100%; border-radius:2px;
+    background:linear-gradient(90deg, var(--yellow), var(--green));
+    width:0%;
+    transition:width 0.8s ease;
+  }
+  .confidence-val {
+    font-family:'Share Tech Mono', monospace;
+    font-size:11px; color:var(--green);
+    font-weight:bold;
+  }
+
+  /* HITL node */
+  #hitl-node {
+    position:absolute;
+    left:50%; bottom:30px;
+    transform:translateX(-50%);
+    width:140px;
+    background:rgba(255,140,0,0.05);
+    border:1px solid rgba(255,140,0,0.2);
+    border-radius:6px;
+    padding:8px;
+    text-align:center;
+    display:none;
+  }
+  #hitl-node.visible { display:block; }
+  #hitl-node.waiting {
+    border-color:var(--orange);
+    box-shadow:0 0 10px rgba(255,140,0,0.4);
+    animation:hitl-pulse 1s ease-in-out infinite;
+  }
+  @keyframes hitl-pulse {
+    0%,100%{box-shadow:0 0 6px rgba(255,140,0,0.4)} 50%{box-shadow:0 0 20px rgba(255,140,0,0.7)}
+  }
+  .hitl-name { font-family:'Orbitron', sans-serif; font-size:8px; color:var(--orange); margin-bottom:4px; }
+  #approve-btn {
+    background:rgba(0,255,136,0.15); border:1px solid var(--green);
+    color:var(--green); padding:4px 10px; border-radius:2px;
+    font-family:'Orbitron', sans-serif; font-size:8px; cursor:pointer;
+    margin:2px; transition:all .2s;
+  }
+  #approve-btn:hover { background:rgba(0,255,136,0.3); box-shadow:var(--glow-g); }
+
+  /* ── EXECUTION LAYER ── */
+  .exec-item {
+    display:flex; flex-direction:column; align-items:center;
+    gap:3px; flex:1;
+  }
+  .exec-icon { font-size:18px; }
+  .exec-name {
+    font-family:'Orbitron', sans-serif;
+    font-size:7px; letter-spacing:1px; color:var(--text-dim);
+    text-align:center; line-height:1.3;
+  }
+  .exec-status {
+    font-family:'Share Tech Mono', monospace;
+    font-size:9px; color:var(--text-dim);
+  }
+  .exec-check {
+    width:16px; height:16px; border-radius:50%;
+    border:1px solid rgba(0,255,136,0.3);
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px;
+  }
+  .exec-check.done { border-color:var(--green); background:rgba(0,255,136,0.15); color:var(--green); }
+  .exec-divider { width:1px; background:var(--border); align-self:stretch; }
+
+  /* ── RIGHT PANEL ── */
+  .metric-card {
+    background: rgba(0,180,255,0.04);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:7px 8px;
+  }
+  .metric-name {
+    font-family:'Orbitron', sans-serif;
+    font-size:7px; letter-spacing:1px; color:var(--text-dim); margin-bottom:3px;
+  }
+  .metric-val {
+    font-family:'Share Tech Mono', monospace;
+    font-size:18px; color:var(--blue);
+    line-height:1; font-weight:bold;
+  }
+  .metric-val.good { color:var(--green); }
+  .metric-val.warn { color:var(--yellow); }
+  .metric-val.bad { color:var(--red); }
+  .metric-sub { font-size:9px; color:var(--text-dim); }
+
+  /* Audit log */
+  #audit-log {
+    flex:1; overflow:hidden;
+    background:rgba(0,0,0,0.3);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:6px;
+  }
+  .audit-title {
+    font-family:'Orbitron', sans-serif;
+    font-size:7px; letter-spacing:2px; color:var(--text-dim); margin-bottom:5px;
+  }
+  #log-entries {
+    display:flex; flex-direction:column; gap:3px;
+    height:calc(100% - 18px); overflow:hidden;
+  }
+  .log-entry {
+    font-family:'Share Tech Mono', monospace;
+    font-size:8.5px; color:var(--text-dim);
+    line-height:1.4;
+    border-left:2px solid var(--border);
+    padding-left:5px;
+    opacity:0;
+    transform:translateX(-5px);
+  }
+  .log-entry.blue { border-color:var(--blue); color:var(--blue); }
+  .log-entry.yellow { border-color:var(--yellow); color:var(--yellow); }
+  .log-entry.green { border-color:var(--green); color:var(--green); }
+  .log-entry.red { border-color:var(--red); color:var(--red); }
+  .log-entry.purple { border-color:var(--purple); color:var(--purple); }
+
+  /* mini sparkline */
+  .spark-wrap { display:flex; align-items:flex-end; gap:1px; height:22px; margin-top:4px; }
+  .spark-bar {
+    flex:1; background:var(--blue-dim); border-radius:1px;
+    transition:height .4s ease;
+    min-height:2px;
+  }
+
+  /* Failure overlay */
+  #failure-overlay {
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(255,34,68,0.08);
+    border:1px solid var(--red);
+    border-radius:6px;
+    padding:12px 16px;
+    text-align:center;
+    display:none;
+    z-index:100;
+    box-shadow:var(--glow-r);
+  }
+  #failure-overlay.visible { display:block; }
+  .fail-title {
+    font-family:'Orbitron', sans-serif;
+    font-size:11px; color:var(--red); margin-bottom:6px;
+    text-shadow:var(--glow-r);
+  }
+  .fail-sub { font-family:'Share Tech Mono', monospace; font-size:10px; color:rgba(255,34,68,0.8); }
+  .retry-dots { margin-top:6px; display:flex; gap:4px; justify-content:center; }
+  .rdot { width:6px; height:6px; border-radius:50%; background:var(--red); opacity:0; }
+
+  /* Tooltip */
+  #tooltip {
+    position:fixed;
+    background:rgba(5,15,35,0.97);
+    border:1px solid var(--blue);
+    border-radius:4px;
+    padding:8px 12px;
+    font-family:'Share Tech Mono', monospace;
+    font-size:10px; color:var(--text);
+    pointer-events:none;
+    display:none;
+    z-index:999;
+    max-width:220px;
+    line-height:1.5;
+    box-shadow:var(--glow-b);
+  }
+
+  /* Phase indicator */
+  #phase-indicator {
+    position:absolute;
+    top:8px; left:50%; transform:translateX(-50%);
+    background:rgba(2,8,16,0.9);
+    border:1px solid var(--border);
+    border-radius:2px;
+    padding:3px 12px;
+    font-family:'Orbitron', sans-serif;
+    font-size:8px; letter-spacing:2px; color:var(--yellow);
+    white-space:nowrap;
+    z-index:50;
+  }
+
+  /* Flowing particles on SVG paths */
+  .flow-dot {
+    position:absolute;
+    width:6px; height:6px; border-radius:50%;
+    pointer-events:none;
+  }
+
+  /* DLQ badge */
+  #dlq-badge {
+    position:absolute;
+    bottom:10px; left:14px;
+    background:rgba(255,34,68,0.08);
+    border:1px solid rgba(255,34,68,0.3);
+    border-radius:4px;
+    padding:5px 8px;
+    font-family:'Share Tech Mono', monospace;
+    font-size:9px; color:var(--red);
+    display:none;
+  }
+  #dlq-badge.visible { display:block; animation:dlq-flash 0.5s ease-in-out 3; }
+  @keyframes dlq-flash { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+  /* Status bar */
+  .status-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--green); margin-right:5px; animation:dot-pulse 2s infinite; }
+</style>
+</head>
+<body>
+
+<!-- SCENARIO CONFIG -->
+<script>
+const SCENARIO = {
+  name: "Shipment Delay",
+  trigger: "Shipment not scanned for 12 hours",
+  entities: ["Shipment #SH-7821", "Hub Mumbai-4", "Vehicle VH-229", "Driver Ravi K."],
+  actions: ["Reassign vehicle", "Notify customer", "Escalate to hub"],
+  riskLevel: "medium",
+  requiresApproval: true,
+  confidenceThreshold: 0.75
+};
+</script>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header id="header">
+    <div class="logo">AI<span>·</span>LOGISTICS <span>CONTROL TOWER</span></div>
+    <div class="scenario-badge">⚠ SCENARIO: {{ SCENARIO }} · RISK: MEDIUM</div>
+    <div class="controls">
+      <button class="btn btn-play" onclick="startAnimation()">▶ PLAY</button>
+      <button class="btn btn-pause" onclick="pauseAnim()">⏸ PAUSE</button>
+      <button class="btn btn-fail" onclick="triggerFailure()">⚡ FAIL SIM</button>
+      <select class="speed-ctrl" id="speed-sel" onchange="setSpeed(this.value)">
+        <option value="1">1×</option>
+        <option value="1.5">1.5×</option>
+        <option value="2">2×</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main id="main">
+
+    <!-- LEFT: Event Sources -->
+    <div id="sources-panel">
+      <div class="section-label">Event Sources</div>
+
+      <div class="source-node" id="src-oms" data-tip="Order Management System: Manages order lifecycle, shipment creation, customer comms.">
+        <div class="source-dot"></div>
+        <div class="source-node-name">OMS</div>
+        <div class="source-node-desc">Order Mgmt System</div>
+      </div>
+
+      <div class="source-node" id="src-wms" data-tip="Warehouse Management: Inventory, pick/pack, scan events, hub updates.">
+        <div class="source-dot"></div>
+        <div class="source-node-name">WMS</div>
+        <div class="source-node-desc">Warehouse Mgmt</div>
+      </div>
+
+      <div class="source-node" id="src-tms" data-tip="Transport Management: Route planning, vehicle tracking, driver assignment.">
+        <div class="source-dot"></div>
+        <div class="source-node-name">TMS</div>
+        <div class="source-node-desc">Transport Mgmt</div>
+      </div>
+
+      <div class="source-node" id="src-iot" data-tip="IoT Devices: GPS trackers, barcode scanners, RFID readers — raw real-time telemetry.">
+        <div class="source-dot" style="animation-delay:0.3s"></div>
+        <div class="source-node-name">IoT</div>
+        <div class="source-node-desc">GPS · Scanner · RFID</div>
+      </div>
+
+      <div class="source-node" id="src-ext" data-tip="External APIs: Weather feeds, traffic data, carrier webhooks, customer portals.">
+        <div class="source-dot" style="animation-delay:0.6s"></div>
+        <div class="source-node-name">EXT API</div>
+        <div class="source-node-desc">Weather · Traffic · Carrier</div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div id="center">
+
+      <!-- Event stream / Kafka -->
+      <div id="event-stream">
+        <div class="stream-label">KAFKA TOPICS</div>
+        <div id="stream-track"><!-- particles injected by JS --></div>
+        <div style="font-family:'Share Tech Mono';font-size:9px;color:var(--text-dim);white-space:nowrap;">
+          shipment_events &nbsp;|&nbsp; tracking_updates &nbsp;|&nbsp; exceptions
+        </div>
+      </div>
+
+      <!-- Agents + connectors -->
+      <div id="agents-area">
+        <!-- SVG connector layer -->
+        <svg id="svg-connectors" xmlns="http://www.w3.org/2000/svg"></svg>
+
+        <!-- Phase indicator -->
+        <div id="phase-indicator">AWAITING EVENT</div>
+
+        <!-- AGENTS -->
+        <div class="agent" id="agent-detect" data-tip="Detection Agent: Monitors event streams for anomalies. Uses ML models to flag delays, route deviations, and hub exceptions." style="left:20px;top:20px;">
+          <span class="agent-icon">🔍</span>
+          <div class="agent-name">DETECTION</div>
+          <div class="agent-status">Monitoring streams...</div>
+          <span class="agent-badge badge-idle">IDLE</span>
+        </div>
+
+        <div class="agent" id="agent-diag" data-tip="Diagnosis Agent: Root-cause analysis using historical data. Correlates scan gaps, route, hub load, and driver status." style="left:160px;top:20px;">
+          <span class="agent-icon">🧠</span>
+          <div class="agent-name">DIAGNOSIS</div>
+          <div class="agent-status">Awaiting signal...</div>
+          <span class="agent-badge badge-idle">IDLE</span>
+        </div>
+
+        <div class="agent" id="agent-decision" data-tip="Decision Agent: Ranks candidate actions by impact, cost, and feasibility using a multi-objective optimizer." style="left:300px;top:20px;">
+          <span class="agent-icon">🎯</span>
+          <div class="agent-name">DECISION</div>
+          <div class="agent-status">Ready...</div>
+          <span class="agent-badge badge-idle">IDLE</span>
+        </div>
+
+        <div class="agent" id="agent-risk" data-tip="Risk & Compliance Agent: Validates decisions against SLA rules, regulatory constraints, and budget limits." style="left:160px;top:160px;">
+          <span class="agent-icon">⚖️</span>
+          <div class="agent-name">RISK</div>
+          <div class="agent-status">Standby...</div>
+          <span class="agent-badge badge-idle">IDLE</span>
+        </div>
+
+        <div class="agent" id="agent-audit" data-tip="Audit Agent: Immutable append-only log of all decisions, reasoning chains, and agent contributions for compliance." style="left:20px;top:160px;">
+          <span class="agent-icon">🧾</span>
+          <div class="agent-name">AUDIT</div>
+          <div class="agent-status">Recording...</div>
+          <span class="agent-badge badge-idle">IDLE</span>
+        </div>
+
+        <!-- Knowledge base -->
+        <div id="knowledge-node" data-tip="Knowledge Base: Historical SLA data, hub capacity maps, driver performance scores, route history.">
+          <span class="kn-icon">🗃️</span>
+          <div class="kn-name">KNOWLEDGE</div>
+          <div class="kn-items">
+            <div class="kn-item">Historical SLAs</div>
+            <div class="kn-item">Hub Capacity</div>
+            <div class="kn-item">Driver Scores</div>
+            <div class="kn-item">Route Data</div>
+          </div>
+        </div>
+
+        <!-- Decision Engine -->
+        <div id="decision-engine" data-tip="Decision Engine: Applies confidence scoring. Routes to auto-execute or HITL based on configured threshold.">
+          <div class="de-name">⚡ DECISION ENGINE</div>
+          <div class="confidence-val" id="conf-val">--</div>
+          <div class="confidence-bar-wrap">
+            <div id="confidence-fill"></div>
+          </div>
+          <div style="font-family:'Share Tech Mono';font-size:8px;color:var(--text-dim);">confidence score</div>
+        </div>
+
+        <!-- HITL -->
+        <div id="hitl-node" data-tip="Human-in-the-Loop: Triggered when confidence < threshold OR requiresApproval=true. Awaits operator decision.">
+          <div class="hitl-name">👤 HUMAN APPROVAL</div>
+          <div style="font-family:'Share Tech Mono';font-size:9px;color:var(--text-dim);margin-bottom:5px;">requiresApproval=true</div>
+          <button id="approve-btn" onclick="humanApprove()">✓ APPROVE</button>
+        </div>
+
+        <!-- DLQ badge -->
+        <div id="dlq-badge">⚠ DEAD-LETTER QUEUE +1</div>
+
+        <!-- Failure overlay -->
+        <div id="failure-overlay">
+          <div class="fail-title">⚡ AGENT TIMEOUT</div>
+          <div class="fail-sub">Diagnosis Agent · 30s exceeded</div>
+          <div class="fail-sub" style="margin-top:3px;color:var(--yellow)">RETRY 1/3 IN PROGRESS...</div>
+          <div class="retry-dots">
+            <div class="rdot" id="rd1"></div>
+            <div class="rdot" id="rd2"></div>
+            <div class="rdot" id="rd3"></div>
+          </div>
+        </div>
+
+      </div><!-- /agents-area -->
+
+      <!-- EXECUTION LAYER -->
+      <div id="exec-layer">
+        <div style="font-family:'Orbitron';font-size:8px;letter-spacing:2px;color:var(--green);opacity:0.6;white-space:nowrap;">EXECUTION</div>
+        <div class="exec-divider"></div>
+        <div class="exec-item" id="exec-vehicle">
+          <div class="exec-icon">🚛</div>
+          <div class="exec-name">REASSIGN<br>VEHICLE</div>
+          <div class="exec-check" id="chk-vehicle">·</div>
+        </div>
+        <div class="exec-divider"></div>
+        <div class="exec-item" id="exec-notify">
+          <div class="exec-icon">📱</div>
+          <div class="exec-name">NOTIFY<br>CUSTOMER</div>
+          <div class="exec-check" id="chk-notify">·</div>
+        </div>
+        <div class="exec-divider"></div>
+        <div class="exec-item" id="exec-escalate">
+          <div class="exec-icon">📡</div>
+          <div class="exec-name">ESCALATE<br>TO HUB</div>
+          <div class="exec-check" id="chk-escalate">·</div>
+        </div>
+        <div class="exec-divider"></div>
+        <div class="exec-item" id="exec-sla">
+          <div class="exec-icon">📋</div>
+          <div class="exec-name">UPDATE<br>SLA LOG</div>
+          <div class="exec-check" id="chk-sla">·</div>
+        </div>
+      </div>
+
+    </div><!-- /center -->
+
+    <!-- RIGHT: Monitoring -->
+    <div id="right-panel">
+      <div class="section-label">Observability</div>
+
+      <div class="metric-card">
+        <div class="metric-name">EVENTS / MIN</div>
+        <div class="metric-val good" id="met-events">0</div>
+        <div class="spark-wrap" id="spark-events">
+          <div class="spark-bar" style="height:30%"></div>
+          <div class="spark-bar" style="height:60%"></div>
+          <div class="spark-bar" style="height:45%"></div>
+          <div class="spark-bar" style="height:80%"></div>
+          <div class="spark-bar" style="height:55%"></div>
+          <div class="spark-bar" style="height:70%"></div>
+          <div class="spark-bar" style="height:90%"></div>
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-name">DECISION LATENCY</div>
+        <div class="metric-val" id="met-latency">--</div>
+        <div class="metric-sub">milliseconds</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-name">FAILURE RATE</div>
+        <div class="metric-val" id="met-fail">0%</div>
+        <div class="metric-sub">last 100 events</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-name">AGENT HEALTH</div>
+        <div style="display:flex;flex-direction:column;gap:2px;margin-top:3px;" id="agent-health">
+          <div style="font-family:'Share Tech Mono';font-size:8px;color:var(--green);">🟢 Detection</div>
+          <div style="font-family:'Share Tech Mono';font-size:8px;color:var(--green);">🟢 Diagnosis</div>
+          <div style="font-family:'Share Tech Mono';font-size:8px;color:var(--green);">🟢 Decision</div>
+          <div style="font-family:'Share Tech Mono';font-size:8px;color:var(--green);">🟢 Risk</div>
+          <div style="font-family:'Share Tech Mono';font-size:8px;color:var(--green);">🟢 Audit</div>
+        </div>
+      </div>
+
+      <!-- Audit Log -->
+      <div id="audit-log">
+        <div class="audit-title">▸ AUDIT LEDGER</div>
+        <div id="log-entries"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer id="footer">
+    <div><span class="status-dot"></span>SYSTEM NOMINAL · AI ORCHESTRATION ACTIVE</div>
+    <div id="footer-ticker" style="font-size:9px;">Scenario: <span style="color:var(--blue)">Shipment Delay · SH-7821</span> | Trigger: 12hr scan gap | Risk: MEDIUM</div>
+    <div style="color:var(--blue);">v2.4.1 · PROD-A</div>
+  </footer>
+
+</div>
+
+<!-- TOOLTIP -->
+<div id="tooltip"></div>
+
+<script>
+// ─── SCENARIO INIT ───────────────────────────────────
+document.querySelector('.scenario-badge').textContent =
+  `⚠ SCENARIO: ${SCENARIO.name.toUpperCase()} · RISK: ${SCENARIO.riskLevel.toUpperCase()}`;
+
+// ─── GLOBALS ─────────────────────────────────────────
+let animSpeed = 1;
+let masterTimeline = null;
+let isRunning = false;
+let failureMode = false;
+let streamInterval = null;
+let metricsInterval = null;
+let confidenceTarget = 0;
+let humanApproved = false;
+let waitingForHuman = false;
+let resumeFn = null;
+
+// ─── TOOLTIP ─────────────────────────────────────────
+document.querySelectorAll('[data-tip]').forEach(el => {
+  el.addEventListener('mouseenter', (e) => {
+    const t = document.getElementById('tooltip');
+    t.textContent = el.dataset.tip;
+    t.style.display = 'block';
+    moveTip(e);
+  });
+  el.addEventListener('mousemove', moveTip);
+  el.addEventListener('mouseleave', () => {
+    document.getElementById('tooltip').style.display = 'none';
+  });
+});
+function moveTip(e) {
+  const t = document.getElementById('tooltip');
+  t.style.left = (e.clientX + 12) + 'px';
+  t.style.top = (e.clientY - 10) + 'px';
+}
+
+// ─── SPEED ───────────────────────────────────────────
+function setSpeed(v) { animSpeed = parseFloat(v); }
+
+// ─── STREAM PARTICLES ────────────────────────────────
+const TOPICS = ['shipment_delay','scan_miss','route_dev','hub_cap','exception','tracking_upd'];
+const TOPIC_CLASSES = ['sp-yellow','sp-blue','sp-blue','sp-red','sp-red','sp-blue'];
+
+function spawnParticle() {
+  const track = document.getElementById('stream-track');
+  const i = Math.floor(Math.random() * TOPICS.length);
+  const el = document.createElement('div');
+  el.className = 'stream-particle ' + TOPIC_CLASSES[i];
+  el.textContent = TOPICS[i];
+  el.style.left = '-120px';
+  track.appendChild(el);
+  anime({
+    targets: el,
+    left: (track.offsetWidth + 20) + 'px',
+    duration: (2500 + Math.random()*1500) / animSpeed,
+    easing: 'linear',
+    complete: () => el.remove()
+  });
+}
+
+// ─── SVG CONNECTORS ──────────────────────────────────
+function drawConnectors() {
+  const svg = document.getElementById('svg-connectors');
+  const area = document.getElementById('agents-area');
+  const W = area.offsetWidth;
+  const H = area.offsetHeight;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = '';
+
+  const agents = {
+    detect: document.getElementById('agent-detect'),
+    diag: document.getElementById('agent-diag'),
+    decision: document.getElementById('agent-decision'),
+    risk: document.getElementById('agent-risk'),
+    audit: document.getElementById('agent-audit'),
+    knowledge: document.getElementById('knowledge-node'),
+    de: document.getElementById('decision-engine'),
+    hitl: document.getElementById('hitl-node')
+  };
+
+  function center(el) {
+    const r = el.getBoundingClientRect();
+    const pr = area.getBoundingClientRect();
+    return { x: r.left - pr.left + r.width/2, y: r.top - pr.top + r.height/2 };
+  }
+
+  const connections = [
+    ['detect','diag','var(--blue)'],
+    ['diag','decision','var(--blue)'],
+    ['diag','knowledge','var(--purple)'],
+    ['decision','risk','var(--blue)'],
+    ['risk','audit','var(--blue)'],
+    ['audit','detect','var(--text-dim)'],
+  ];
+
+  connections.forEach(([a, b, color]) => {
+    if (!agents[a] || !agents[b]) return;
+    const ca = center(agents[a]);
+    const cb = center(agents[b]);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', ca.x); line.setAttribute('y1', ca.y);
+    line.setAttribute('x2', cb.x); line.setAttribute('y2', cb.y);
+    line.setAttribute('stroke', color);
+    line.setAttribute('stroke-width','1');
+    line.setAttribute('stroke-dasharray','4 3');
+    line.setAttribute('opacity','0.35');
+    svg.appendChild(line);
+  });
+}
+
+// ─── AGENT STATE ─────────────────────────────────────
+function agentState(id, state, statusText) {
+  const el = document.getElementById('agent-' + id);
+  if (!el) return;
+  el.classList.remove('active','processing','done','error');
+  const badge = el.querySelector('.agent-badge');
+  badge.classList.remove('badge-idle','badge-run','badge-ok','badge-err');
+  const status = el.querySelector('.agent-status');
+  if (statusText) status.textContent = statusText;
+
+  if (state === 'processing') {
+    el.classList.add('processing');
+    badge.classList.add('badge-run'); badge.textContent = 'RUNNING';
+  } else if (state === 'done') {
+    el.classList.add('done');
+    badge.classList.add('badge-ok'); badge.textContent = 'DONE';
+  } else if (state === 'error') {
+    el.classList.add('error');
+    badge.classList.add('badge-err'); badge.textContent = 'ERROR';
+  } else {
+    badge.classList.add('badge-idle'); badge.textContent = 'IDLE';
+  }
+}
+
+function allAgentsIdle() {
+  ['detect','diag','decision','risk','audit'].forEach(a => agentState(a,'idle',''));
+}
+
+// ─── SOURCE PULSE ─────────────────────────────────────
+function pulseSource(id) {
+  const el = document.getElementById('src-' + id);
+  el.classList.add('active');
+  setTimeout(() => el.classList.remove('active'), 1200);
+}
+
+// ─── LOG ENTRY ───────────────────────────────────────
+function addLog(text, color='') {
+  const wrap = document.getElementById('log-entries');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + color;
+  entry.textContent = `[${new Date().toLocaleTimeString('en',{hour12:false})}] ${text}`;
+  wrap.insertBefore(entry, wrap.firstChild);
+  // Keep max 8 entries
+  while (wrap.children.length > 8) wrap.removeChild(wrap.lastChild);
+  anime({ targets: entry, opacity:[0,1], translateX:[-5,0], duration:300, easing:'easeOutCubic' });
+}
+
+// ─── METRICS ─────────────────────────────────────────
+let evCount = 0;
+function startMetrics() {
+  metricsInterval = setInterval(() => {
+    evCount += Math.floor(Math.random()*8)+3;
+    document.getElementById('met-events').textContent = evCount;
+    // sparkline
+    const bars = document.querySelectorAll('#spark-events .spark-bar');
+    bars.forEach(b => { b.style.height = (20 + Math.random()*75) + '%'; });
+  }, 1200);
+}
+
+function setLatency(ms) {
+  const el = document.getElementById('met-latency');
+  el.textContent = ms;
+  el.className = 'metric-val ' + (ms < 300 ? 'good' : ms < 800 ? 'warn' : 'bad');
+}
+
+function setFailRate(pct) {
+  const el = document.getElementById('met-fail');
+  el.textContent = pct + '%';
+  el.className = 'metric-val ' + (pct === 0 ? 'good' : pct < 10 ? 'warn' : 'bad');
+}
+
+function setPhase(text) {
+  document.getElementById('phase-indicator').textContent = text;
+}
+
+function setAgentHealth(agentName, ok) {
+  const div = document.getElementById('agent-health');
+  const items = div.querySelectorAll('div');
+  const names = ['Detection','Diagnosis','Decision','Risk','Audit'];
+  const idx = names.indexOf(agentName);
+  if (idx >= 0) {
+    items[idx].textContent = (ok ? '🟢 ' : '🔴 ') + agentName;
+    items[idx].style.color = ok ? 'var(--green)' : 'var(--red)';
+  }
+}
+
+// ─── CONFIDENCE ──────────────────────────────────────
+function animateConfidence(target) {
+  return new Promise(res => {
+    const fill = document.getElementById('confidence-fill');
+    const val = document.getElementById('conf-val');
+    let current = 0;
+    const step = () => {
+      current = Math.min(current + 2, target);
+      fill.style.width = current + '%';
+      val.textContent = (current/100).toFixed(2);
+      if (current < target) requestAnimationFrame(step);
+      else { document.getElementById('decision-engine').classList.add('active'); res(); }
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+// ─── EXECUTION CHECKS ────────────────────────────────
+function execCheck(id, delay=0) {
+  return new Promise(res => {
+    setTimeout(() => {
+      const el = document.getElementById('chk-'+id);
+      anime({
+        targets: el, scale:[1.4,1], duration:300,
+        begin: () => { el.classList.add('done'); el.textContent = '✓'; },
+        complete: res
+      });
+    }, delay);
+  });
+}
+
+// ─── HUMAN APPROVE ───────────────────────────────────
+function humanApprove() {
+  if (!waitingForHuman) return;
+  waitingForHuman = false;
+  humanApproved = true;
+  const hitl = document.getElementById('hitl-node');
+  hitl.classList.remove('waiting');
+  addLog('Human approved action plan.', 'green');
+  setPhase('EXECUTING APPROVED ACTIONS');
+  if (resumeFn) resumeFn();
+}
+
+// ─── FAILURE SIMULATION ──────────────────────────────
+function triggerFailure() {
+  const overlay = document.getElementById('failure-overlay');
+  overlay.classList.add('visible');
+  setAgentHealth('Diagnosis', false);
+  setFailRate(8);
+  addLog('AGENT TIMEOUT: Diagnosis · retrying (1/3)', 'red');
+
+  ['rd1','rd2','rd3'].forEach((id,i) => {
+    setTimeout(() => {
+      const d = document.getElementById(id);
+      anime({ targets:d, opacity:[0,1,0], duration:600, easing:'easeInOutQuad' });
+    }, i*600);
+  });
+
+  setTimeout(() => {
+    overlay.classList.remove('visible');
+    setAgentHealth('Diagnosis', true);
+    setFailRate(2);
+    addLog('RECOVERED: Diagnosis agent back online.', 'yellow');
+    document.getElementById('dlq-badge').classList.add('visible');
+    setTimeout(() => document.getElementById('dlq-badge').classList.remove('visible'), 3000);
+  }, 3000);
+}
+
+// ─── PAUSE / RESUME ──────────────────────────────────
+function pauseAnim() {
+  if (masterTimeline) masterTimeline.pause();
+  anime.running.forEach(a => a.pause && a.pause());
+  if (streamInterval) clearInterval(streamInterval);
+  if (metricsInterval) clearInterval(metricsInterval);
+  isRunning = false;
+}
+
+// ─── RESET ───────────────────────────────────────────
+function resetAll() {
+  allAgentsIdle();
+  ['detect','diag','decision','risk','audit'].forEach(a => {
+    agentState(a,'idle','Standby...');
+  });
+  ['vehicle','notify','escalate','sla'].forEach(id => {
+    const el = document.getElementById('chk-'+id);
+    el.classList.remove('done'); el.textContent = '·';
+  });
+  document.getElementById('confidence-fill').style.width = '0%';
+  document.getElementById('conf-val').textContent = '--';
+  document.getElementById('decision-engine').classList.remove('active');
+  document.getElementById('hitl-node').classList.remove('visible','waiting');
+  document.getElementById('failure-overlay').classList.remove('visible');
+  document.getElementById('dlq-badge').classList.remove('visible');
+  document.getElementById('log-entries').innerHTML = '';
+  setPhase('AWAITING EVENT');
+  humanApproved = false; waitingForHuman = false; resumeFn = null;
+  ['detect','diag','decision','risk','audit'].forEach(a => agentState(a,'idle','Standby...'));
+  setAgentHealth('Detection',true); setAgentHealth('Diagnosis',true);
+  setAgentHealth('Decision',true); setAgentHealth('Risk',true); setAgentHealth('Audit',true);
+  document.getElementById('met-latency').textContent='--';
+  document.getElementById('met-latency').className='metric-val';
+}
+
+// ─── MAIN ANIMATION SEQUENCE ─────────────────────────
+async function startAnimation() {
+  if (isRunning) { resetAll(); await sleep(400); }
+  isRunning = true;
+  resetAll();
+
+  // Start stream particles
+  streamInterval = setInterval(spawnParticle, 600/animSpeed);
+  startMetrics();
+
+  // ── PHASE 1: Event trigger ──
+  await sleep(400);
+  setPhase('EVENT DETECTED');
+  ['oms','wms','tms','iot'].forEach((s,i) => setTimeout(() => pulseSource(s), i*200));
+  addLog(`Event received: ${SCENARIO.trigger}`, 'blue');
+  addLog(`Entity: ${SCENARIO.entities[0]}`, 'blue');
+
+  await sleep(1000);
+
+  // ── PHASE 2: Detection Agent ──
+  setPhase('DETECTION AGENT RUNNING');
+  agentState('detect','processing','Scanning for anomaly...');
+  addLog('Detection Agent activated.', 'yellow');
+  await sleep(1400/animSpeed);
+  agentState('detect','done','Anomaly confirmed: 12hr gap');
+  addLog('Anomaly detected: 12hr scan gap on SH-7821', 'yellow');
+  setLatency(180);
+
+  await sleep(600);
+
+  // ── PHASE 3: Diagnosis Agent ──
+  setPhase('DIAGNOSIS IN PROGRESS');
+  agentState('diag','processing','Querying root cause...');
+  addLog('Diagnosis Agent: querying knowledge base.', 'purple');
+  // Pulse knowledge node
+  const kn = document.getElementById('knowledge-node');
+  kn.classList.add('queried');
+  setTimeout(() => kn.classList.remove('queried'), 1000);
+  await sleep(1800/animSpeed);
+  agentState('diag','done','Root: Vehicle VH-229 breakdown');
+  addLog('Root cause: Vehicle breakdown at NH-48 km 203', 'purple');
+  setLatency(420);
+
+  await sleep(500);
+
+  // ── PHASE 4: Decision Agent ──
+  setPhase('GENERATING ACTION PLAN');
+  agentState('decision','processing','Ranking action candidates...');
+  addLog('Decision Agent: evaluating 3 candidates.', 'blue');
+  await sleep(1400/animSpeed);
+  agentState('decision','done','Plan: Reassign + Notify + Escalate');
+  addLog(`Selected actions: ${SCENARIO.actions.join(', ')}`, 'blue');
+
+  await sleep(500);
+
+  // ── PHASE 5: Risk Agent ──
+  setPhase('RISK VALIDATION');
+  agentState('risk','processing','Validating SLA compliance...');
+  addLog('Risk Agent: checking SLA + budget constraints.', 'yellow');
+  await sleep(1200/animSpeed);
+  agentState('risk','done','Risk: MEDIUM · Plan validated');
+  addLog('Risk assessment: MEDIUM · approved for execution', 'yellow');
+
+  await sleep(400);
+
+  // ── PHASE 6: Audit Agent ──
+  agentState('audit','processing','Logging reasoning chain...');
+  addLog('Audit Agent: recording decision chain.', 'purple');
+  await sleep(600/animSpeed);
+  agentState('audit','done','Decision chain logged');
+  addLog('Audit log committed (append-only, tamper-proof).', 'purple');
+
+  await sleep(400);
+
+  // ── PHASE 7: Confidence Score ──
+  setPhase('CONFIDENCE SCORING');
+  const conf = 0.82; // above threshold
+  await animateConfidence(Math.round(conf*100));
+  setLatency(640);
+  addLog(`Confidence score: ${conf} (threshold: ${SCENARIO.confidenceThreshold})`, 'green');
+
+  await sleep(600);
+
+  // ── PHASE 8: HITL check ──
+  if (SCENARIO.requiresApproval || conf < SCENARIO.confidenceThreshold) {
+    setPhase('AWAITING HUMAN APPROVAL');
+    const hitl = document.getElementById('hitl-node');
+    hitl.classList.add('visible','waiting');
+    addLog('Human approval required (requiresApproval=true).', 'yellow');
+    waitingForHuman = true;
+
+    // Wait for human
+    await new Promise(res => { resumeFn = res; });
+  }
+
+  // ── PHASE 9: Execution ──
+  setPhase('EXECUTING ACTIONS');
+  addLog('Execution layer: dispatching actions...', 'green');
+  pulseSource('tms'); await sleep(400/animSpeed);
+  await execCheck('vehicle');
+  addLog('✓ Vehicle VH-229 reassigned to VH-441', 'green');
+
+  pulseSource('oms'); await sleep(300/animSpeed);
+  await execCheck('notify', 200);
+  addLog('✓ Customer notified: ETA updated +4h', 'green');
+
+  pulseSource('wms'); await sleep(300/animSpeed);
+  await execCheck('escalate', 200);
+  addLog('✓ Hub Mumbai-4 escalation ticket raised', 'green');
+
+  await sleep(300/animSpeed);
+  await execCheck('sla', 100);
+  addLog('✓ SLA log updated: exception recorded', 'green');
+
+  // ── PHASE 10: Complete ──
+  setPhase('✓ RESOLUTION COMPLETE');
+  setLatency(712);
+  setFailRate(0);
+  addLog('─── Incident resolved in 712ms ───', 'green');
+  addLog(`SLA status: BREACH AVERTED`, 'green');
+
+  // Auto-restart after delay
+  await sleep(5000);
+  isRunning = false;
+  clearInterval(streamInterval);
+  clearInterval(metricsInterval);
+}
+
+function sleep(ms) {
+  return new Promise(res => setTimeout(res, ms / animSpeed));
+}
+
+// ─── INIT ────────────────────────────────────────────
+window.addEventListener('load', () => {
+  drawConnectors();
+  window.addEventListener('resize', drawConnectors);
+
+  // Start stream immediately
+  streamInterval = setInterval(spawnParticle, 800);
+
+  // Auto-start after short delay
+  setTimeout(startAnimation, 1200);
+});
+</script>
+</body>
+</html>

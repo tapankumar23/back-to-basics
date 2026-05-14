@@ -1,0 +1,187 @@
+import { tool } from "@langchain/core/tools";
+import { ToolMessage } from "@langchain/core/messages";
+import { StateGraph, MessagesAnnotation } from "@langchain/langgraph";
+import { ChatOpenAI } from "@langchain/openai";
+import { config } from "dotenv";
+import { z } from "zod";
+
+config();
+
+const SYSTEM_PROMPT =
+  "You are a helpful assistant that can use tools to answer math questions.";
+
+const mathSchema = z.object({
+  a: z.number().describe("first number"),
+  b: z.number().describe("second number"),
+});
+
+function createArithmeticOperationTool({ name, description, execute }) {
+  return tool(
+    async ({ a, b }) => String(execute(a, b)),
+    {
+      name,
+      description,
+      schema: mathSchema,
+    }
+  );
+}
+
+function createMathTools() {
+  return [
+    createArithmeticOperationTool({
+      name: "multiply",
+      description: "Useful when you want to multiply two numbers together",
+      execute: (a, b) => a * b,
+    }),
+    createArithmeticOperationTool({
+      name: "add",
+      description: "Useful when you want to add two numbers together",
+      execute: (a, b) => a + b,
+    }),
+    createArithmeticOperationTool({
+      name: "divide",
+      description: "Useful when you want to divide two numbers together",
+      execute: (a, b) => {
+        if (b === 0) {
+          throw new Error("Cannot divide by zero");
+        }
+
+        return a / b;
+      },
+    }),
+    createArithmeticOperationTool({
+      name: "subtract",
+      description: "Useful when you want to subtract two numbers together",
+      execute: (a, b) => a - b,
+    }),
+  ];
+}
+
+function createToolRegistry(tools) {
+  return Object.fromEntries(
+    tools.map((currentTool) => [currentTool.name, currentTool])
+  );
+}
+
+function getModelConfig(env) {
+  const apiKey = env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not set");
+  }
+
+  return {
+    apiKey,
+    model: env.OPENROUTER_MODEL ?? "openrouter/free",
+  };
+}
+
+function createChatModel({ apiKey, model }) {
+  return new ChatOpenAI({
+    apiKey,
+    model,
+    temperature: 0,
+    configuration: {
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "langgraph-test",
+      },
+    },
+  });
+}
+
+function createLlmNode(llmWithTools) {
+  return async function llmCall(state) {
+    const response = await llmWithTools.invoke([
+      {
+        role: "system",
+        content: SYSTEM_PROMPT,
+      },
+      ...state.messages,
+    ]);
+
+    return {
+      messages: [response],
+    };
+  };
+}
+
+async function invokeToolCalls(toolCalls, toolsByName) {
+  const results = [];
+
+  for (const toolCall of toolCalls) {
+    const selectedTool = toolsByName[toolCall.name];
+
+    if (!selectedTool) {
+      throw new Error(`Unknown tool requested: ${toolCall.name}`);
+    }
+
+    const observation = await selectedTool.invoke(toolCall.args);
+    results.push(
+      new ToolMessage({
+        tool_call_id: toolCall.id,
+        content: String(observation),
+      })
+    );
+  }
+
+  return results;
+}
+
+function createToolNode(toolsByName) {
+  return async function toolNode(state) {
+    const lastMessage = state.messages.at(-1);
+    const toolCalls = lastMessage?.tool_calls ?? [];
+    const results = await invokeToolCalls(toolCalls, toolsByName);
+
+    return {
+      messages: results,
+    };
+  };
+}
+
+function shouldContinue(state) {
+  const lastMessage = state.messages.at(-1);
+  return lastMessage?.tool_calls?.length ? "tools" : "__end__";
+}
+
+function createAgentGraph({ llmWithTools, toolsByName }) {
+  return new StateGraph(MessagesAnnotation)
+    .addNode("llmCall", createLlmNode(llmWithTools))
+    .addNode("tools", createToolNode(toolsByName))
+    .addEdge("__start__", "llmCall")
+    .addConditionalEdges("llmCall", shouldContinue, {
+      tools: "tools",
+      __end__: "__end__",
+    })
+    .addEdge("tools", "llmCall")
+    .compile();
+}
+
+function createInitialMessages() {
+  return [
+    {
+      role: "user",
+      content: "What is the product of 2 and 3 then subtract by 1 add 3 divide by 2?",
+    },
+  ];
+}
+
+async function main() {
+  const modelConfig = getModelConfig(process.env);
+  const tools = createMathTools();
+  const toolsByName = createToolRegistry(tools);
+  const llm = createChatModel(modelConfig);
+  const llmWithTools = llm.bindTools(tools);
+  const agentGraph = createAgentGraph({ llmWithTools, toolsByName });
+  const messages = createInitialMessages();
+  const result = await agentGraph.invoke({ messages });
+  console.log(`Using model: ${modelConfig.model}`);
+  console.log(result.messages.at(-1)?.content);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
